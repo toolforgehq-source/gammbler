@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #0f2912;
+  --foreground: #FFFFFF;
+  --card-bg: #163a1a;
+  --secondary-bg: #1a3d1f;
+  --accent-green: #4caf50;
+  --light-accent: #81c784;
+  --light-gray: #e0e0e0;
+  --mid-gray: #9e9e9e;
+  --red-loss: #ef5350;
+  --green-win: #66bb6a;
+  --gold: #FFD700;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card-bg);
+  --color-secondary: var(--secondary-bg);
+  --color-accent: var(--accent-green);
+  --color-accent-light: var(--light-accent);
+  --color-muted: var(--light-gray);
+  --color-muted-dark: var(--mid-gray);
+  --color-loss: var(--red-loss);
+  --color-win: var(--green-win);
+  --color-gold: var(--gold);
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-number: 'Oswald', sans-serif;
+  --font-sans: var(--font-body);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--secondary-bg);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-green);
+}
