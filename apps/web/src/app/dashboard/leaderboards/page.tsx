@@ -5,6 +5,7 @@ import { leaderboardsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { Users, Globe, Share2 } from 'lucide-react';
 import Link from 'next/link';
+import UpgradeBanner from '@/components/ui/UpgradeBanner';
 
 interface LeaderboardEntry {
   rank: number | null;
@@ -41,9 +42,16 @@ export default function LeaderboardsPage() {
   const [userPosition, setUserPosition] = useState<LeaderboardEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
+      if (tab === 'friends' && isFree) {
+        setLeaderboard([]);
+        setLoading(false);
+        return;
+      }
       const res = tab === 'friends'
         ? await leaderboardsAPI.friends(sport)
         : await leaderboardsAPI.national(sport);
@@ -119,7 +127,9 @@ export default function LeaderboardsPage() {
       )}
 
       {/* Leaderboard Table */}
-      {loading ? (
+      {tab === 'friends' && isFree ? (
+        <UpgradeBanner feature="Friend Leaderboards" description="Compete with your friends across all 10 sports. See who has the sharpest edge in your circle." />
+      ) : loading ? (
         <div className="flex items-center justify-center h-40">
           <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>

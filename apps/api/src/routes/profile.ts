@@ -3,7 +3,7 @@ import { db } from '../db';
 import { users, gammblerScores, badges, follows, bets } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { authMiddleware, optionalAuth } from '../middleware/auth';
-import { requireActiveSubscription } from '../middleware/subscription';
+import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
 
 const router = Router();

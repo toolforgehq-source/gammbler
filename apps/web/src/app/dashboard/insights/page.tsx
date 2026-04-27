@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { insightsAPI } from '@/lib/api';
+import { useAuthStore } from '@/lib/store';
 import { BarChart3, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import UpgradeBanner from '@/components/ui/UpgradeBanner';
 
 interface Insight {
   id: string;
@@ -21,9 +23,11 @@ interface WeeklyReport {
 }
 
 export default function InsightsPage() {
+  const { user } = useAuthStore();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
 
   useEffect(() => {
     Promise.all([
@@ -39,6 +43,14 @@ export default function InsightsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isFree) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <UpgradeBanner feature="Personalized Insights & Weekly Reports" description="Get AI-powered analysis of your betting patterns, strengths, weaknesses, and actionable recommendations. Plus weekly performance reports every Monday." />
       </div>
     );
   }

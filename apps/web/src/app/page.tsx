@@ -175,40 +175,78 @@ export default function HomePage() {
 
       {/* Pricing */}
       <section className="py-20 px-6">
-        <div className="max-w-lg mx-auto text-center">
+        <div className="max-w-4xl mx-auto text-center">
           <h2
-            className="text-3xl font-bold uppercase tracking-wider mb-6"
+            className="text-3xl font-bold uppercase tracking-wider mb-10"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Simple Pricing
+            Choose Your Plan
           </h2>
-          <div className="bg-card border-2 border-accent rounded-lg p-8">
-            <p className="text-5xl font-bold text-accent mb-2" style={{ fontFamily: 'var(--font-number)' }}>$8.99</p>
-            <p className="text-muted-dark mb-6">/month after 14-day free trial</p>
-            <ul className="space-y-3 text-left mb-8">
-              {[
-                'Full betting dashboard & analytics',
-                'Gammbler Score across all sports',
-                'Friend & national leaderboards',
-                'Personalized AI insights',
-                'Achievement badges',
-                'Shareable score cards',
-                'Weekly report cards',
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm text-muted">
-                  <Check size={16} className="text-accent flex-shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/signup"
-              className="block w-full bg-accent text-background font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-accent-light transition-colors text-center"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Start Free Trial
-            </Link>
-            <p className="text-xs text-muted-dark mt-3">No credit card required. Cancel anytime.</p>
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Free Tier */}
+            <div className="bg-card border border-accent/30 rounded-lg p-8 text-left">
+              <p className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-number)' }}>Free</p>
+              <p className="text-muted-dark mb-6 text-sm">Forever. No credit card needed.</p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  'Overall Gammbler Score',
+                  'Basic record (W-L)',
+                  'National leaderboards (view only)',
+                  'Community feed (read only)',
+                  '1 sportsbook connection',
+                  'Manual bet entry',
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-sm text-muted">
+                    <Check size={16} className="text-accent flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="block w-full bg-secondary text-white font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-card transition-colors text-center border border-accent/30"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Get Started Free
+              </Link>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="bg-card border-2 border-accent rounded-lg p-8 text-left relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-background text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
+                Most Popular
+              </div>
+              <p className="text-2xl font-bold text-accent mb-1" style={{ fontFamily: 'var(--font-number)' }}>
+                $8.99<span className="text-base text-muted-dark font-normal">/mo</span>
+              </p>
+              <p className="text-muted-dark mb-6 text-sm">14-day free trial included</p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  'Everything in Free, plus:',
+                  'All 10 sport-specific scores',
+                  'Friend & national leaderboards',
+                  'Personalized AI insights',
+                  'Unlimited sportsbook connections',
+                  'CSV bet import',
+                  'Shareable score cards',
+                  'Achievement badges',
+                  'Weekly performance reports',
+                ].map((item, i) => (
+                  <li key={item} className={`flex items-center gap-3 text-sm ${i === 0 ? 'text-accent font-semibold' : 'text-muted'}`}>
+                    {i > 0 && <Check size={16} className="text-accent flex-shrink-0" />}
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="block w-full bg-accent text-background font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-accent-light transition-colors text-center"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Start Free Trial
+              </Link>
+              <p className="text-xs text-muted-dark mt-3 text-center">No credit card required. Cancel anytime.</p>
+            </div>
           </div>
         </div>
       </section>

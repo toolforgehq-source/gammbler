@@ -7,9 +7,10 @@ import { colors, fonts } from '../../src/lib/theme';
 
 interface Score {
   sport: string;
-  score: string;
+  score: string | null;
   is_unlocked: boolean;
   settled_bet_count: number;
+  locked?: boolean;
 }
 
 interface Stats {
@@ -55,9 +56,10 @@ export default function DashboardScreen() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
   const overallScore = scores.find((s) => s.sport === 'overall');
   const sportScores = scores.filter((s) => s.sport !== 'overall');
-  const scoreVal = overallScore ? parseFloat(overallScore.score) : 0;
+  const scoreVal = overallScore?.score ? parseFloat(overallScore.score) : 0;
 
   if (loading) {
     return (
@@ -124,18 +126,21 @@ export default function DashboardScreen() {
         {/* Sport Score Cards */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
           {sportScores.map((s) => {
-            const val = parseFloat(s.score);
+            const val = s.score ? parseFloat(s.score) : 0;
+            const isLocked = s.locked;
             return (
               <View key={s.sport} style={{
                 backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
                 borderRadius: 10, padding: 14, marginRight: 10, minWidth: 110,
-                opacity: s.is_unlocked ? 1 : 0.5,
+                opacity: isLocked ? 0.5 : s.is_unlocked ? 1 : 0.5,
               }}>
                 <Text style={{ fontSize: 16, marginBottom: 4 }}>{SPORT_ICONS[s.sport] || '🎲'}</Text>
                 <Text style={{ fontFamily: fonts.display, fontSize: 10, color: colors.mutedDark, textTransform: 'uppercase', letterSpacing: 1 }}>
                   {s.sport.toUpperCase()}
                 </Text>
-                {s.is_unlocked ? (
+                {isLocked ? (
+                  <Text style={{ fontFamily: fonts.body, fontSize: 10, color: colors.accent, marginTop: 4 }}>🔒 Pro</Text>
+                ) : s.is_unlocked ? (
                   <Text style={{ fontFamily: fonts.number, fontSize: 22, color: getScoreColor(val), marginTop: 4 }}>
                     {val.toFixed(1)}
                   </Text>
@@ -148,6 +153,19 @@ export default function DashboardScreen() {
             );
           })}
         </ScrollView>
+
+        {/* Upgrade Banner for Free Users */}
+        {isFree && (
+          <View style={{
+            backgroundColor: colors.accent + '15', borderWidth: 1, borderColor: colors.accent + '40',
+            borderRadius: 10, padding: 14, marginBottom: 20, flexDirection: 'row', alignItems: 'center',
+          }}>
+            <Text style={{ fontSize: 14, marginRight: 8 }}>🔒</Text>
+            <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.accent, flex: 1 }}>
+              Upgrade to Pro to unlock all sport scores, insights & more — $8.99/mo
+            </Text>
+          </View>
+        )}
 
         {/* Quick Stats */}
         {stats && (

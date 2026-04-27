@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { leaderboardsAPI } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth';
 import { colors, fonts } from '../../src/lib/theme';
 
 interface Entry {
@@ -17,6 +18,8 @@ interface Entry {
 const SPORTS = ['overall', 'nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer'];
 
 export default function LeaderboardsScreen() {
+  const { user } = useAuth();
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
   const [sport, setSport] = useState('overall');
   const [tab, setTab] = useState<'friends' | 'national'>('friends');
   const [data, setData] = useState<Entry[]>([]);
@@ -127,7 +130,16 @@ export default function LeaderboardsScreen() {
         </View>
       </View>
 
-      {loading ? (
+      {tab === 'friends' && isFree ? (
+        <View style={{ margin: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.accent + '40', borderRadius: 12, padding: 24, alignItems: 'center' }}>
+          <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
+          <Text style={{ fontFamily: fonts.display, fontSize: 16, color: colors.foreground, textTransform: 'uppercase', marginBottom: 8, textAlign: 'center' }}>Friend Leaderboards</Text>
+          <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.mutedDark, textAlign: 'center', marginBottom: 16 }}>Compete with your friends across all sports. Upgrade to Pro to unlock.</Text>
+          <View style={{ backgroundColor: colors.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+            <Text style={{ fontFamily: fonts.display, fontSize: 12, color: colors.background, textTransform: 'uppercase', letterSpacing: 1 }}>Upgrade — $8.99/mo</Text>
+          </View>
+        </View>
+      ) : loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator color={colors.accent} size="large" />
         </View>

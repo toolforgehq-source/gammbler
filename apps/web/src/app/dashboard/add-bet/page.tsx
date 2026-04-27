@@ -2,14 +2,18 @@
 
 import { useState, useRef } from 'react';
 import { betsAPI } from '@/lib/api';
-import { Upload, Plus, Check, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '@/lib/store';
+import { Upload, Plus, Check, AlertCircle, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import UpgradeBanner from '@/components/ui/UpgradeBanner';
 
 const SPORTS = ['nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer', 'prizepicks', 'dfs'];
 const BET_TYPES = ['spread', 'moneyline', 'over_under', 'parlay', 'prop', 'player_prop', 'teaser', 'futures'];
 const PLATFORMS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'espn_bet', 'pointsbet', 'prizepicks', 'underdog', 'other'];
 
 export default function AddBetPage() {
+  const { user } = useAuthStore();
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
   const [tab, setTab] = useState<'manual' | 'csv'>('manual');
   const [sport, setSport] = useState('nfl');
   const [betType, setBetType] = useState('spread');
@@ -92,6 +96,7 @@ export default function AddBetPage() {
           style={{ fontFamily: 'var(--font-display)' }}
         >
           <Upload size={16} /> CSV IMPORT
+          {isFree && <Lock size={12} className="ml-1 opacity-60" />}
         </button>
       </div>
 
@@ -223,6 +228,8 @@ export default function AddBetPage() {
             {loading ? 'Adding...' : 'Add Bet'}
           </button>
         </form>
+      ) : isFree ? (
+        <UpgradeBanner feature="CSV Bet Import" description="Bulk import your betting history from any sportsbook via CSV. Save hours of manual entry." />
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-muted-dark">

@@ -3,17 +3,19 @@
 import { useEffect, useState } from 'react';
 import { scoresAPI, betsAPI, insightsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { TrendingUp, TrendingDown, Target, Zap, BarChart3, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Zap, BarChart3, ChevronRight, Lock } from 'lucide-react';
 import Link from 'next/link';
+import UpgradeBanner from '@/components/ui/UpgradeBanner';
 
 interface Score {
   sport: string;
-  score: string;
+  score: string | null;
   is_unlocked: boolean;
   settled_bet_count: number;
-  score_change_today: string;
-  win_rate: string;
-  roi: string;
+  score_change_today?: string;
+  win_rate?: string;
+  roi?: string;
+  locked?: boolean;
 }
 
 interface Stats {
@@ -81,18 +83,20 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [timeFilter, setTimeFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [tier, setTier] = useState<'free' | 'pro'>(user?.tier || 'free');
 
   useEffect(() => {
     async function fetchData() {
       try {
         const [scoresRes, statsRes, insightsRes] = await Promise.all([
-          scoresAPI.getAll().catch(() => ({ data: { scores: [] } })),
+          scoresAPI.getAll().catch(() => ({ data: { scores: [], tier: 'free' } })),
           betsAPI.stats({ time: timeFilter }).catch(() => ({ data: null })),
           insightsAPI.get().catch(() => ({ data: { insights: [] } })),
         ]);
         setScores(scoresRes.data.scores || []);
         setStats(statsRes.data);
         setInsights(insightsRes.data?.insights || []);
+        if (scoresRes.data.tier) setTier(scoresRes.data.tier);
       } catch {
         // handled by individual catches
       } finally {
@@ -104,7 +108,7 @@ export default function DashboardPage() {
 
   const overallScore = scores.find((s) => s.sport === 'overall');
   const sportScores = scores.filter((s) => s.sport !== 'overall');
-  const scoreVal = overallScore ? parseFloat(overallScore.score) : 0;
+  const scoreVal = overallScore?.score ? parseFloat(overallScore.score) : 0;
   const scoreChange = overallScore ? parseFloat(overallScore.score_change_today || '0') : 0;
 
   if (loading) {
@@ -169,12 +173,13 @@ export default function DashboardPage() {
       <div className="overflow-x-auto pb-2">
         <div className="flex gap-4 min-w-max">
           {sportScores.map((s) => {
-            const val = parseFloat(s.score);
+            const val = s.score ? parseFloat(s.score) : 0;
+            const isLocked = s.locked;
             return (
               <div
                 key={s.sport}
-                className={`bg-card border border-accent/20 rounded-lg p-4 min-w-[140px] ${
-                  !s.is_unlocked ? 'opacity-50' : ''
+                className={`bg-card border rounded-lg p-4 min-w-[140px] ${
+                  isLocked ? 'border-accent/10 opacity-60' : !s.is_unlocked ? 'border-accent/20 opacity-50' : 'border-accent/20'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -182,8 +187,11 @@ export default function DashboardPage() {
                   <span className="text-xs uppercase tracking-wider text-muted-dark font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
                     {SPORT_LABELS[s.sport] || s.sport}
                   </span>
+                  {isLocked && <Lock size={12} className="text-accent ml-auto" />}
                 </div>
-                {s.is_unlocked ? (
+                {isLocked ? (
+                  <p className="text-xs text-accent">Pro only</p>
+                ) : s.is_unlocked ? (
                   <p className={`text-2xl font-bold ${getScoreColor(val)}`} style={{ fontFamily: 'var(--font-number)' }}>
                     {val.toFixed(1)}
                   </p>
@@ -196,6 +204,11 @@ export default function DashboardPage() {
             );
           })}
         </div>
+        {tier === 'free' && (
+          <div className="mt-3">
+            <UpgradeBanner feature="Unlock all 10 sport-specific scores" compact />
+          </div>
+        )}
       </div>
 
       {/* Quick Stats Row */}
@@ -256,7 +269,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Insights */}
-      {insights.length > 0 && (
+      {tier === 'free' ? (
+        <UpgradeBanner feature="Personalized Insights" description="Get AI-powered analysis of your betting patterns, weaknesses, and opportunities to improve your edge." />
+      ) : insights.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg uppercase tracking-wider font-bold" style={{ fontFamily: 'var(--font-display)' }}>

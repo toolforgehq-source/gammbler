@@ -5,6 +5,7 @@ import { db } from '../db';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { generateToken, authMiddleware } from '../middleware/auth';
+import { getUserTier } from '../middleware/subscription';
 import { TRIAL_DAYS } from '@gammbler/shared';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -165,7 +166,8 @@ router.get('/me', authMiddleware, async (req: Request, res: Response): Promise<v
       return;
     }
 
-    res.json({ user });
+    const tier = getUserTier(user.subscription_status, user.trial_ends_at);
+    res.json({ user: { ...user, tier } });
   } catch (err) {
     console.error('Get me error:', err);
     res.status(500).json({ error: 'Internal server error' });

@@ -4,13 +4,12 @@ import { db } from '../db';
 import { gammblerScores, users, bets } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import path from 'path';
-import fs from 'fs';
+import { requirePro } from '../middleware/subscription';
 
 const router = Router();
 
 // POST /shareable/card — generate shareable score card image
-router.post('/card', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.post('/card', authMiddleware, requirePro, async (req: Request, res: Response): Promise<void> => {
   try {
     const { sport = 'overall' } = req.body;
     const userId = req.user!.userId;

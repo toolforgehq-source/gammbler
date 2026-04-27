@@ -3,12 +3,12 @@ import { db } from '../db';
 import { feedEvents, follows, users, gammblerScores } from '../db/schema';
 import { eq, and, desc, inArray, sql, or } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { requireActiveSubscription } from '../middleware/subscription';
+import { attachTier } from '../middleware/subscription';
 
 const router = Router();
 
 // GET /feed — get community feed
-router.get('/', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const limit = Math.min(parseInt(req.query.limit as string) || 30, 50);

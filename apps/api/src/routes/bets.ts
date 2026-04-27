@@ -4,7 +4,7 @@ import { db } from '../db';
 import { bets } from '../db/schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { requireActiveSubscription } from '../middleware/subscription';
+import { attachTier, requirePro } from '../middleware/subscription';
 import { updateAllScores } from '../services/gammbler-score';
 import { checkAndAwardBadges } from '../services/badges';
 import { createFeedEvent } from '../services/feed';
@@ -35,7 +35,7 @@ const settleBetSchema = z.object({
 });
 
 // GET /bets — list user's bets
-router.get('/', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
     const offset = parseInt(req.query.offset as string) || 0;
@@ -67,7 +67,7 @@ router.get('/', authMiddleware, requireActiveSubscription, async (req: Request, 
 });
 
 // POST /bets — create a manual bet
-router.post('/', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const body = createBetSchema.parse(req.body);
 
@@ -115,7 +115,7 @@ router.post('/', authMiddleware, requireActiveSubscription, async (req: Request,
 });
 
 // PATCH /bets/:id/settle — settle a pending bet
-router.patch('/:id/settle', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const body = settleBetSchema.parse(req.body);
 
@@ -177,7 +177,7 @@ router.patch('/:id/settle', authMiddleware, requireActiveSubscription, async (re
 });
 
 // POST /bets/csv-import — import bets from CSV
-router.post('/csv-import', authMiddleware, requireActiveSubscription, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+router.post('/csv-import', authMiddleware, requirePro, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
@@ -233,7 +233,7 @@ router.post('/csv-import', authMiddleware, requireActiveSubscription, upload.sin
 });
 
 // GET /bets/stats — get user's betting stats
-router.get('/stats', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.get('/stats', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const sport = req.query.sport as string;
     const platform = req.query.platform as string;
