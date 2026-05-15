@@ -22,7 +22,7 @@ The world's first unified sports betting identity and analytics platform.
 - **CLV Analysis**: The Odds API integration for closing line value calculation
 - **Shareable Cards**: SVG → PNG score cards for social sharing
 - **Achievements**: 14+ badge types with automatic awarding
-- **Subscription**: Stripe-managed $8.99/month with 14-day free trial
+- **Subscription**: Free forever tier + Stripe-managed Pro at $8.99/month
 
 ## Integrations
 

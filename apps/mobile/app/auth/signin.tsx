@@ -102,7 +102,7 @@ export default function SignInScreen() {
             Don&apos;t have an account?{' '}
           </Text>
           <Link href="/auth/signup" style={{ fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.accent }}>
-            Start Free Trial
+            Sign Up Free
           </Link>
         </View>
       </ScrollView>

@@ -81,8 +81,8 @@ function SignUpForm() {
           <h1 className="text-3xl font-bold uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
             Get Started
           </h1>
-          <p className="text-accent text-sm mt-2 font-semibold">FREE FOR 14 DAYS</p>
-          <p className="text-muted-dark text-xs mt-1">No credit card required</p>
+          <p className="text-accent text-sm mt-2 font-semibold">FREE FOREVER</p>
+          <p className="text-muted-dark text-xs mt-1">Upgrade to Pro when you're ready</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -173,7 +173,7 @@ function SignUpForm() {
             className="w-full bg-accent text-background font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-accent-light transition-colors disabled:opacity-50"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            {loading ? 'Creating Account...' : 'Start Free Trial'}
+            {loading ? 'Creating Account...' : 'Create Free Account'}
           </button>
         </form>
 

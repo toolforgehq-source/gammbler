@@ -39,7 +39,7 @@ export default function UpgradeBanner({ feature, description, compact }: Upgrade
       >
         Upgrade to Pro — $8.99/mo
       </Link>
-      <p className="text-xs text-muted-dark mt-3">14-day free trial included</p>
+      <p className="text-xs text-muted-dark mt-3">Unlock the full Gammbler experience</p>
     </div>
   );
 }
