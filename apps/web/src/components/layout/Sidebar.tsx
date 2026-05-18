@@ -12,6 +12,7 @@ import {
   Bell,
   LogOut,
   PlusCircle,
+  Swords,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/dashboard/feed', label: 'Community', icon: Activity },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/leaderboards', label: 'Leaderboards', icon: Trophy },
+  { href: '/dashboard/leagues', label: 'Leagues', icon: Swords },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
 ];
 

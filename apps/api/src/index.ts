@@ -21,6 +21,7 @@ import connectionRoutes from './routes/connections';
 import insightRoutes from './routes/insights';
 import badgeRoutes from './routes/badges';
 import shareableRoutes from './routes/shareable';
+import leagueRoutes from './routes/leagues';
 
 const app = express();
 const server = createServer(app);
@@ -65,6 +66,7 @@ app.use('/api/connections', connectionRoutes);
 app.use('/api/insights', insightRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/shareable', shareableRoutes);
+app.use('/api/leagues', leagueRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

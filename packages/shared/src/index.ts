@@ -208,6 +208,73 @@ export interface SportsbookConnection {
   last_synced_at: string | null;
 }
 
+export enum LeagueSport {
+  ALL = 'all',
+  NFL = 'nfl',
+  NBA = 'nba',
+  MLB = 'mlb',
+  NHL = 'nhl',
+  CFB = 'cfb',
+  CBB = 'cbb',
+  SOCCER = 'soccer',
+  MMA = 'mma',
+}
+
+export enum LeagueStatus {
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
+  ARCHIVED = 'archived',
+}
+
+export enum LeagueMemberRole {
+  COMMISSIONER = 'commissioner',
+  MEMBER = 'member',
+}
+
+export interface League {
+  id: string;
+  name: string;
+  sport: LeagueSport;
+  status: LeagueStatus;
+  commissioner_id: string;
+  invite_code: string;
+  min_bets_per_week: number;
+  min_active_weeks_pct: number;
+  season_name: string | null;
+  season_start: string;
+  season_end: string;
+  max_members: number;
+  created_at: string;
+}
+
+export interface LeagueMember {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  role: LeagueMemberRole;
+  season_score: number;
+  active_weeks: number;
+  total_weeks: number;
+  total_bets_in_league: number;
+  best_week_score: number;
+  current_streak: number;
+}
+
+export interface LeagueWeeklyScore {
+  user_id: string;
+  username: string;
+  week_number: number;
+  score: number;
+  bets_placed: number;
+  wins: number;
+  losses: number;
+  roi: number;
+  met_minimum: boolean;
+}
+
+export const LEAGUE_FREE_LIMIT = 2;
+export const LEAGUE_MAX_PER_USER = 10;
+
 // ── Constants ────────────────────────────────────────────────
 
 export const SCORE_WEIGHTS = {

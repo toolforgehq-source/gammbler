@@ -80,3 +80,21 @@ export const stripeAPI = {
   createCheckout: () => api.post('/stripe/create-checkout'),
   createPortal: () => api.post('/stripe/create-portal'),
 };
+
+export const leaguesAPI = {
+  list: () => api.get('/leagues'),
+  get: (id: string) => api.get(`/leagues/${id}`),
+  create: (data: {
+    name: string;
+    sport: string;
+    season_name?: string;
+    season_start: string;
+    season_end: string;
+    min_bets_per_week?: number;
+    max_members?: number;
+  }) => api.post('/leagues', data),
+  join: (invite_code: string) => api.post('/leagues/join', { invite_code }),
+  leave: (id: string) => api.delete(`/leagues/${id}/leave`),
+  weekly: (id: string, week?: number) => api.get(`/leagues/${id}/weekly`, { params: week ? { week } : undefined }),
+  awards: (id: string) => api.get(`/leagues/${id}/awards`),
+};

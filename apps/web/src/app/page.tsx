@@ -555,6 +555,139 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ========== LEAGUES SECTION ========== */}
+      <div className="section-divider" />
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              Betting Leagues
+            </p>
+            <h2
+              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              Start a League.{' '}
+              <span className="text-gradient">Settle It For Good.</span>
+            </h2>
+            <p className="text-[#9e9e9e] max-w-2xl mx-auto">
+              Create a private league, invite your crew, and compete over an entire season. Weekly scores, standings, and bragging rights — like fantasy football, but for betting.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            {/* League Standings Mockup */}
+            <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
+              <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                <div>
+                  <p className="text-white font-bold text-sm" style={{ fontFamily: 'var(--font-display)' }}>SUNDAY DEGEN LEAGUE</p>
+                  <p className="text-[10px] text-[#6b6b6b] mt-0.5">2025 NFL Season • Week 12 of 18</p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#4caf50]/20 text-[#4caf50]" style={{ fontFamily: 'var(--font-display)' }}>
+                  In Progress
+                </span>
+              </div>
+              <div className="divide-y divide-white/[0.04]">
+                {[
+                  { rank: 1, name: 'You', score: 81.2, weekScore: 87.4, bets: 8, streak: 4, isYou: true },
+                  { rank: 2, name: 'Mike_Bets', score: 76.8, weekScore: 72.1, bets: 6, streak: 2 },
+                  { rank: 3, name: 'DanTheMan', score: 74.1, weekScore: 68.9, bets: 5, streak: 0 },
+                  { rank: 4, name: 'JennyPicks', score: 69.4, weekScore: 74.3, bets: 4, streak: 1 },
+                  { rank: 5, name: 'CousinVinny', score: 52.3, weekScore: 41.2, bets: 2, streak: 0 },
+                ].map((member) => (
+                  <div key={member.rank} className={`px-6 py-3.5 flex items-center gap-4 ${member.isYou ? 'bg-[#4caf50]/[0.08]' : ''}`}>
+                    <span className={`w-6 text-center text-sm font-bold ${member.rank <= 3 ? 'text-[#FFD700]' : 'text-[#6b6b6b]'}`} style={{ fontFamily: 'var(--font-number)' }}>
+                      {member.rank}
+                    </span>
+                    <div className="flex-1">
+                      <span className={`text-sm font-medium ${member.isYou ? 'text-[#4caf50]' : 'text-white'}`}>
+                        {member.name}
+                        {member.isYou && <span className="text-[10px] text-[#4caf50] ml-1">(You)</span>}
+                      </span>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-[10px] text-[#6b6b6b]">{member.bets} bets this week</span>
+                        {member.streak > 0 && (
+                          <span className="text-[10px] text-[#ff6f00] flex items-center gap-0.5">
+                            <Flame size={9} />{member.streak}wk streak
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>
+                        {member.score}
+                      </span>
+                      <p className="text-[10px] text-[#6b6b6b]">This wk: <span className="text-[#81c784]">{member.weekScore}</span></p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="px-6 py-3 border-t border-white/[0.06] text-center">
+                <span className="text-xs text-[#6b6b6b]">Min 1 bet/week to stay ranked • Season avg determines winner</span>
+              </div>
+            </div>
+
+            {/* League Features */}
+            <div className="space-y-5">
+              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#4caf50]/20 flex items-center justify-center flex-shrink-0">
+                    <Trophy size={20} className="text-[#4caf50]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>SEASON-LONG COMPETITION</h3>
+                    <p className="text-xs text-[#9e9e9e]">Pick a sport, set your season dates, and compete week by week. The most consistent bettor wins — not the luckiest.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center flex-shrink-0">
+                    <Medal size={20} className="text-[#FFD700]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>WEEKLY SCORES, NOT LUCK</h3>
+                    <p className="text-xs text-[#9e9e9e]">Your league score is the average of your weekly scores. Miss a week? That&apos;s a zero. No coasting on one hot week.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#42a5f5]/20 flex items-center justify-center flex-shrink-0">
+                    <Users size={20} className="text-[#42a5f5]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>INVITE YOUR CREW</h3>
+                    <p className="text-xs text-[#9e9e9e]">Share a code, they join instantly. Up to 20 members per league. Finally settle who&apos;s actually the best bettor in your friend group.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#ff6f00]/20 flex items-center justify-center flex-shrink-0">
+                    <Crown size={20} className="text-[#ff6f00]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>END-OF-SEASON AWARDS</h3>
+                    <p className="text-xs text-[#9e9e9e]">MVP, Most Improved, Best Week, Worst Beat — shareable trophies that live on your profile forever.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-12 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-background font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-all"
+              style={{ fontFamily: 'var(--font-display)', background: 'linear-gradient(135deg, #4caf50, #81c784)' }}
+            >
+              Start a League <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ========== SHARE SECTION ========== */}
       <div className="section-divider" />
       <section className="py-24 md:py-32 px-6">

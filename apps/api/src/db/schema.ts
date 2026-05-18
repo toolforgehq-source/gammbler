@@ -202,6 +202,93 @@ export const leaderboardSeasons = pgTable('leaderboard_seasons', {
   sportMonthUnique: uniqueIndex('seasons_sport_month_unique').on(table.sport, table.month, table.year),
 }));
 
+// ── Leagues ──────────────────────────────────────────────────
+
+export const leagueStatusEnum = pgEnum('league_status', [
+  'active', 'completed', 'archived',
+]);
+
+export const leagueSportEnum = pgEnum('league_sport', [
+  'all', 'nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer', 'mma',
+]);
+
+export const leagueMemberRoleEnum = pgEnum('league_member_role', [
+  'commissioner', 'member',
+]);
+
+export const leagues = pgTable('leagues', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  sport: leagueSportEnum('sport').notNull(),
+  status: leagueStatusEnum('status').default('active').notNull(),
+  commissioner_id: uuid('commissioner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  invite_code: varchar('invite_code', { length: 20 }).notNull().unique(),
+  min_bets_per_week: integer('min_bets_per_week').default(1).notNull(),
+  min_active_weeks_pct: integer('min_active_weeks_pct').default(75).notNull(),
+  season_name: varchar('season_name', { length: 100 }),
+  season_start: timestamp('season_start', { withTimezone: true }).notNull(),
+  season_end: timestamp('season_end', { withTimezone: true }).notNull(),
+  max_members: integer('max_members').default(20).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  commissionerIdx: index('leagues_commissioner_idx').on(table.commissioner_id),
+  inviteCodeIdx: index('leagues_invite_code_idx').on(table.invite_code),
+  statusIdx: index('leagues_status_idx').on(table.status),
+}));
+
+export const leagueMembers = pgTable('league_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  league_id: uuid('league_id').notNull().references(() => leagues.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: leagueMemberRoleEnum('role').default('member').notNull(),
+  joined_at: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
+  season_score: numeric('season_score', { precision: 5, scale: 1 }).default('0').notNull(),
+  active_weeks: integer('active_weeks').default(0).notNull(),
+  total_weeks: integer('total_weeks').default(0).notNull(),
+  total_bets_in_league: integer('total_bets_in_league').default(0).notNull(),
+  best_week_score: numeric('best_week_score', { precision: 5, scale: 1 }).default('0'),
+  current_streak: integer('current_streak').default(0),
+}, (table) => ({
+  leagueUserUnique: uniqueIndex('league_members_unique').on(table.league_id, table.user_id),
+  leagueIdx: index('league_members_league_idx').on(table.league_id),
+  userIdx: index('league_members_user_idx').on(table.user_id),
+}));
+
+export const leagueWeeklyScores = pgTable('league_weekly_scores', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  league_id: uuid('league_id').notNull().references(() => leagues.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  week_number: integer('week_number').notNull(),
+  week_start: timestamp('week_start', { withTimezone: true }).notNull(),
+  week_end: timestamp('week_end', { withTimezone: true }).notNull(),
+  score: numeric('score', { precision: 5, scale: 1 }).default('0').notNull(),
+  bets_placed: integer('bets_placed').default(0).notNull(),
+  wins: integer('wins').default(0).notNull(),
+  losses: integer('losses').default(0).notNull(),
+  pushes: integer('pushes').default(0).notNull(),
+  roi: numeric('roi', { precision: 10, scale: 4 }).default('0'),
+  met_minimum: boolean('met_minimum').default(false).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  leagueUserWeekUnique: uniqueIndex('league_weekly_unique').on(table.league_id, table.user_id, table.week_number),
+  leagueWeekIdx: index('league_weekly_league_week_idx').on(table.league_id, table.week_number),
+}));
+
+export const leagueAwards = pgTable('league_awards', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  league_id: uuid('league_id').notNull().references(() => leagues.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  award_type: varchar('award_type', { length: 50 }).notNull(),
+  award_name: varchar('award_name', { length: 100 }).notNull(),
+  description: text('description'),
+  awarded_at: timestamp('awarded_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  leagueIdx: index('league_awards_league_idx').on(table.league_id),
+  userIdx: index('league_awards_user_idx').on(table.user_id),
+}));
+
+// ── Weekly Reports ───────────────────────────────────────────
+
 export const weeklyReports = pgTable('weekly_reports', {
   id: uuid('id').defaultRandom().primaryKey(),
   user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
