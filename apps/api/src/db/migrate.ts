@@ -1,9 +1,10 @@
 import { Pool } from 'pg';
 import { env } from '../config/env';
 
+const useSSL = env.NODE_ENV === 'production' && env.DATABASE_URL.includes('.render.com');
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: useSSL ? { rejectUnauthorized: false } : undefined,
 });
 
 async function migrate() {
