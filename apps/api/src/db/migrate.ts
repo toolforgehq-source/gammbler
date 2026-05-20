@@ -1,7 +1,10 @@
 import { Pool } from 'pg';
 import { env } from '../config/env';
 
-const pool = new Pool({ connectionString: env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: env.DATABASE_URL,
+  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+});
 
 async function migrate() {
   const client = await pool.connect();
