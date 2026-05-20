@@ -196,6 +196,92 @@ async function migrate() {
       );
     `);
 
+    // League enums
+    const leagueEnums = [
+      `DO $$ BEGIN CREATE TYPE league_status AS ENUM ('active','completed','archived'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+      `DO $$ BEGIN CREATE TYPE league_sport AS ENUM ('all','nfl','nba','mlb','nhl','cfb','cbb','soccer','mma'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+      `DO $$ BEGIN CREATE TYPE league_member_role AS ENUM ('commissioner','member'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    ];
+    for (const sql of leagueEnums) {
+      await client.query(sql);
+    }
+
+    // Leagues tables
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS leagues (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(100) NOT NULL,
+        sport league_sport NOT NULL,
+        status league_status NOT NULL DEFAULT 'active',
+        commissioner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invite_code VARCHAR(20) NOT NULL UNIQUE,
+        min_bets_per_week INTEGER NOT NULL DEFAULT 1,
+        min_active_weeks_pct INTEGER NOT NULL DEFAULT 75,
+        season_name VARCHAR(100),
+        season_start TIMESTAMPTZ NOT NULL,
+        season_end TIMESTAMPTZ NOT NULL,
+        max_members INTEGER NOT NULL DEFAULT 20,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS leagues_commissioner_idx ON leagues(commissioner_id);
+      CREATE INDEX IF NOT EXISTS leagues_invite_code_idx ON leagues(invite_code);
+      CREATE INDEX IF NOT EXISTS leagues_status_idx ON leagues(status);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS league_members (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role league_member_role NOT NULL DEFAULT 'member',
+        joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        season_score NUMERIC(5,1) NOT NULL DEFAULT 0,
+        active_weeks INTEGER NOT NULL DEFAULT 0,
+        total_weeks INTEGER NOT NULL DEFAULT 0,
+        total_bets_in_league INTEGER NOT NULL DEFAULT 0,
+        best_week_score NUMERIC(5,1) DEFAULT 0,
+        current_streak INTEGER DEFAULT 0,
+        UNIQUE(league_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS league_members_league_idx ON league_members(league_id);
+      CREATE INDEX IF NOT EXISTS league_members_user_idx ON league_members(user_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS league_weekly_scores (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        week_number INTEGER NOT NULL,
+        week_start TIMESTAMPTZ NOT NULL,
+        week_end TIMESTAMPTZ NOT NULL,
+        score NUMERIC(5,1) NOT NULL DEFAULT 0,
+        bets_placed INTEGER NOT NULL DEFAULT 0,
+        wins INTEGER NOT NULL DEFAULT 0,
+        losses INTEGER NOT NULL DEFAULT 0,
+        pushes INTEGER NOT NULL DEFAULT 0,
+        roi NUMERIC(10,4) DEFAULT 0,
+        met_minimum BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(league_id, user_id, week_number)
+      );
+      CREATE INDEX IF NOT EXISTS league_weekly_league_week_idx ON league_weekly_scores(league_id, week_number);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS league_awards (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        award_type VARCHAR(50) NOT NULL,
+        award_name VARCHAR(100) NOT NULL,
+        description TEXT,
+        awarded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS league_awards_league_idx ON league_awards(league_id);
+      CREATE INDEX IF NOT EXISTS league_awards_user_idx ON league_awards(user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {
