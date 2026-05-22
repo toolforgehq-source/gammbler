@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gammbler — Know Your Edge",
-  description: "The world's first unified sports betting identity and analytics platform.",
+  title: "Gammbler — Every Bettor Gets a Score",
+  description: "Your betting reputation, ranked. Compete on national leaderboards, challenge your friends, and share your Gammbler Score on social media.",
   icons: {
     icon: "/images/logo-icon.png",
     apple: "/images/logo-icon.png",
