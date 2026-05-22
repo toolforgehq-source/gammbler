@@ -40,9 +40,9 @@ export default function Sidebar() {
           <Image
             src="/images/logo-main.png"
             alt="Gammbler"
-            width={180}
-            height={40}
-            className="h-10 w-auto"
+            width={220}
+            height={48}
+            className="h-12 w-auto"
             priority
           />
         </Link>

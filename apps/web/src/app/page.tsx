@@ -206,7 +206,7 @@ export default function HomePage() {
       <nav className="fixed top-0 w-full z-50 border-b border-white/[0.04]" style={{ background: 'rgba(10, 15, 11, 0.8)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/">
-            <Image src="/images/logo-main.png" alt="Gammbler" width={180} height={40} className="h-10 w-auto" priority />
+            <Image src="/images/logo-main.png" alt="Gammbler" width={220} height={48} className="h-12 w-auto" priority />
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/signin" className="text-sm text-[#9e9e9e] hover:text-white transition-colors duration-300 hidden sm:block">
