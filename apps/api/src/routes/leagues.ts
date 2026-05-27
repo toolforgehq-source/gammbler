@@ -41,6 +41,8 @@ const createLeagueSchema = z.object({
   season_end: z.string(),
   min_bets_per_week: z.number().int().min(1).max(20).default(1),
   max_members: z.number().int().min(2).max(50).default(20),
+  is_cash_league: z.boolean().optional().default(false),
+  buy_in_cents: z.number().int().min(0).max(50000).optional().default(0),
 });
 
 // POST /leagues — Create a league (PRO only)
@@ -54,7 +56,13 @@ router.post('/', authMiddleware, requirePro, async (req: Request, res: Response)
       return;
     }
 
-    const { name, sport, season_name, season_start, season_end, min_bets_per_week, max_members } = parsed.data;
+    const { name, sport, season_name, season_start, season_end, min_bets_per_week, max_members, is_cash_league, buy_in_cents } = parsed.data;
+
+    // Cash leagues are currently disabled — free leagues only
+    if (is_cash_league && buy_in_cents > 0) {
+      res.status(400).json({ error: 'Cash leagues are coming soon. Create a free league for now!' });
+      return;
+    }
 
     // Check how many leagues the user has created
     const [leagueCount] = await db
@@ -79,6 +87,8 @@ router.post('/', authMiddleware, requirePro, async (req: Request, res: Response)
       invite_code: inviteCode,
       min_bets_per_week,
       max_members,
+      is_cash_league: is_cash_league || false,
+      buy_in_cents: buy_in_cents || 0,
     }).returning();
 
     // Add commissioner as a member

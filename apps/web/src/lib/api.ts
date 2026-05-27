@@ -121,6 +121,47 @@ export const badgesAPI = {
   getAll: () => api.get('/badges/all'),
 };
 
+// Bet Slips (Live Bet Slip Sharing)
+export const slipsAPI = {
+  feed: (params?: Record<string, string>) => api.get('/slips', { params }),
+  mine: (params?: Record<string, string>) => api.get('/slips/mine', { params }),
+  get: (id: string) => api.get(`/slips/${id}`),
+  create: (data: {
+    title: string;
+    description?: string;
+    sport: string;
+    bet_type: string;
+    selection: string;
+    odds: number;
+    stake: number;
+    platform: string;
+    event_name?: string;
+    parlay_legs?: number;
+    bet_id?: string;
+    is_public?: boolean;
+  }) => api.post('/slips', data),
+  settle: (id: string, data: { result: string; profit_loss?: number }) =>
+    api.patch(`/slips/${id}/settle`, data),
+  react: (id: string, reaction: string) => api.post(`/slips/${id}/react`, { reaction }),
+  share: (id: string) => api.post(`/slips/${id}/share`),
+  cardUrl: (id: string) => `${api.defaults.baseURL}/slips/${id}/card`,
+  delete: (id: string) => api.delete(`/slips/${id}`),
+};
+
+// Cappers (Tail This)
+export const cappersAPI = {
+  list: (params?: Record<string, string>) => api.get('/cappers', { params }),
+  get: (userId: string) => api.get(`/cappers/${userId}`),
+  apply: () => api.post('/cappers/apply'),
+  updateProfile: (data: { display_name?: string; bio?: string; price_cents?: number }) =>
+    api.patch('/cappers/me', data),
+  subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
+  unsubscribe: (userId: string) => api.delete(`/cappers/${userId}/subscribe`),
+  tail: (slipId: string) => api.post(`/cappers/tail/${slipId}`),
+  mySubscribers: () => api.get('/cappers/me/subscribers'),
+  myEarnings: () => api.get('/cappers/me/earnings'),
+};
+
 // Leagues
 export const leaguesAPI = {
   list: () => api.get('/leagues'),

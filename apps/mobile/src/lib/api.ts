@@ -81,6 +81,29 @@ export const stripeAPI = {
   createPortal: () => api.post('/stripe/create-portal'),
 };
 
+// Bet Slips
+export const slipsAPI = {
+  feed: (params?: Record<string, string>) => api.get('/slips', { params }),
+  mine: (params?: Record<string, string>) => api.get('/slips/mine', { params }),
+  get: (id: string) => api.get(`/slips/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/slips', data),
+  settle: (id: string, data: { result: string; profit_loss?: number }) =>
+    api.patch(`/slips/${id}/settle`, data),
+  react: (id: string, reaction: string) => api.post(`/slips/${id}/react`, { reaction }),
+  share: (id: string) => api.post(`/slips/${id}/share`),
+  delete: (id: string) => api.delete(`/slips/${id}`),
+};
+
+// Cappers
+export const cappersAPI = {
+  list: (params?: Record<string, string>) => api.get('/cappers', { params }),
+  get: (userId: string) => api.get(`/cappers/${userId}`),
+  apply: () => api.post('/cappers/apply'),
+  subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
+  unsubscribe: (userId: string) => api.delete(`/cappers/${userId}/subscribe`),
+  tail: (slipId: string) => api.post(`/cappers/tail/${slipId}`),
+};
+
 export const leaguesAPI = {
   list: () => api.get('/leagues'),
   get: (id: string) => api.get(`/leagues/${id}`),

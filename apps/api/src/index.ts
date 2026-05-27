@@ -22,6 +22,8 @@ import insightRoutes from './routes/insights';
 import badgeRoutes from './routes/badges';
 import shareableRoutes from './routes/shareable';
 import leagueRoutes from './routes/leagues';
+import slipRoutes from './routes/slips';
+import capperRoutes from './routes/cappers';
 
 const app = express();
 const server = createServer(app);
@@ -67,6 +69,8 @@ app.use('/api/insights', insightRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/shareable', shareableRoutes);
 app.use('/api/leagues', leagueRoutes);
+app.use('/api/slips', slipRoutes);
+app.use('/api/cappers', capperRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

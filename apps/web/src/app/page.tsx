@@ -855,6 +855,113 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ========== LIVE BET SLIP SHARING ========== */}
+      <div className="section-divider" />
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              New Feature
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+              Live Bet Slip <span className="text-gradient">Sharing</span>
+            </h2>
+            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
+              Post your bets before the game starts. Your followers watch them resolve in real-time. Every share generates a branded card — free marketing for you.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: '📡', title: 'Share Pre-Game', desc: 'Post your bet slip before kickoff. Followers see your picks live as they happen.' },
+              { icon: '🔥', title: 'Live Updates', desc: 'Watch slips resolve in real-time. React with fire, skull, money, clown, or GOAT.' },
+              { icon: '🎨', title: 'Branded Cards', desc: 'Auto-generated shareable cards with Gammbler watermark. Every share is a free ad.' },
+            ].map((item, i) => (
+              <div key={i} className={`glass-card rounded-xl p-6 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0 delay-${(i + 1) * 100}`}>
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'var(--font-display)' }}>{item.title}</h3>
+                <p className="text-sm text-[#9e9e9e]">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ========== TAIL THIS / CAPPER MARKETPLACE ========== */}
+      <div className="section-divider" />
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <p className="text-xs text-[#FFD700] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              New Feature
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+              Tail This — <span className="text-gradient-gold">Copy Betting</span>
+            </h2>
+            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
+              Verified Cappers with 80+ scores can monetize their picks. Subscribers get instant access to live bets with one-tap copy betting.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="glass-card rounded-xl p-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+              <h3 className="text-xl font-bold text-[#FFD700] mb-4" style={{ fontFamily: 'var(--font-display)' }}>FOR CAPPERS</h3>
+              <ul className="space-y-3 text-sm text-[#e0e0e0]">
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Score 80+ with 100+ bets to get Verified</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Set your monthly subscription price</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Keep 70% of subscriber revenue</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Build your brand with live bet slips</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Track earnings and subscriber analytics</li>
+              </ul>
+            </div>
+            <div className="glass-card rounded-xl p-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0 delay-200">
+              <h3 className="text-xl font-bold text-[#4caf50] mb-4" style={{ fontFamily: 'var(--font-display)' }}>FOR SUBSCRIBERS</h3>
+              <ul className="space-y-3 text-sm text-[#e0e0e0]">
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Browse verified, proven bettors</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> See live bets the moment they are placed</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> One-tap &ldquo;Tail This&rdquo; to copy any bet</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Track capper performance over time</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Cancel anytime — no lock-in</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== CASH LEAGUES ========== */}
+      <div className="section-divider" />
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              Coming Soon
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+              Cash <span className="text-gradient">Leagues</span>
+            </h2>
+            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
+              Compete for real money in skill-based betting leagues. Free leagues available now — paid entry coming after legal review.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: '💰', title: 'Buy-In Leagues', desc: 'Paid entry leagues with cash prizes. Skill-based competition like DraftKings — your betting record determines the winner.' },
+              { icon: '🏆', title: 'Season-Long Competition', desc: 'Compete over a full season. Weekly scoring, minimum bet requirements, and anti-gaming rules ensure fair play.' },
+              { icon: '📊', title: '10% Rake Model', desc: 'Gammbler takes a transparent 10% rake. The rest goes directly to prize pools. Fair, transparent, skill-based.' },
+            ].map((item, i) => (
+              <div key={i} className={`glass-card rounded-xl p-6 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0 delay-${(i + 1) * 100}`}>
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'var(--font-display)' }}>{item.title}</h3>
+                <p className="text-sm text-[#9e9e9e]">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-8">
+            <span className="inline-block px-4 py-2 bg-[#4caf50]/10 text-[#4caf50] rounded-full text-sm font-semibold border border-[#4caf50]/20">
+              Free leagues available now — cash entry coming Q1 2027
+            </span>
+          </div>
+        </div>
+      </section>
+
       {/* ========== PRICING ========== */}
       <div className="section-divider" />
       <section className="py-24 md:py-32 px-6">

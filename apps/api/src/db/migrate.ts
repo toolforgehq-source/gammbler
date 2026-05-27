@@ -286,6 +286,139 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS league_awards_user_idx ON league_awards(user_id);
     `);
 
+    // ── Bet Slips (Live Bet Slip Sharing) ──────────────────────
+    const slipEnums = [
+      `DO $$ BEGIN CREATE TYPE bet_slip_status AS ENUM ('live','won','lost','pushed','void'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+      `DO $$ BEGIN CREATE TYPE slip_reaction_type AS ENUM ('fire','skull','money','clown','goat'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    ];
+    for (const sql of slipEnums) {
+      await client.query(sql);
+    }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bet_slips (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        bet_id UUID REFERENCES bets(id) ON DELETE SET NULL,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        sport sport NOT NULL,
+        bet_type bet_type NOT NULL,
+        selection TEXT NOT NULL,
+        odds NUMERIC(10,4) NOT NULL,
+        stake NUMERIC(12,2) NOT NULL,
+        platform platform NOT NULL,
+        status bet_slip_status NOT NULL DEFAULT 'live',
+        event_name TEXT,
+        parlay_legs INTEGER,
+        profit_loss NUMERIC(12,2),
+        views_count INTEGER NOT NULL DEFAULT 0,
+        shares_count INTEGER NOT NULL DEFAULT 0,
+        is_public BOOLEAN NOT NULL DEFAULT true,
+        shared_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        settled_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS bet_slips_user_idx ON bet_slips(user_id);
+      CREATE INDEX IF NOT EXISTS bet_slips_status_idx ON bet_slips(status);
+      CREATE INDEX IF NOT EXISTS bet_slips_shared_at_idx ON bet_slips(shared_at);
+      CREATE INDEX IF NOT EXISTS bet_slips_sport_idx ON bet_slips(sport);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bet_slip_reactions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        slip_id UUID NOT NULL REFERENCES bet_slips(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reaction slip_reaction_type NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(slip_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS slip_reactions_slip_idx ON bet_slip_reactions(slip_id);
+    `);
+
+    // ── Capper Marketplace (Tail This) ──────────────────────────
+    const capperEnums = [
+      `DO $$ BEGIN CREATE TYPE capper_status AS ENUM ('pending','active','suspended'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+      `DO $$ BEGIN CREATE TYPE capper_sub_status AS ENUM ('active','cancelled','expired'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    ];
+    for (const sql of capperEnums) {
+      await client.query(sql);
+    }
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS capper_profiles (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+        display_name VARCHAR(100) NOT NULL,
+        bio TEXT,
+        price_cents INTEGER NOT NULL DEFAULT 499,
+        status capper_status NOT NULL DEFAULT 'active',
+        total_subscribers INTEGER NOT NULL DEFAULT 0,
+        total_tails INTEGER NOT NULL DEFAULT 0,
+        total_earnings_cents INTEGER NOT NULL DEFAULT 0,
+        verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        verified_score NUMERIC(5,1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS capper_profiles_user_idx ON capper_profiles(user_id);
+      CREATE INDEX IF NOT EXISTS capper_profiles_status_idx ON capper_profiles(status);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS capper_subscriptions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        capper_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subscriber_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status capper_sub_status NOT NULL DEFAULT 'active',
+        price_cents INTEGER NOT NULL,
+        stripe_subscription_id VARCHAR(255),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ,
+        UNIQUE(capper_user_id, subscriber_user_id)
+      );
+      CREATE INDEX IF NOT EXISTS capper_sub_capper_idx ON capper_subscriptions(capper_user_id);
+      CREATE INDEX IF NOT EXISTS capper_sub_subscriber_idx ON capper_subscriptions(subscriber_user_id);
+      CREATE INDEX IF NOT EXISTS capper_sub_status_idx ON capper_subscriptions(status);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tail_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        slip_id UUID NOT NULL REFERENCES bet_slips(id) ON DELETE CASCADE,
+        capper_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tailer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS tail_events_slip_idx ON tail_events(slip_id);
+      CREATE INDEX IF NOT EXISTS tail_events_capper_idx ON tail_events(capper_user_id);
+      CREATE INDEX IF NOT EXISTS tail_events_tailer_idx ON tail_events(tailer_user_id);
+    `);
+
+    // ── Cash Leagues (extend existing leagues table) ────────────
+    await client.query(`
+      ALTER TABLE leagues ADD COLUMN IF NOT EXISTS is_cash_league BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE leagues ADD COLUMN IF NOT EXISTS buy_in_cents INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE leagues ADD COLUMN IF NOT EXISTS rake_pct INTEGER NOT NULL DEFAULT 10;
+      ALTER TABLE leagues ADD COLUMN IF NOT EXISTS prize_pool_cents INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE leagues ADD COLUMN IF NOT EXISTS payout_status VARCHAR(20) DEFAULT 'pending';
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS league_entries (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        buy_in_paid_cents INTEGER NOT NULL,
+        payout_cents INTEGER NOT NULL DEFAULT 0,
+        stripe_payment_id VARCHAR(255),
+        paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        payout_at TIMESTAMPTZ,
+        UNIQUE(league_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS league_entries_league_idx ON league_entries(league_id);
+      CREATE INDEX IF NOT EXISTS league_entries_user_idx ON league_entries(user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

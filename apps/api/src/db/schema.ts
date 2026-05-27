@@ -229,6 +229,11 @@ export const leagues = pgTable('leagues', {
   season_start: timestamp('season_start', { withTimezone: true }).notNull(),
   season_end: timestamp('season_end', { withTimezone: true }).notNull(),
   max_members: integer('max_members').default(20).notNull(),
+  is_cash_league: boolean('is_cash_league').default(false).notNull(),
+  buy_in_cents: integer('buy_in_cents').default(0).notNull(),
+  rake_pct: integer('rake_pct').default(10).notNull(),
+  prize_pool_cents: integer('prize_pool_cents').default(0).notNull(),
+  payout_status: varchar('payout_status', { length: 20 }).default('pending'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   commissionerIdx: index('leagues_commissioner_idx').on(table.commissioner_id),
@@ -285,6 +290,132 @@ export const leagueAwards = pgTable('league_awards', {
 }, (table) => ({
   leagueIdx: index('league_awards_league_idx').on(table.league_id),
   userIdx: index('league_awards_user_idx').on(table.user_id),
+}));
+
+// ── Bet Slips (Live Bet Slip Sharing) ────────────────────────
+
+export const betSlipStatusEnum = pgEnum('bet_slip_status', [
+  'live', 'won', 'lost', 'pushed', 'void',
+]);
+
+export const slipReactionTypeEnum = pgEnum('slip_reaction_type', [
+  'fire', 'skull', 'money', 'clown', 'goat',
+]);
+
+export const betSlips = pgTable('bet_slips', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  bet_id: uuid('bet_id').references(() => bets.id, { onDelete: 'set null' }),
+  title: varchar('title', { length: 200 }).notNull(),
+  description: text('description'),
+  sport: sportEnum('sport').notNull(),
+  bet_type: betTypeEnum('bet_type').notNull(),
+  selection: text('selection').notNull(),
+  odds: numeric('odds', { precision: 10, scale: 4 }).notNull(),
+  stake: numeric('stake', { precision: 12, scale: 2 }).notNull(),
+  platform: platformEnum('platform').notNull(),
+  status: betSlipStatusEnum('status').default('live').notNull(),
+  event_name: text('event_name'),
+  parlay_legs: integer('parlay_legs'),
+  profit_loss: numeric('profit_loss', { precision: 12, scale: 2 }),
+  views_count: integer('views_count').default(0).notNull(),
+  shares_count: integer('shares_count').default(0).notNull(),
+  is_public: boolean('is_public').default(true).notNull(),
+  shared_at: timestamp('shared_at', { withTimezone: true }).defaultNow().notNull(),
+  settled_at: timestamp('settled_at', { withTimezone: true }),
+}, (table) => ({
+  userIdx: index('bet_slips_user_idx').on(table.user_id),
+  statusIdx: index('bet_slips_status_idx').on(table.status),
+  sharedAtIdx: index('bet_slips_shared_at_idx').on(table.shared_at),
+  sportIdx: index('bet_slips_sport_idx').on(table.sport),
+}));
+
+export const betSlipReactions = pgTable('bet_slip_reactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  slip_id: uuid('slip_id').notNull().references(() => betSlips.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reaction: slipReactionTypeEnum('reaction').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  slipUserUnique: uniqueIndex('slip_reactions_unique').on(table.slip_id, table.user_id),
+  slipIdx: index('slip_reactions_slip_idx').on(table.slip_id),
+}));
+
+// ── Capper Marketplace (Tail This) ──────────────────────────
+
+export const capperStatusEnum = pgEnum('capper_status', [
+  'pending', 'active', 'suspended',
+]);
+
+export const capperSubStatusEnum = pgEnum('capper_sub_status', [
+  'active', 'cancelled', 'expired',
+]);
+
+export const capperProfiles = pgTable('capper_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  display_name: varchar('display_name', { length: 100 }).notNull(),
+  bio: text('bio'),
+  price_cents: integer('price_cents').default(499).notNull(),
+  status: capperStatusEnum('status').default('active').notNull(),
+  total_subscribers: integer('total_subscribers').default(0).notNull(),
+  total_tails: integer('total_tails').default(0).notNull(),
+  total_earnings_cents: integer('total_earnings_cents').default(0).notNull(),
+  verified_at: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
+  verified_score: numeric('verified_score', { precision: 5, scale: 1 }).default('0').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('capper_profiles_user_idx').on(table.user_id),
+  statusIdx: index('capper_profiles_status_idx').on(table.status),
+}));
+
+export const capperSubscriptions = pgTable('capper_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  capper_user_id: uuid('capper_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  subscriber_user_id: uuid('subscriber_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: capperSubStatusEnum('status').default('active').notNull(),
+  price_cents: integer('price_cents').notNull(),
+  stripe_subscription_id: varchar('stripe_subscription_id', { length: 255 }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  expires_at: timestamp('expires_at', { withTimezone: true }),
+}, (table) => ({
+  capperSubUnique: uniqueIndex('capper_sub_unique').on(table.capper_user_id, table.subscriber_user_id),
+  capperIdx: index('capper_sub_capper_idx').on(table.capper_user_id),
+  subscriberIdx: index('capper_sub_subscriber_idx').on(table.subscriber_user_id),
+  statusIdx: index('capper_sub_status_idx').on(table.status),
+}));
+
+export const tailEvents = pgTable('tail_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  slip_id: uuid('slip_id').notNull().references(() => betSlips.id, { onDelete: 'cascade' }),
+  capper_user_id: uuid('capper_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tailer_user_id: uuid('tailer_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  slipIdx: index('tail_events_slip_idx').on(table.slip_id),
+  capperIdx: index('tail_events_capper_idx').on(table.capper_user_id),
+  tailerIdx: index('tail_events_tailer_idx').on(table.tailer_user_id),
+}));
+
+// ── Cash Leagues ─────────────────────────────────────────────
+
+export const cashLeaguePayoutStatusEnum = pgEnum('cash_league_payout_status', [
+  'pending', 'processing', 'completed', 'failed',
+]);
+
+export const leagueEntries = pgTable('league_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  league_id: uuid('league_id').notNull().references(() => leagues.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  buy_in_paid_cents: integer('buy_in_paid_cents').notNull(),
+  payout_cents: integer('payout_cents').default(0).notNull(),
+  stripe_payment_id: varchar('stripe_payment_id', { length: 255 }),
+  paid_at: timestamp('paid_at', { withTimezone: true }).defaultNow().notNull(),
+  payout_at: timestamp('payout_at', { withTimezone: true }),
+}, (table) => ({
+  leagueUserUnique: uniqueIndex('league_entries_unique').on(table.league_id, table.user_id),
+  leagueIdx: index('league_entries_league_idx').on(table.league_id),
+  userIdx: index('league_entries_user_idx').on(table.user_id),
 }));
 
 // ── Weekly Reports ───────────────────────────────────────────
