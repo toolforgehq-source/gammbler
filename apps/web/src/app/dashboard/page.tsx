@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { scoresAPI, betsAPI, insightsAPI } from '@/lib/api';
+import { scoresAPI, betsAPI, insightsAPI, shareableAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { TrendingUp, TrendingDown, Target, Zap, BarChart3, ChevronRight, Lock } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, ChevronRight, Lock, Download } from 'lucide-react';
 import Link from 'next/link';
 import UpgradeBanner from '@/components/ui/UpgradeBanner';
 
@@ -84,6 +84,9 @@ export default function DashboardPage() {
   const [timeFilter, setTimeFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState<'free' | 'pro'>(user?.tier || 'free');
+  const [cardStatus, setCardStatus] = useState<{ unlimited: boolean; cards_remaining: number | null } | null>(null);
+  const [generatingCard, setGeneratingCard] = useState(false);
+  const [cardError, setCardError] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -105,6 +108,39 @@ export default function DashboardPage() {
     }
     fetchData();
   }, [timeFilter]);
+
+  useEffect(() => {
+    shareableAPI.cardStatus()
+      .then(res => setCardStatus(res.data))
+      .catch(() => {});
+  }, []);
+
+  const handleGenerateCard = async () => {
+    setGeneratingCard(true);
+    setCardError('');
+    try {
+      const res = await shareableAPI.generateCard('overall');
+      const blob = new Blob([res.data], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gammbler-score.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      // Refresh card status after generation
+      shareableAPI.cardStatus().then(r => setCardStatus(r.data)).catch(() => {});
+    } catch (err: unknown) {
+      const errData = (err as { response?: { data?: Blob } })?.response?.data;
+      if (errData instanceof Blob) {
+        const text = await errData.text();
+        try { setCardError(JSON.parse(text).message || 'Failed to generate card'); } catch { setCardError('Failed to generate card'); }
+      } else {
+        setCardError('Failed to generate card');
+      }
+    } finally {
+      setGeneratingCard(false);
+    }
+  };
 
   const overallScore = scores.find((s) => s.sport === 'overall');
   const sportScores = scores.filter((s) => s.sport !== 'overall');
@@ -161,10 +197,31 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <div className="w-32 h-32 rounded-full border-4 border-accent/30 flex items-center justify-center">
-            <span className={`text-4xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
-              {overallScore?.is_unlocked ? scoreVal.toFixed(0) : '?'}
-            </span>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-32 h-32 rounded-full border-4 border-accent/30 flex items-center justify-center">
+              <span className={`text-4xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
+                {overallScore?.is_unlocked ? scoreVal.toFixed(0) : '?'}
+              </span>
+            </div>
+            {overallScore?.is_unlocked && (
+              <button
+                onClick={handleGenerateCard}
+                disabled={generatingCard || (cardStatus !== null && !cardStatus.unlimited && cardStatus.cards_remaining === 0)}
+                className="flex items-center gap-2 px-4 py-2 bg-accent/20 text-accent rounded-lg text-xs font-semibold hover:bg-accent/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                <Download size={14} />
+                {generatingCard ? 'GENERATING...' : 'SHARE SCORE'}
+              </button>
+            )}
+            {cardStatus && !cardStatus.unlimited && (
+              <p className="text-xs text-muted-dark">
+                {cardStatus.cards_remaining === 0
+                  ? 'Monthly card used — upgrade for unlimited'
+                  : `${cardStatus.cards_remaining} free card this month`}
+              </p>
+            )}
+            {cardError && <p className="text-xs text-loss">{cardError}</p>}
           </div>
         </div>
       </div>
@@ -270,7 +327,20 @@ export default function DashboardPage() {
 
       {/* Insights */}
       {tier === 'free' ? (
-        <UpgradeBanner feature="Personalized Insights" description="Get AI-powered analysis of your betting patterns, weaknesses, and opportunities to improve your edge." />
+        <Link href="/dashboard/insights" className="block bg-card border border-accent/20 rounded-lg p-5 hover:border-accent/40 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                <BarChart3 size={20} className="text-accent" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Personalized Insights Waiting</p>
+                <p className="text-xs text-muted-dark mt-0.5">See which sports you&apos;re strongest and weakest in — then unlock the full analysis with Pro</p>
+              </div>
+            </div>
+            <ChevronRight size={20} className="text-accent" />
+          </div>
+        </Link>
       ) : insights.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">

@@ -24,6 +24,7 @@ import shareableRoutes from './routes/shareable';
 import leagueRoutes from './routes/leagues';
 import slipRoutes from './routes/slips';
 import capperRoutes from './routes/cappers';
+import seedRoutes from './routes/seed';
 
 const app = express();
 const server = createServer(app);
@@ -71,6 +72,7 @@ app.use('/api/shareable', shareableRoutes);
 app.use('/api/leagues', leagueRoutes);
 app.use('/api/slips', slipRoutes);
 app.use('/api/cappers', capperRoutes);
+app.use('/api/seed', seedRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

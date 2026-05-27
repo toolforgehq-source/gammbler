@@ -57,6 +57,11 @@ export const betsAPI = {
   },
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
   upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
+  parseScreenshot: (file: File) => {
+    const form = new FormData();
+    form.append('screenshot', file);
+    return api.post('/bets/parse-screenshot', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // Scores
@@ -161,6 +166,13 @@ export const cappersAPI = {
   tail: (slipId: string) => api.post(`/cappers/tail/${slipId}`),
   mySubscribers: () => api.get('/cappers/me/subscribers'),
   myEarnings: () => api.get('/cappers/me/earnings'),
+};
+
+// Shareable Cards
+export const shareableAPI = {
+  generateCard: (sport: string = 'overall') =>
+    api.post('/shareable/card', { sport }, { responseType: 'blob' }),
+  cardStatus: () => api.get('/shareable/card-status'),
 };
 
 // Leagues

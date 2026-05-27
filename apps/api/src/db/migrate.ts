@@ -426,6 +426,18 @@ async function migrate() {
       ALTER TABLE bets ADD COLUMN IF NOT EXISTS odds_api_event_id VARCHAR(255);
     `);
 
+    // ── Score Card Generations (monthly tracking for free users) ──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS score_card_generations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sport sport NOT NULL,
+        generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS score_card_gen_user_idx ON score_card_generations(user_id);
+      CREATE INDEX IF NOT EXISTS score_card_gen_date_idx ON score_card_generations(generated_at);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

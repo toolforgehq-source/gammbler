@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { badgesAPI } from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
-import UpgradeBanner from '@/components/ui/UpgradeBanner';
 
 interface Badge {
   badge_type: string;
@@ -15,8 +13,6 @@ interface Badge {
 }
 
 export default function AchievementsPage() {
-  const { user } = useAuthStore();
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,14 +25,6 @@ export default function AchievementsPage() {
 
   const earned = badges.filter((b) => b.earned);
   const unearned = badges.filter((b) => !b.earned);
-
-  if (isFree) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <UpgradeBanner feature="Achievement Badges" description="Earn 20+ unique badges as you hit milestones — from your first win to Legend status. Track your progress and show off your accomplishments." />
-      </div>
-    );
-  }
 
   if (loading) {
     return (

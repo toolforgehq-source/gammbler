@@ -477,6 +477,48 @@ function inferSport(sportStr: string): string {
   return 'nfl'; // default
 }
 
+// POST /bets/parse-screenshot — parse a sportsbook screenshot using GPT-4 Vision
+const screenshotUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+});
+
+router.post('/parse-screenshot', authMiddleware, screenshotUpload.single('screenshot'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No screenshot file provided' });
+      return;
+    }
+
+    const { parseScreenshot } = await import('../services/screenshot-parser');
+    const base64Image = req.file.buffer.toString('base64');
+    const parsed = await parseScreenshot(base64Image);
+
+    res.json({
+      success: true,
+      parsed,
+      message: parsed.confidence >= 70
+        ? 'Screenshot parsed successfully. Please review the pre-filled fields.'
+        : 'Low confidence parsing. Please verify all fields carefully.',
+    });
+  } catch (err) {
+    console.error('Screenshot parse error:', err);
+    const message = err instanceof Error ? err.message : 'Failed to parse screenshot';
+    if (message.includes('OPENAI_API_KEY not configured')) {
+      res.status(503).json({ error: 'Screenshot parsing is not yet configured. Please enter your bet manually.' });
+    } else {
+      res.status(500).json({ error: 'Failed to parse screenshot. Please try again or enter your bet manually.' });
+    }
+  }
+});
+
 function inferBetType(typeStr: string): string {
   const t = typeStr.toLowerCase();
   if (t.includes('spread')) return 'spread';

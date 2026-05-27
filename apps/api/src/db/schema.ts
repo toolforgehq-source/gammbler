@@ -400,6 +400,18 @@ export const tailEvents = pgTable('tail_events', {
   tailerIdx: index('tail_events_tailer_idx').on(table.tailer_user_id),
 }));
 
+// ── Score Card Generations (monthly tracking for free users) ─
+
+export const scoreCardGenerations = pgTable('score_card_generations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sport: sportEnum('sport').notNull(),
+  generated_at: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('score_card_gen_user_idx').on(table.user_id),
+  generatedAtIdx: index('score_card_gen_date_idx').on(table.generated_at),
+}));
+
 // ── Cash Leagues ─────────────────────────────────────────────
 
 export const cashLeaguePayoutStatusEnum = pgEnum('cash_league_payout_status', [
