@@ -100,6 +100,9 @@ export const bets = pgTable('bets', {
   sharpsports_bet_id: varchar('sharpsports_bet_id', { length: 255 }),
   event_name: text('event_name'),
   parlay_legs: integer('parlay_legs'),
+  event_start_time: timestamp('event_start_time', { withTimezone: true }),
+  is_pregame_verified: boolean('is_pregame_verified').default(false).notNull(),
+  odds_api_event_id: varchar('odds_api_event_id', { length: 255 }),
 }, (table) => ({
   userIdIdx: index('bets_user_id_idx').on(table.user_id),
   sportIdx: index('bets_sport_idx').on(table.sport),

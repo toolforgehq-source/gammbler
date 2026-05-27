@@ -37,6 +37,7 @@ export const betsAPI = {
   list: (params?: Record<string, string>) => api.get('/bets', { params }),
   create: (data: Record<string, unknown>) => api.post('/bets', data),
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
+  upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
 };
 
 export const leaderboardsAPI = {

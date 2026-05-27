@@ -56,6 +56,7 @@ export const betsAPI = {
     return api.post('/bets/csv-import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
+  upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
 };
 
 // Scores

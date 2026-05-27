@@ -419,6 +419,13 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS league_entries_user_idx ON league_entries(user_id);
     `);
 
+    // ── Pre-Game Lock System: add event_start_time, is_pregame_verified, odds_api_event_id to bets ──
+    await client.query(`
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS event_start_time TIMESTAMPTZ;
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS is_pregame_verified BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS odds_api_event_id VARCHAR(255);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

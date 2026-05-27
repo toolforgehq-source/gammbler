@@ -8,6 +8,7 @@ import { attachTier, requirePro } from '../middleware/subscription';
 import { updateAllScores } from '../services/gammbler-score';
 import { checkAndAwardBadges } from '../services/badges';
 import { createFeedEvent } from '../services/feed';
+import { findMatchingEvent, hasGameStarted } from '../services/game-times';
 import multer from 'multer';
 import { parse } from 'csv-parse/sync';
 
@@ -66,10 +67,64 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
   }
 });
 
-// POST /bets — create a manual bet
-router.post('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+// POST /bets — create a manual bet with pre-game lock enforcement
+router.post('/', authMiddleware, attachTier, async (req: Request, res: Response): Promise<void> => {
   try {
     const body = createBetSchema.parse(req.body);
+    const userId = req.user!.userId;
+    const isPro = req.userTier === 'pro';
+
+    // ── Pre-Game Lock Enforcement (free users only) ──
+    // Free users cannot enter bets after the game has started.
+    // Free users cannot submit already-settled results (win/loss/push) — bets must be 'pending'.
+    // Pro users with SharpSports bypass this (their bets come from the sportsbook directly).
+
+    let eventStartTime: Date | null = null;
+    let oddsApiEventId: string | null = null;
+    let isPregameVerified = false;
+
+    if (!isPro) {
+      // Free users MUST submit bets as 'pending' — no pre-settled results allowed
+      if (body.result !== 'pending') {
+        res.status(403).json({
+          error: 'Free users must submit bets before the game starts. Bets cannot be entered with a result. Upgrade to Pro for automatic bet syncing.',
+          code: 'RESULT_NOT_ALLOWED',
+        });
+        return;
+      }
+
+      // Try to find the matching game and check if it has started
+      const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
+
+      if (matchedEvent) {
+        eventStartTime = matchedEvent.commenceTime;
+        oddsApiEventId = matchedEvent.eventId;
+
+        if (hasGameStarted(matchedEvent.commenceTime)) {
+          res.status(403).json({
+            error: `This game has already started (${matchedEvent.matchedEvent}). Free users can only enter bets before the game begins. Upgrade to Pro for automatic bet syncing via SharpSports.`,
+            code: 'GAME_STARTED',
+            event: matchedEvent.matchedEvent,
+            commence_time: matchedEvent.commenceTime.toISOString(),
+          });
+          return;
+        }
+
+        // Game hasn't started — bet is pre-game verified
+        isPregameVerified = true;
+      }
+      // If no matching event found (e.g. futures, props not tied to a specific game),
+      // allow the bet but mark it as NOT pre-game verified.
+      // These unverified bets carry less weight / can be flagged.
+    } else {
+      // Pro users: still try to match event for data enrichment, but no blocking
+      const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
+      if (matchedEvent) {
+        eventStartTime = matchedEvent.commenceTime;
+        oddsApiEventId = matchedEvent.eventId;
+        isPregameVerified = !hasGameStarted(matchedEvent.commenceTime);
+      }
+    }
 
     const profitLoss = body.result === 'win'
       ? calculatePayout(body.odds, body.stake) - body.stake
@@ -80,7 +135,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
     const [bet] = await db
       .insert(bets)
       .values({
-        user_id: req.user!.userId,
+        user_id: userId,
         platform: body.platform,
         sport: body.sport,
         league: body.league,
@@ -94,16 +149,23 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
         settled_at: body.result !== 'pending' ? new Date() : null,
         event_name: body.event_name,
         parlay_legs: body.parlay_legs,
+        event_start_time: eventStartTime,
+        is_pregame_verified: isPregameVerified,
+        odds_api_event_id: oddsApiEventId,
       })
       .returning();
 
     // Recalculate scores if bet is settled
     if (body.result !== 'pending') {
-      await updateAllScores(req.user!.userId);
-      await checkAndAwardBadges(req.user!.userId);
+      await updateAllScores(userId);
+      await checkAndAwardBadges(userId);
     }
 
-    res.status(201).json({ bet });
+    res.status(201).json({
+      bet,
+      pregame_verified: isPregameVerified,
+      ...(eventStartTime && { event_start_time: eventStartTime.toISOString() }),
+    });
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: 'Validation error', details: err.errors });
@@ -172,6 +234,33 @@ router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response):
       return;
     }
     console.error('Settle bet error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /bets/upcoming-events — get upcoming events for a sport (for pre-game bet entry)
+router.get('/upcoming-events', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const sport = req.query.sport as string;
+    if (!sport) {
+      res.status(400).json({ error: 'Sport parameter required' });
+      return;
+    }
+
+    const { getUpcomingEvents } = await import('../services/game-times');
+    const events = await getUpcomingEvents(sport);
+
+    res.json({
+      events: events.map(e => ({
+        id: e.id,
+        home_team: e.home_team,
+        away_team: e.away_team,
+        commence_time: e.commence_time,
+        display: `${e.away_team} @ ${e.home_team}`,
+      })),
+    });
+  } catch (err) {
+    console.error('Upcoming events error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
