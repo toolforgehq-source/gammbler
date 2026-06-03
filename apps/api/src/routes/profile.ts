@@ -5,6 +5,7 @@ import { eq, and, sql, desc } from 'drizzle-orm';
 import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
+import { sendNewFollowerEmail } from '../services/email';
 
 const router = Router();
 
@@ -185,6 +186,21 @@ router.post('/follow/:userId', authMiddleware, async (req: Request, res: Respons
         following_id: req.params.userId,
       })
       .onConflictDoNothing();
+
+    // Send new follower email (fire & forget)
+    const [followedUser] = await db
+      .select({ email: users.email, username: users.username })
+      .from(users)
+      .where(eq(users.id, req.params.userId))
+      .limit(1);
+    const [followerUser] = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(eq(users.id, req.user!.userId))
+      .limit(1);
+    if (followedUser && followerUser) {
+      sendNewFollowerEmail(followedUser.email, followedUser.username, followerUser.username).catch(() => {});
+    }
 
     res.json({ success: true });
   } catch (err) {

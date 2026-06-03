@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { bets } from '../db/schema';
+import { bets, users } from '../db/schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { attachTier, requirePro } from '../middleware/subscription';
@@ -9,6 +9,7 @@ import { updateAllScores } from '../services/gammbler-score';
 import { checkAndAwardBadges } from '../services/badges';
 import { createFeedEvent } from '../services/feed';
 import { findMatchingEvent, hasGameStarted } from '../services/game-times';
+import { sendBetSettledEmail } from '../services/email';
 import multer from 'multer';
 import { parse } from 'csv-parse/sync';
 
@@ -225,6 +226,17 @@ router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response):
         legs: existing.parlay_legs,
         payout: profitLoss + stake,
       }, existing.sport);
+    }
+
+    // Send bet settled email (fire & forget)
+    const [betUser] = await db
+      .select({ email: users.email, username: users.username })
+      .from(users)
+      .where(eq(users.id, req.user!.userId))
+      .limit(1);
+    if (betUser) {
+      const plStr = profitLoss >= 0 ? `+$${profitLoss.toFixed(2)}` : `-$${Math.abs(profitLoss).toFixed(2)}`;
+      sendBetSettledEmail(betUser.email, betUser.username, existing.selection, body.result, plStr).catch(() => {});
     }
 
     res.json({ bet: updated });

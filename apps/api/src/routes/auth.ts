@@ -8,6 +8,7 @@ import { generateToken, authMiddleware } from '../middleware/auth';
 import { getUserTier } from '../middleware/subscription';
 import { TRIAL_DAYS } from '@gammbler/shared';
 import { v4 as uuidv4 } from 'uuid';
+import { sendWelcomeEmail } from '../services/email';
 
 const router = Router();
 
@@ -77,6 +78,9 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
       .returning();
 
     const token = generateToken({ userId: user.id, email: user.email });
+
+    // Send welcome email (fire & forget)
+    sendWelcomeEmail(user.email, user.username, referralCode).catch(() => {});
 
     res.status(201).json({
       token,
