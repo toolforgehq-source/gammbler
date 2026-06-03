@@ -1122,6 +1122,7 @@ export default function HomePage() {
               <Link href="/privacy" className="hover:text-white transition-colors duration-300">Privacy</Link>
               <Link href="/terms" className="hover:text-white transition-colors duration-300">Terms</Link>
               <Link href="/responsible-gambling" className="hover:text-white transition-colors duration-300">Responsible Gambling</Link>
+              <a href="mailto:contact@gammbler.com" className="hover:text-white transition-colors duration-300">Contact</a>
             </div>
           </div>
           <p className="text-center text-[10px] text-[#6b6b6b]/60 mt-8">
