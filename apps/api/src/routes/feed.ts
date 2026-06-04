@@ -84,7 +84,7 @@ function formatFeedEvent(
     case 'parlay_hit':
       return `${username} just hit a ${data.legs} leg parlay`;
     case 'rank_up':
-      return `${username} moved up to #${data.rank} in ${(sport || 'Overall').toUpperCase()} rankings`;
+      return `${username} moved up to #${data.new_rank ?? data.rank} in ${(sport || 'Overall').toUpperCase()} rankings`;
     case 'win_streak':
       return `${username} is on a ${data.streak} bet winning streak`;
     case 'badge_earned':

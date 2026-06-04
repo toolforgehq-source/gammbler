@@ -63,8 +63,8 @@ export default function AddBetPage() {
         bet_type: betType,
         platform,
         selection,
-        odds,
-        stake,
+        odds: parseFloat(odds),
+        stake: parseFloat(stake),
         event_name: eventDisplay || eventName || undefined,
         result: 'pending',
       });
