@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { users, gammblerScores, badges, follows, bets } from '../db/schema';
+import { users, gammblerScores, badges, follows, bets, scoreSnapshots } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { attachTier } from '../middleware/subscription';
@@ -224,6 +224,48 @@ router.delete('/follow/:userId', authMiddleware, async (req: Request, res: Respo
     res.json({ success: true });
   } catch (err) {
     console.error('Unfollow error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /profile/:username/score-history — get historical Gammbler Score data
+router.get('/:username/score-history', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, req.params.username))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const snapshots = await db
+      .select({
+        sport: scoreSnapshots.sport,
+        score: scoreSnapshots.score,
+        snapshot_date: scoreSnapshots.snapshot_date,
+      })
+      .from(scoreSnapshots)
+      .where(eq(scoreSnapshots.user_id, user.id))
+      .orderBy(scoreSnapshots.snapshot_date);
+
+    // Group by sport
+    const history: Record<string, Array<{ date: string; score: number }>> = {};
+    for (const snap of snapshots) {
+      const sport = snap.sport;
+      if (!history[sport]) history[sport] = [];
+      history[sport].push({
+        date: new Date(snap.snapshot_date).toISOString().slice(0, 10),
+        score: parseFloat(String(snap.score)),
+      });
+    }
+
+    res.json({ history });
+  } catch (err) {
+    console.error('Score history error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

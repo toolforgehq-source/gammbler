@@ -433,6 +433,20 @@ export const leagueEntries = pgTable('league_entries', {
   userIdx: index('league_entries_user_idx').on(table.user_id),
 }));
 
+// ── Score Snapshots (historical Gammbler Score tracking) ─────
+
+export const scoreSnapshots = pgTable('score_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sport: sportEnum('sport').notNull(),
+  score: numeric('score', { precision: 5, scale: 1 }).notNull(),
+  snapshot_date: timestamp('snapshot_date', { withTimezone: true }).notNull(),
+}, (table) => ({
+  userSportDateUnique: uniqueIndex('score_snapshots_user_sport_date').on(table.user_id, table.sport, table.snapshot_date),
+  userIdx: index('score_snapshots_user_idx').on(table.user_id),
+  dateIdx: index('score_snapshots_date_idx').on(table.snapshot_date),
+}));
+
 // ── Weekly Reports ───────────────────────────────────────────
 
 export const weeklyReports = pgTable('weekly_reports', {

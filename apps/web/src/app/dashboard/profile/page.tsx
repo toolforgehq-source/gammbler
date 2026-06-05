@@ -5,6 +5,15 @@ import { profileAPI, badgesAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { Settings, Award, Calendar, TrendingUp, Users } from 'lucide-react';
 import Link from 'next/link';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 
 interface Profile {
   id: string;
@@ -51,18 +60,21 @@ export default function ProfilePage() {
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [allBadges, setAllBadges] = useState<BadgeInfo[]>([]);
+  const [scoreHistory, setScoreHistory] = useState<Record<string, Array<{ date: string; score: number }>>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProfile() {
       if (!user) return;
       try {
-        const [profileRes, badgesRes] = await Promise.all([
+        const [profileRes, badgesRes, historyRes] = await Promise.all([
           profileAPI.get(user.username),
           badgesAPI.getAll(),
+          profileAPI.scoreHistory(user.username),
         ]);
         setProfile(profileRes.data.profile);
         setAllBadges(badgesRes.data.badges || []);
+        setScoreHistory(historyRes.data.history || {});
       } catch {
         // ignore
       } finally {
@@ -163,6 +175,62 @@ export default function ProfilePage() {
           Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </div>
       </div>
+
+      {/* Score History Chart */}
+      {(scoreHistory.overall?.length ?? 0) > 0 && (
+        <div className="bg-card border border-accent/20 rounded-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={16} className="text-accent" />
+            <h3 className="text-sm uppercase tracking-wider text-muted-dark font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+              Score History
+            </h3>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={scoreHistory.overall}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#6b7280"
+                  fontSize={11}
+                  tickFormatter={(val: string) => {
+                    const d = new Date(val + 'T00:00:00');
+                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  stroke="#6b7280"
+                  fontSize={11}
+                  tickFormatter={(val: number) => val.toFixed(0)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1a1a2e',
+                    border: '1px solid rgba(0, 255, 136, 0.2)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: 13,
+                  }}
+                  labelFormatter={(label) => {
+                    const d = new Date(String(label) + 'T00:00:00');
+                    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                  }}
+                  formatter={(value) => [Number(value).toFixed(1), 'Score']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#00ff88"
+                  strokeWidth={2}
+                  dot={{ fill: '#00ff88', r: 3 }}
+                  activeDot={{ r: 5, fill: '#00ff88' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Sport Scores */}
       <div>

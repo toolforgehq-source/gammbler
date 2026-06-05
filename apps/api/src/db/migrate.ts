@@ -438,6 +438,20 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS score_card_gen_date_idx ON score_card_generations(generated_at);
     `);
 
+    // ── Score Snapshots (historical Gammbler Score tracking) ──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS score_snapshots (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sport sport NOT NULL,
+        score NUMERIC(5,1) NOT NULL,
+        snapshot_date TIMESTAMPTZ NOT NULL,
+        UNIQUE(user_id, sport, snapshot_date)
+      );
+      CREATE INDEX IF NOT EXISTS score_snapshots_user_idx ON score_snapshots(user_id);
+      CREATE INDEX IF NOT EXISTS score_snapshots_date_idx ON score_snapshots(snapshot_date);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

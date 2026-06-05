@@ -89,6 +89,7 @@ export const profileAPI = {
   update: (data: Record<string, unknown>) => api.patch('/profile', data),
   follow: (userId: string) => api.post(`/profile/follow/${userId}`),
   unfollow: (userId: string) => api.delete(`/profile/follow/${userId}`),
+  scoreHistory: (username: string) => api.get(`/profile/${username}/score-history`),
 };
 
 // Notifications

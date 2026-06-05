@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import cron from 'node-cron';
 import { checkTrialReminders, sendWeeklyReports } from './services/scheduled-emails';
+import { snapshotAllScores } from './services/score-snapshots';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -117,7 +118,12 @@ server.listen(env.PORT, () => {
     sendWeeklyReports().catch((err) => console.error('[Cron] Weekly report error:', err));
   });
 
-  console.log('Scheduled email jobs registered');
+  // Snapshot all Gammbler Scores daily at midnight UTC
+  cron.schedule('0 0 * * *', () => {
+    snapshotAllScores().catch((err) => console.error('[Cron] Score snapshot error:', err));
+  });
+
+  console.log('Scheduled jobs registered');
 });
 
 export default app;
