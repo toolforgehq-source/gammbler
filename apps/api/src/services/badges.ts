@@ -26,6 +26,10 @@ const BADGE_DISPLAY: Record<string, { name: string; description: string }> = {
   all_in: { name: 'All In', description: 'Connected 3+ sportsbooks' },
   diversified: { name: 'Diversified', description: 'Placed bets in 5+ different sports' },
   veteran: { name: 'Veteran', description: 'Been a Gammbler member for 1+ year' },
+  h2h_first_win: { name: 'H2H First Win', description: 'Won your first head-to-head challenge' },
+  h2h_streak_3: { name: 'H2H 3-Win Streak', description: 'Won 3 head-to-head challenges in a row' },
+  h2h_streak_5: { name: 'H2H 5-Win Streak', description: 'Won 5 head-to-head challenges in a row' },
+  h2h_champion: { name: 'H2H Champion', description: 'Won 10 or more head-to-head challenges' },
 };
 
 export async function checkAndAwardBadges(userId: string): Promise<string[]> {

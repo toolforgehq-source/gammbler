@@ -43,11 +43,13 @@ export const badgeTypeEnum = pgEnum('badge_type', [
   'hot_streak', 'on_fire', 'unstoppable',
   'nfl_sharp', 'nba_sharp', 'mlb_sharp', 'nhl_sharp', 'cfb_sharp', 'cbb_sharp',
   'connected', 'all_in', 'diversified', 'veteran',
+  'h2h_first_win', 'h2h_streak_3', 'h2h_streak_5', 'h2h_champion',
 ]);
 
 export const feedEventTypeEnum = pgEnum('feed_event_type', [
   'parlay_hit', 'rank_up', 'win_streak', 'badge_earned',
   'score_high', 'sportsbook_connected', 'weekly_leader',
+  'h2h_challenge', 'h2h_result',
 ]);
 
 export const notificationTypeEnum = pgEnum('notification_type', [
@@ -431,6 +433,37 @@ export const leagueEntries = pgTable('league_entries', {
   leagueUserUnique: uniqueIndex('league_entries_unique').on(table.league_id, table.user_id),
   leagueIdx: index('league_entries_league_idx').on(table.league_id),
   userIdx: index('league_entries_user_idx').on(table.user_id),
+}));
+
+// ── Head-to-Head Challenges ─────────────────────────────────
+
+export const challengeStatusEnum = pgEnum('challenge_status', [
+  'pending', 'accepted', 'declined', 'settled', 'cancelled', 'expired',
+]);
+
+export const challenges = pgTable('challenges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  challenger_id: uuid('challenger_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  challengee_id: uuid('challengee_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sport: sportEnum('sport').notNull(),
+  event_name: text('event_name').notNull(),
+  event_start_time: timestamp('event_start_time', { withTimezone: true }),
+  challenger_pick: text('challenger_pick').notNull(),
+  challengee_pick: text('challengee_pick'),
+  status: challengeStatusEnum('status').default('pending').notNull(),
+  winner_id: uuid('winner_id').references(() => users.id),
+  message: text('message'),
+  stake_display: varchar('stake_display', { length: 100 }),
+  settled_at: timestamp('settled_at', { withTimezone: true }),
+  expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  challengerIdx: index('challenges_challenger_idx').on(table.challenger_id),
+  challengeeIdx: index('challenges_challengee_idx').on(table.challengee_id),
+  statusIdx: index('challenges_status_idx').on(table.status),
+  winnerIdx: index('challenges_winner_idx').on(table.winner_id),
+  sportIdx: index('challenges_sport_idx').on(table.sport),
+  expiresAtIdx: index('challenges_expires_at_idx').on(table.expires_at),
 }));
 
 // ── Score Snapshots (historical Gammbler Score tracking) ─────

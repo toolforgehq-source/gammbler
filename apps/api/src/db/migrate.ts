@@ -452,6 +452,57 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS score_snapshots_date_idx ON score_snapshots(snapshot_date);
     `);
 
+    // ── Head-to-Head Challenges ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE challenge_status AS ENUM ('pending','accepted','declined','settled','cancelled','expired'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    `);
+
+    // Add new badge types
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TYPE badge_type ADD VALUE IF NOT EXISTS 'h2h_first_win';
+        ALTER TYPE badge_type ADD VALUE IF NOT EXISTS 'h2h_streak_3';
+        ALTER TYPE badge_type ADD VALUE IF NOT EXISTS 'h2h_streak_5';
+        ALTER TYPE badge_type ADD VALUE IF NOT EXISTS 'h2h_champion';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    // Add new feed event types
+    await client.query(`
+      DO $$ BEGIN
+        ALTER TYPE feed_event_type ADD VALUE IF NOT EXISTS 'h2h_challenge';
+        ALTER TYPE feed_event_type ADD VALUE IF NOT EXISTS 'h2h_result';
+      EXCEPTION WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS challenges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        challenger_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        challengee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sport sport NOT NULL,
+        event_name TEXT NOT NULL,
+        event_start_time TIMESTAMPTZ,
+        challenger_pick TEXT NOT NULL,
+        challengee_pick TEXT,
+        status challenge_status NOT NULL DEFAULT 'pending',
+        winner_id UUID REFERENCES users(id),
+        message TEXT,
+        stake_display VARCHAR(100),
+        settled_at TIMESTAMPTZ,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS challenges_challenger_idx ON challenges(challenger_id);
+      CREATE INDEX IF NOT EXISTS challenges_challengee_idx ON challenges(challengee_id);
+      CREATE INDEX IF NOT EXISTS challenges_status_idx ON challenges(status);
+      CREATE INDEX IF NOT EXISTS challenges_winner_idx ON challenges(winner_id);
+      CREATE INDEX IF NOT EXISTS challenges_sport_idx ON challenges(sport);
+      CREATE INDEX IF NOT EXISTS challenges_expires_at_idx ON challenges(expires_at);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

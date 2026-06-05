@@ -364,3 +364,77 @@ export async function sendWeeklyReportEmail(
 
   return send(to, `Weekly Report: Score ${data.overallScore} (${changePrefix}${data.scoreChange})`, html);
 }
+
+// ── Head-to-Head Challenge Emails ────────────────────────────
+
+export async function sendChallengeReceivedEmail(
+  to: string,
+  username: string,
+  challengerUsername: string,
+  eventName: string,
+  challengerPick: string,
+  sport: string
+): Promise<boolean> {
+  const html = wrapHtml(`
+    <h1>You've been challenged!</h1>
+    <p>Hey ${username},</p>
+    <div class="card">
+      <h2 style="text-align:center">Head-to-Head Challenge</h2>
+      <div class="stat-row">
+        <span class="stat-label">From</span>
+        <span class="stat-value">@${challengerUsername}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Game</span>
+        <span class="stat-value">${eventName}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Sport</span>
+        <span class="stat-value">${sport}</span>
+      </div>
+      <div class="stat-row" style="border:none">
+        <span class="stat-label">Their pick</span>
+        <span class="stat-value">${challengerPick}</span>
+      </div>
+    </div>
+    <p style="text-align:center">
+      <a href="${BRAND.url}/dashboard/challenges" class="btn">View Challenge &rarr;</a>
+    </p>
+    <p class="muted" style="text-align:center">Pick your side and accept the challenge. You have 48 hours to respond.</p>
+  `, `@${challengerUsername} challenged you on ${eventName}!`);
+
+  return send(to, `@${challengerUsername} challenged you! ${eventName}`, html);
+}
+
+export async function sendChallengeResultEmail(
+  to: string,
+  username: string,
+  isWinner: boolean,
+  opponentUsername: string,
+  eventName: string
+): Promise<boolean> {
+  const resultText = isWinner ? 'You won!' : 'You lost.';
+  const resultColor = isWinner ? BRAND.color : '#ef4444';
+
+  const html = wrapHtml(`
+    <h1>Challenge Settled</h1>
+    <p>Hey ${username},</p>
+    <div class="card">
+      <p class="score" style="color:${resultColor}">${resultText}</p>
+      <div class="stat-row">
+        <span class="stat-label">Game</span>
+        <span class="stat-value">${eventName}</span>
+      </div>
+      <div class="stat-row" style="border:none">
+        <span class="stat-label">Opponent</span>
+        <span class="stat-value">@${opponentUsername}</span>
+      </div>
+    </div>
+    <p style="text-align:center">
+      <a href="${BRAND.url}/dashboard/challenges" class="btn">${isWinner ? 'Share Your Win' : 'Challenge Again'} &rarr;</a>
+    </p>
+    ${isWinner ? '<p class="muted" style="text-align:center">Nice work! Share your result card on social media.</p>' : '<p class="muted" style="text-align:center">Better luck next time. Challenge them again?</p>'}
+  `, `${resultText} Your H2H challenge on ${eventName} vs @${opponentUsername} has been settled.`);
+
+  return send(to, `H2H ${resultText} vs @${opponentUsername}`, html);
+}

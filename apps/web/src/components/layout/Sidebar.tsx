@@ -14,6 +14,7 @@ import {
   Swords,
   Share2,
   Crown,
+  Target,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/slips', label: 'Bet Slips', icon: Share2 },
   { href: '/dashboard/cappers', label: 'Cappers', icon: Crown },
+  { href: '/dashboard/challenges', label: 'H2H', icon: Target },
   { href: '/dashboard/leaderboards', label: 'Leaderboards', icon: Trophy },
   { href: '/dashboard/leagues', label: 'Leagues', icon: Swords },
   { href: '/dashboard/profile', label: 'Profile', icon: User },

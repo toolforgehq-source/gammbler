@@ -93,6 +93,11 @@ export enum BadgeType {
   ALL_IN = 'all_in',
   DIVERSIFIED = 'diversified',
   VETERAN = 'veteran',
+  // Head-to-Head
+  H2H_FIRST_WIN = 'h2h_first_win',
+  H2H_STREAK_3 = 'h2h_streak_3',
+  H2H_STREAK_5 = 'h2h_streak_5',
+  H2H_CHAMPION = 'h2h_champion',
 }
 
 export enum FeedEventType {
@@ -103,6 +108,8 @@ export enum FeedEventType {
   SCORE_HIGH = 'score_high',
   SPORTSBOOK_CONNECTED = 'sportsbook_connected',
   WEEKLY_LEADER = 'weekly_leader',
+  H2H_CHALLENGE = 'h2h_challenge',
+  H2H_RESULT = 'h2h_result',
 }
 
 export enum NotificationType {
@@ -470,3 +477,35 @@ export interface LeagueEntry {
 export const CASH_LEAGUE_RAKE_PCT = 10;
 export const CASH_LEAGUE_MIN_BUY_IN_CENTS = 500;
 export const CASH_LEAGUE_MAX_BUY_IN_CENTS = 50000;
+
+// ── Feature: Head-to-Head Challenges ────────────────────────
+
+export enum ChallengeStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  DECLINED = 'declined',
+  SETTLED = 'settled',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+}
+
+export interface Challenge {
+  id: string;
+  challenger_id: string;
+  challengee_id: string;
+  sport: Sport;
+  event_name: string;
+  event_start_time: string | null;
+  challenger_pick: string;
+  challengee_pick: string | null;
+  status: ChallengeStatus;
+  winner_id: string | null;
+  message: string | null;
+  stake_display: string | null;
+  settled_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
+export const H2H_CHALLENGE_EXPIRY_HOURS = 48;
+export const H2H_MAX_ACTIVE_CHALLENGES = 10;

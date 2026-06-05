@@ -95,6 +95,10 @@ function formatFeedEvent(
       return `${username} just connected their ${formatPlatformName(data.platform)} account`;
     case 'weekly_leader':
       return `New week, new leaderboard. ${username} is currently #1 among your friends`;
+    case 'h2h_challenge':
+      return `${username} challenged @${data.challengee_username || 'someone'} on ${data.event_name || 'a game'}`;
+    case 'h2h_result':
+      return `${username} won a head-to-head vs @${data.loser_username || 'opponent'} on ${data.event_name || 'a game'}`;
     default:
       return `${username} had activity on Gammbler`;
   }

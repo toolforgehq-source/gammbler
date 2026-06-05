@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { profileAPI, badgesAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { Settings, Award, Calendar, TrendingUp, Users } from 'lucide-react';
+import { Settings, Calendar, TrendingUp, Users, Download } from 'lucide-react';
+import { shareableAPI } from '@/lib/api';
 import Link from 'next/link';
 import {
   LineChart,
@@ -62,6 +63,8 @@ export default function ProfilePage() {
   const [allBadges, setAllBadges] = useState<BadgeInfo[]>([]);
   const [scoreHistory, setScoreHistory] = useState<Record<string, Array<{ date: string; score: number }>>>({});
   const [loading, setLoading] = useState(true);
+  const [generatingCard, setGeneratingCard] = useState(false);
+  const cardSport = 'overall';
 
   useEffect(() => {
     async function fetchProfile() {
@@ -95,6 +98,24 @@ export default function ProfilePage() {
   const overallScore = profile.scores.find((s) => s.sport === 'overall');
   const scoreVal = overallScore ? parseFloat(overallScore.score) : 0;
   const earnedBadges = allBadges.filter((b) => b.earned);
+
+  async function handleShareCard() {
+    setGeneratingCard(true);
+    try {
+      const res = await shareableAPI.generateCard(cardSport);
+      const blob = new Blob([res.data], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gammbler-${profile?.username}-${cardSport}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // ignore
+    } finally {
+      setGeneratingCard(false);
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -170,9 +191,21 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-4 text-xs text-muted-dark">
-          <Calendar size={12} />
-          Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center gap-2 text-xs text-muted-dark">
+            <Calendar size={12} />
+            Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </div>
+          {profile.is_self && overallScore?.is_unlocked && (
+            <button
+              onClick={handleShareCard}
+              disabled={generatingCard}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 border border-accent/30 text-accent rounded-lg text-xs font-semibold hover:bg-accent/20 transition-colors disabled:opacity-50"
+            >
+              <Download size={12} />
+              {generatingCard ? 'Generating...' : 'Share Score Card'}
+            </button>
+          )}
         </div>
       </div>
 

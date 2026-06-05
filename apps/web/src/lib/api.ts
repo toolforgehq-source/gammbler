@@ -174,6 +174,29 @@ export const shareableAPI = {
   generateCard: (sport: string = 'overall') =>
     api.post('/shareable/card', { sport }, { responseType: 'blob' }),
   cardStatus: () => api.get('/shareable/card-status'),
+  h2hCard: (challenge_id: string) =>
+    api.post('/shareable/h2h-card', { challenge_id }, { responseType: 'blob' }),
+};
+
+// Challenges (Head-to-Head)
+export const challengesAPI = {
+  list: (params?: Record<string, string>) => api.get('/challenges', { params }),
+  get: (id: string) => api.get(`/challenges/${id}`),
+  stats: () => api.get('/challenges/stats'),
+  create: (data: {
+    challengee_username: string;
+    sport: string;
+    event_name: string;
+    event_start_time?: string;
+    challenger_pick: string;
+    message?: string;
+    stake_display?: string;
+  }) => api.post('/challenges', data),
+  accept: (id: string, pick: string) => api.patch(`/challenges/${id}/accept`, { pick }),
+  decline: (id: string) => api.patch(`/challenges/${id}/decline`),
+  cancel: (id: string) => api.patch(`/challenges/${id}/cancel`),
+  settle: (id: string, winner_id: string) => api.patch(`/challenges/${id}/settle`, { winner_id }),
+  searchUsers: (q: string) => api.get('/challenges/search-users', { params: { q } }),
 };
 
 // Leagues

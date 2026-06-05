@@ -28,6 +28,7 @@ import leagueRoutes from './routes/leagues';
 import slipRoutes from './routes/slips';
 import capperRoutes from './routes/cappers';
 import seedRoutes from './routes/seed';
+import challengeRoutes from './routes/challenges';
 
 const app = express();
 const server = createServer(app);
@@ -76,6 +77,7 @@ app.use('/api/leagues', leagueRoutes);
 app.use('/api/slips', slipRoutes);
 app.use('/api/cappers', capperRoutes);
 app.use('/api/seed', seedRoutes);
+app.use('/api/challenges', challengeRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
