@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -16,6 +17,8 @@ import {
   Crown,
   Target,
   Gamepad2,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 
@@ -38,11 +41,35 @@ const bottomItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-secondary flex flex-col border-r border-accent/20 z-50">
-      {/* Logo */}
-      <div className="p-6 border-b border-accent/20">
+    <>
+      {/* Mobile hamburger button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-secondary border border-accent/20 text-white"
+        aria-label="Open menu"
+      >
+        <Menu size={24} />
+      </button>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 z-50"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside className={`fixed left-0 top-0 h-full w-64 bg-secondary flex flex-col border-r border-accent/20 z-50 transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+      {/* Logo + mobile close */}
+      <div className="p-6 border-b border-accent/20 flex items-center justify-between">
         <Link href="/dashboard">
           <Image
             src="/images/logo-main.png"
@@ -53,6 +80,13 @@ export default function Sidebar() {
             priority
           />
         </Link>
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden p-1 rounded text-muted hover:text-white"
+          aria-label="Close menu"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Main Nav */}
@@ -134,5 +168,6 @@ export default function Sidebar() {
         )}
       </div>
     </aside>
+    </>
   );
 }
