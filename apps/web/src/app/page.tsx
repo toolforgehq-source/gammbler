@@ -7,7 +7,6 @@ import {
   BarChart3,
   Trophy,
   Users,
-  Zap,
   Shield,
   ArrowRight,
   ChevronDown,
@@ -19,6 +18,8 @@ import {
   Flame,
   Medal,
   Heart,
+  DollarSign,
+  Swords,
 } from 'lucide-react';
 
 const leaderboardData = [
@@ -60,6 +61,12 @@ const scoreTiers = [
   { name: 'Legend', range: '91-100', color: '#ff6f00' },
 ];
 
+const capperShowcase = [
+  { name: 'SharpShooter_MJ', score: 94.2, tier: 'Legend', tierColor: '#ff6f00', sport: 'NFL', record: '847-412', subscribers: 487, price: 29.99, monthlyEarnings: 10214 },
+  { name: 'VegasVault', score: 91.8, tier: 'Legend', tierColor: '#ff6f00', sport: 'NBA', record: '623-298', subscribers: 312, price: 19.99, monthlyEarnings: 4365 },
+  { name: 'TheLineKing', score: 89.7, tier: 'Elite', tierColor: '#FFD700', sport: 'NFL', record: '1,204-589', subscribers: 198, price: 14.99, monthlyEarnings: 2077 },
+];
+
 const features = [
   {
     icon: BarChart3,
@@ -77,10 +84,10 @@ const features = [
   },
   {
     icon: TrendingUp,
-    title: 'AI Insights',
-    description: 'Personalized analysis of your betting patterns. Know your edges, fix your leaks, improve your strategy.',
-    stat: 'Weekly',
-    statLabel: 'Performance reports',
+    title: 'Score History',
+    description: 'Track your Gammbler Score over time with daily snapshots. See your growth trajectory and prove long-term consistency.',
+    stat: 'Daily',
+    statLabel: 'Score snapshots',
   },
   {
     icon: Trophy,
@@ -92,7 +99,7 @@ const features = [
   {
     icon: Share2,
     title: 'Shareable Cards',
-    description: 'Generate branded score cards to share on social media. Flex your record with verified, tamper-proof stats.',
+    description: 'Generate branded score cards and H2H result cards to share on social media. Verified, tamper-proof stats.',
     stat: '1-Tap',
     statLabel: 'Share to social',
   },
@@ -118,6 +125,7 @@ const platforms = [
 
 const freeFeatures = [
   'Overall Gammbler Score',
+  'Score history tracking',
   'Basic record (W-L)',
   'National leaderboards (view)',
   'Community feed (read only)',
@@ -129,9 +137,9 @@ const proFeatures = [
   'All 10 sport-specific scores',
   'Full analytics & ROI breakdown',
   'Friend & national leaderboards',
-  'Personalized AI insights',
+  'H2H challenges',
+  'Betting leagues',
   'Unlimited sportsbook connections',
-  'CSV bet import',
   'Shareable score cards',
   'Achievement badges',
   'Weekly performance reports',
@@ -147,20 +155,28 @@ const faqs = [
     a: 'A proprietary 0-100 rating that measures your true betting skill. It factors in win rate (40%), ROI (40%), closing line value (10%), stake consistency (5%), volume (3%), and diversity (2%), with recency weighting so recent performance matters most.',
   },
   {
-    q: 'Is my financial data visible to others?',
-    a: 'Never. Dollar amounts are completely private. Only your win rate, ROI percentage, Gammbler Score, and tier are visible on leaderboards and profiles. You control what others see.',
+    q: 'How do I make money as a Capper?',
+    a: 'Score 80+ with 100+ verified bets to get Capper status. Set your monthly subscription price ($1.99–$99.99), and subscribers pay to see your picks. You keep 70% of all subscriber revenue — paid out monthly. The higher your score, the more you can charge.',
+  },
+  {
+    q: 'What are H2H Challenges?',
+    a: 'Head-to-head challenges let you pick a game and challenge any user on the platform. You each pick a side, and the winner gets a badge and a shareable result card. Build a challenge record, earn streak badges, and prove you are better than anyone who talks trash.',
+  },
+  {
+    q: 'How do betting leagues work?',
+    a: 'Create a league, invite friends (up to 20 per league), and compete over an entire season. Your league rank is based on your weekly Gammbler Score average. Minimum 1 bet per week to stay ranked. Cash entry leagues available with a transparent 10% platform rake.',
   },
   {
     q: 'What sports are supported?',
     a: 'NFL, NBA, MLB, NHL, College Football, College Basketball, Soccer, MMA, PrizePicks props, and Daily Fantasy. Each sport has its own independent Gammbler Score, with 10 settled bets required to unlock each one.',
   },
   {
-    q: 'What do I get for free?',
-    a: 'Free users get their overall Gammbler Score, basic win-loss record, national leaderboard access (view only), community feed (read only), one sportsbook connection, and manual bet entry. Upgrade to Pro to unlock full analytics, all 10 sport scores, friend leaderboards, shareable cards, and more.',
+    q: 'Is my financial data visible to others?',
+    a: 'Never. Dollar amounts are completely private. Only your win rate, ROI percentage, Gammbler Score, and tier are visible on leaderboards and profiles. You control what others see.',
   },
   {
-    q: 'What does Pro unlock?',
-    a: 'Pro gives you all 10 sport-specific scores, full ROI analytics, AI-powered insights, friend leaderboards, shareable score cards, achievement badges, unlimited sportsbook connections, CSV import, and weekly performance reports — everything you need to prove your edge.',
+    q: 'What do I get for free vs Pro?',
+    a: 'Free users get their overall Gammbler Score, score history, basic record, national leaderboard access, community feed, one sportsbook connection, and manual bet entry. Pro unlocks all 10 sport scores, full analytics, friend leaderboards, H2H challenges, leagues, shareable cards, badges, and more — $8.99/mo.',
   },
 ];
 
@@ -223,7 +239,7 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* ========== HERO — Social/Competitive Lead ========== */}
+      {/* ========== HERO ========== */}
       <section className="relative pt-32 pb-16 md:pt-40 md:pb-24 px-6 dot-grid">
         <div className="hero-orb w-[600px] h-[600px] -top-40 -left-40 bg-[#4caf50]/[0.04]" style={{ animation: 'pulse-glow 8s ease-in-out infinite' }} />
         <div className="hero-orb w-[500px] h-[500px] top-20 -right-40 bg-[#4caf50]/[0.03]" style={{ animation: 'pulse-glow 10s ease-in-out infinite 2s' }} />
@@ -242,12 +258,12 @@ export default function HomePage() {
               className="animate-fade-up delay-100 text-5xl sm:text-7xl md:text-[5.5rem] lg:text-[6.5rem] font-black uppercase tracking-tight leading-[0.9] mb-8"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              Every Bettor Gets a Score.{' '}
-              <span className="text-gradient">Where Do You Rank?</span>
+              Track. Compete.{' '}
+              <span className="text-gradient">Get Paid.</span>
             </h1>
 
             <p className="animate-fade-up delay-200 text-lg md:text-xl text-[#9e9e9e] max-w-2xl mx-auto mb-12 leading-relaxed">
-              Gammbler gives every sports bettor a verified score across every sportsbook. Compete on national leaderboards, challenge your friends, and share your stats on social media.
+              Every sports bettor gets a verified score. Climb leaderboards, challenge friends head-to-head, join betting leagues, and earn money selling your picks.
             </p>
 
             <div className="animate-fade-up delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -339,7 +355,7 @@ export default function HomePage() {
               <span className="text-gradient">Rule Them All</span>
             </h2>
             <p className="text-[#9e9e9e] max-w-2xl mx-auto">
-              Your Gammbler Score is a 0-100 rating that measures your true betting skill — across every sportsbook, every sport, displayed to one decimal point for bragging rights. Every score is shareable.
+              Your Gammbler Score is a 0-100 rating that measures your true betting skill — across every sportsbook, every sport, tracked daily. Share it, compete with it, earn from it.
             </p>
           </div>
 
@@ -437,8 +453,8 @@ export default function HomePage() {
                   ))}
                 </div>
                 <div className="px-6 py-3 border-t border-white/[0.06] flex items-center justify-center gap-2">
-                  <Share2 size={12} className="text-[#4caf50]" />
-                  <span className="text-[10px] text-[#4caf50] font-semibold">Each score individually shareable</span>
+                  <TrendingUp size={12} className="text-[#4caf50]" />
+                  <span className="text-[10px] text-[#4caf50] font-semibold">Daily snapshots track your score over time</span>
                 </div>
               </div>
             </div>
@@ -446,9 +462,113 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== LEADERBOARDS SECTION ========== */}
+      {/* ========== CAPPER MARKETPLACE — MAKE MONEY ========== */}
       <div className="section-divider" />
-      <section id="leaderboards" className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
+      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <p className="text-xs text-[#FFD700] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              Earn From Your Edge
+            </p>
+            <h2
+              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              Turn Your Picks Into{' '}
+              <span className="text-gradient-gold">Income</span>
+            </h2>
+            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
+              Score 80+ with 100 verified bets to become a Capper. Set your price, build a subscriber base, and earn monthly income from your betting expertise — like Twitch for sports betting.
+            </p>
+          </div>
+
+          {/* Capper Earnings Showcase */}
+          <div className="grid md:grid-cols-3 gap-5 mb-12 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            {capperShowcase.map((capper, i) => (
+              <div key={capper.name} className="glass-card rounded-2xl p-6 relative overflow-hidden" style={{ cursor: 'default', transitionDelay: `${i * 100}ms` }}>
+                {i === 0 && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFD700] to-transparent" />}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-bold text-white">{capper.name}</p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: `${capper.tierColor}20`, color: capper.tierColor, fontFamily: 'var(--font-display)' }}>
+                      {capper.tier} • {capper.sport}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gradient stat-glow" style={{ fontFamily: 'var(--font-number)' }}>{capper.score}</p>
+                  </div>
+                </div>
+                <div className="border-t border-white/[0.06] pt-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#6b6b6b]">Record</span>
+                    <span className="text-sm text-white font-medium" style={{ fontFamily: 'var(--font-number)' }}>{capper.record}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#6b6b6b]">Subscribers</span>
+                    <span className="text-sm text-white font-medium" style={{ fontFamily: 'var(--font-number)' }}>{capper.subscribers}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#6b6b6b]">Price</span>
+                    <span className="text-sm text-white font-medium" style={{ fontFamily: 'var(--font-number)' }}>${capper.price}/mo</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                    <span className="text-xs text-[#FFD700] font-semibold">Monthly Earnings</span>
+                    <span className="text-lg font-bold text-[#FFD700]" style={{ fontFamily: 'var(--font-number)' }}>${capper.monthlyEarnings.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Two-sided value prop */}
+          <div className="grid md:grid-cols-2 gap-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <div className="glass-card rounded-xl p-8">
+              <h3 className="text-xl font-bold text-[#FFD700] mb-5" style={{ fontFamily: 'var(--font-display)' }}>FOR CAPPERS</h3>
+              <ul className="space-y-3 text-sm text-[#e0e0e0]">
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Score 80+ with 100+ bets to get Verified</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Set your own monthly price ($1.99–$99.99)</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Keep 70% of subscriber revenue</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Build your brand with live bet slips</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Track earnings and subscriber analytics</li>
+              </ul>
+              <div className="mt-6 pt-4 border-t border-white/[0.06]">
+                <p className="text-xs text-[#9e9e9e]">
+                  <span className="text-[#FFD700] font-semibold">Example:</span> 200 subscribers at $19.99/mo = <span className="text-[#FFD700] font-bold">$2,799/mo</span> in your pocket
+                </p>
+              </div>
+            </div>
+            <div className="glass-card rounded-xl p-8">
+              <h3 className="text-xl font-bold text-[#4caf50] mb-5" style={{ fontFamily: 'var(--font-display)' }}>FOR SUBSCRIBERS</h3>
+              <ul className="space-y-3 text-sm text-[#e0e0e0]">
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Browse verified cappers with proven records</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> See live bets the moment they are placed</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> One-tap &ldquo;Tail This&rdquo; to copy any bet</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Track capper performance over time</li>
+                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Cancel anytime — no lock-in</li>
+              </ul>
+              <div className="mt-6 pt-4 border-t border-white/[0.06]">
+                <p className="text-xs text-[#9e9e9e]">
+                  <span className="text-[#4caf50] font-semibold">No fake records.</span> Every capper&apos;s score is verified and tamper-proof
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-10 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-sm font-bold uppercase tracking-wider hover:scale-[1.02] transition-all"
+              style={{ fontFamily: 'var(--font-display)', background: 'linear-gradient(135deg, #FFD700, #ff6f00)', color: '#000' }}
+            >
+              Start Earning <DollarSign size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== LEADERBOARDS ========== */}
+      <div className="section-divider" />
+      <section id="leaderboards" className="py-24 md:py-32 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
             <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -555,7 +675,130 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== LEAGUES SECTION ========== */}
+      {/* ========== H2H CHALLENGES ========== */}
+      <div className="section-divider" />
+      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <p className="text-xs text-[#ef5350] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              Head-to-Head
+            </p>
+            <h2
+              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              Challenge Anyone.{' '}
+              <span className="text-gradient">Prove It.</span>
+            </h2>
+            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
+              Pick a game. Pick a side. Challenge any user on the platform. Winner gets a badge and a shareable result card. No more empty trash talk — put your score on the line.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 items-center reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            {/* H2H Challenge Mockup */}
+            <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
+              <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Swords size={16} className="text-[#ef5350]" />
+                  <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                    H2H Challenge
+                  </span>
+                </div>
+                <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-[#66bb6a]/20 text-[#66bb6a]" style={{ fontFamily: 'var(--font-display)' }}>
+                  Settled
+                </span>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="text-center flex-1">
+                    <div className="w-14 h-14 rounded-full bg-[#4caf50]/20 flex items-center justify-center mx-auto mb-2">
+                      <Crown size={20} className="text-[#FFD700]" />
+                    </div>
+                    <p className="text-sm font-bold text-white">SharpShooter_MJ</p>
+                    <p className="text-[10px] text-[#FFD700] font-semibold">WINNER</p>
+                    <p className="text-xs text-[#9e9e9e] mt-1">Chiefs -3.5</p>
+                  </div>
+                  <div className="px-4">
+                    <span className="text-2xl font-black text-[#6b6b6b] uppercase" style={{ fontFamily: 'var(--font-display)' }}>VS</span>
+                  </div>
+                  <div className="text-center flex-1">
+                    <div className="w-14 h-14 rounded-full bg-white/[0.06] flex items-center justify-center mx-auto mb-2">
+                      <span className="text-lg font-bold text-[#6b6b6b]">VV</span>
+                    </div>
+                    <p className="text-sm font-bold text-[#9e9e9e]">VegasVault</p>
+                    <p className="text-[10px] text-[#6b6b6b]">&nbsp;</p>
+                    <p className="text-xs text-[#9e9e9e] mt-1">Eagles +3.5</p>
+                  </div>
+                </div>
+                <div className="border-t border-white/[0.06] pt-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#6b6b6b]">Game</span>
+                    <span className="text-white">NFL — Chiefs vs Eagles</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#6b6b6b]">Stakes</span>
+                    <span className="text-white">Loser changes avatar to winner&apos;s pick for a week</span>
+                  </div>
+                </div>
+              </div>
+              <div className="px-6 py-3 border-t border-white/[0.06] flex items-center justify-center gap-2">
+                <Share2 size={12} className="text-[#4caf50]" />
+                <span className="text-[10px] text-[#4caf50] font-semibold">Download & share result card</span>
+              </div>
+            </div>
+
+            {/* H2H Features */}
+            <div className="space-y-5">
+              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#ef5350]/20 flex items-center justify-center flex-shrink-0">
+                    <Swords size={20} className="text-[#ef5350]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>CHALLENGE ANYONE</h3>
+                    <p className="text-xs text-[#9e9e9e]">Search any user on the platform, pick a game, choose your side, and send the challenge. Add stakes and trash talk to make it personal.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center flex-shrink-0">
+                    <Trophy size={20} className="text-[#FFD700]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>EARN BADGES & STREAKS</h3>
+                    <p className="text-xs text-[#9e9e9e]">Win your first H2H to earn the First Blood badge. Stack 3 wins for a streak badge. Reach 10 wins for H2H Champion status on your profile.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#4caf50]/20 flex items-center justify-center flex-shrink-0">
+                    <Share2 size={20} className="text-[#4caf50]" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>SHAREABLE RESULT CARDS</h3>
+                    <p className="text-xs text-[#9e9e9e]">Every settled challenge generates a branded result card. Download it and post to X, Instagram, or your group chat. Your wins travel with you.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-10 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-all"
+              style={{ fontFamily: 'var(--font-display)', background: 'linear-gradient(135deg, #ef5350, #c62828)' }}
+            >
+              Send a Challenge <Swords size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== BETTING LEAGUES ========== */}
       <div className="section-divider" />
       <section className="py-24 md:py-32 px-6">
         <div className="max-w-6xl mx-auto">
@@ -571,7 +814,7 @@ export default function HomePage() {
               <span className="text-gradient">Settle It For Good.</span>
             </h2>
             <p className="text-[#9e9e9e] max-w-2xl mx-auto">
-              Create a private league, invite your crew, and compete over an entire season. Weekly scores, standings, and bragging rights — like fantasy football, but for betting.
+              Create a league, invite your crew, and compete over an entire season. Weekly scores, standings, and bragging rights — like fantasy football, but for real betting.
             </p>
           </div>
 
@@ -665,11 +908,11 @@ export default function HomePage() {
               <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-lg bg-[#ff6f00]/20 flex items-center justify-center flex-shrink-0">
-                    <Crown size={20} className="text-[#ff6f00]" />
+                    <DollarSign size={20} className="text-[#ff6f00]" />
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>END-OF-SEASON AWARDS</h3>
-                    <p className="text-xs text-[#9e9e9e]">MVP, Most Improved, Best Week, Worst Beat — shareable trophies that live on your profile forever.</p>
+                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>FREE & CASH LEAGUES</h3>
+                    <p className="text-xs text-[#9e9e9e]">Free leagues for bragging rights. Cash entry leagues with real prizes and a transparent 10% platform rake. Skill-based, not luck-based.</p>
                   </div>
                 </div>
               </div>
@@ -688,9 +931,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== SHARE SECTION ========== */}
+      {/* ========== SHAREABLE CARDS + SCORE HISTORY ========== */}
       <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
+      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
             <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -704,7 +947,7 @@ export default function HomePage() {
               <span className="text-gradient">Prove Your Edge.</span>
             </h2>
             <p className="text-[#9e9e9e] max-w-2xl mx-auto">
-              Generate a branded, verified score card and drop it on Twitter/X, Instagram, or your group chat. No more fake screenshots — your stats are verified and tamper-proof.
+              Generate branded, verified score cards and H2H result cards. Track your score over time with daily snapshots. Drop your stats on Twitter/X, Instagram, or your group chat — no more fake screenshots.
             </p>
           </div>
 
@@ -737,7 +980,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Social sharing context */}
+            {/* Social sharing + Score History */}
             <div className="lg:col-span-2 flex flex-col gap-5">
               {/* Twitter/X mockup */}
               <div className="glass-card rounded-2xl p-6" style={{ cursor: 'default' }}>
@@ -756,7 +999,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <p className="text-sm text-[#e0e0e0] mb-3">
-                  78.4 Elite on Gammbler 🔥 234-118 on the season. Where are you ranked? 
+                  78.4 Elite on Gammbler. 234-118 on the season. Where are you ranked? 
                   <span className="text-[#4caf50]"> gammbler.com</span>
                 </p>
                 <div className="flex items-center gap-6 text-xs text-[#6b6b6b]">
@@ -766,24 +1009,28 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Instagram mockup */}
+              {/* Score History teaser */}
               <div className="glass-card rounded-2xl p-6" style={{ cursor: 'default' }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#833AB4] via-[#FD1D1D] to-[#F77737] flex items-center justify-center">
-                    <span className="text-sm font-bold text-white">MJ</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">sharpshooter_mj</p>
-                    <p className="text-[10px] text-[#6b6b6b]">Instagram Story</p>
-                  </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp size={16} className="text-[#4caf50]" />
+                  <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Score History</span>
                 </div>
-                <p className="text-sm text-[#e0e0e0]">
-                  Posted their Gammbler card to their story — <span className="text-white font-semibold">3,241 views</span> and <span className="text-[#4caf50] font-semibold">47 new signups</span> from the link
+                <div className="flex items-end gap-1 h-16 mb-3">
+                  {[42, 48, 52, 55, 60, 58, 63, 67, 65, 70, 72, 74, 71, 75, 78].map((v, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-t-sm"
+                      style={{ height: `${v}%`, background: `linear-gradient(180deg, #4caf50, #4caf50${i === 14 ? '' : '60'})` }}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-[#9e9e9e]">
+                  Daily snapshots track your growth over time. <span className="text-[#4caf50] font-semibold">+36.4 points</span> in 3 months — proof of improvement that can&apos;t be faked.
                 </p>
               </div>
 
               <p className="text-xs text-[#6b6b6b] text-center">
-                Branded score cards &middot; Verified stats &middot; Tamper-proof &middot; One-tap share
+                Branded score cards &middot; H2H result cards &middot; Verified stats &middot; Tamper-proof &middot; One-tap share
               </p>
             </div>
           </div>
@@ -792,7 +1039,7 @@ export default function HomePage() {
 
       {/* ========== FEATURES ========== */}
       <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
+      <section className="py-24 md:py-32 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
             <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -806,7 +1053,7 @@ export default function HomePage() {
               <span className="text-gradient">Serious Bettors</span>
             </h2>
             <p className="text-[#9e9e9e] max-w-xl mx-auto">
-              Sportsbook sync, analytics, insights, and more — all backing up the score and leaderboard experience.
+              Sportsbook sync, analytics, score tracking, and more — all backing up the competitive experience.
             </p>
           </div>
 
@@ -855,116 +1102,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== LIVE BET SLIP SHARING ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              New Feature
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-              Live Bet Slip <span className="text-gradient">Sharing</span>
-            </h2>
-            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
-              Post your bets before the game starts. Your followers watch them resolve in real-time. Every share generates a branded card — free marketing for you.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: '📡', title: 'Share Pre-Game', desc: 'Post your bet slip before kickoff. Followers see your picks live as they happen.' },
-              { icon: '🔥', title: 'Live Updates', desc: 'Watch slips resolve in real-time. React with fire, skull, money, clown, or GOAT.' },
-              { icon: '🎨', title: 'Branded Cards', desc: 'Auto-generated shareable cards with Gammbler watermark. Every share is a free ad.' },
-            ].map((item, i) => (
-              <div key={i} className={`glass-card rounded-xl p-6 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0 delay-${(i + 1) * 100}`}>
-                <div className="text-3xl mb-3">{item.icon}</div>
-                <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'var(--font-display)' }}>{item.title}</h3>
-                <p className="text-sm text-[#9e9e9e]">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== TAIL THIS / CAPPER MARKETPLACE ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#FFD700] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              New Feature
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-              Tail This — <span className="text-gradient-gold">Copy Betting</span>
-            </h2>
-            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
-              Verified Cappers with 80+ scores can monetize their picks. Subscribers get instant access to live bets with one-tap copy betting.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="glass-card rounded-xl p-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-              <h3 className="text-xl font-bold text-[#FFD700] mb-4" style={{ fontFamily: 'var(--font-display)' }}>FOR CAPPERS</h3>
-              <ul className="space-y-3 text-sm text-[#e0e0e0]">
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Score 80+ with 100+ bets to get Verified</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Set your monthly subscription price</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Keep 70% of subscriber revenue</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Build your brand with live bet slips</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Track earnings and subscriber analytics</li>
-              </ul>
-            </div>
-            <div className="glass-card rounded-xl p-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0 delay-200">
-              <h3 className="text-xl font-bold text-[#4caf50] mb-4" style={{ fontFamily: 'var(--font-display)' }}>FOR SUBSCRIBERS</h3>
-              <ul className="space-y-3 text-sm text-[#e0e0e0]">
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Browse verified, proven bettors</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> See live bets the moment they are placed</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> One-tap &ldquo;Tail This&rdquo; to copy any bet</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Track capper performance over time</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Cancel anytime — no lock-in</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== CASH LEAGUES ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Coming Soon
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-              Cash <span className="text-gradient">Leagues</span>
-            </h2>
-            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
-              Compete for real money in skill-based betting leagues. Free leagues available now — paid entry coming after legal review.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: '💰', title: 'Buy-In Leagues', desc: 'Paid entry leagues with cash prizes. Skill-based competition like DraftKings — your betting record determines the winner.' },
-              { icon: '🏆', title: 'Season-Long Competition', desc: 'Compete over a full season. Weekly scoring, minimum bet requirements, and anti-gaming rules ensure fair play.' },
-              { icon: '📊', title: '10% Rake Model', desc: 'Gammbler takes a transparent 10% rake. The rest goes directly to prize pools. Fair, transparent, skill-based.' },
-            ].map((item, i) => (
-              <div key={i} className={`glass-card rounded-xl p-6 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0 delay-${(i + 1) * 100}`}>
-                <div className="text-3xl mb-3">{item.icon}</div>
-                <h3 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'var(--font-display)' }}>{item.title}</h3>
-                <p className="text-sm text-[#9e9e9e]">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-8">
-            <span className="inline-block px-4 py-2 bg-[#4caf50]/10 text-[#4caf50] rounded-full text-sm font-semibold border border-[#4caf50]/20">
-              Free leagues available now — cash entry coming Q1 2027
-            </span>
-          </div>
-        </div>
-      </section>
-
       {/* ========== PRICING ========== */}
       <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
+      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
             <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -978,7 +1118,7 @@ export default function HomePage() {
               <span className="text-gradient">Go Pro When Ready.</span>
             </h2>
             <p className="text-[#9e9e9e] max-w-xl mx-auto">
-              Get your score for free. Upgrade when you want the full picture.
+              Get your score for free. Upgrade to compete, challenge, and earn.
             </p>
           </div>
 
@@ -1058,7 +1198,7 @@ export default function HomePage() {
 
       {/* ========== FAQ ========== */}
       <div className="section-divider" />
-      <section className="py-24 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
+      <section className="py-24 px-6">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
             <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -1094,11 +1234,11 @@ export default function HomePage() {
             className="text-4xl md:text-6xl font-black uppercase tracking-tight leading-[0.95] mb-6"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            The Leaderboard is Live.{' '}
-            <span className="text-gradient">Where Do You Rank?</span>
+            Track. Compete. Earn.{' '}
+            <span className="text-gradient">Get Started Free.</span>
           </h2>
           <p className="text-lg text-[#9e9e9e] mb-10 max-w-xl mx-auto">
-            Join thousands of bettors who already know their score. Get yours in 60 seconds.
+            Your Gammbler Score is waiting. Get it in 60 seconds, challenge your friends, and start building your verified betting reputation.
           </p>
           <Link
             href="/signup"
@@ -1107,7 +1247,7 @@ export default function HomePage() {
           >
             Get Your Score <ArrowRight size={20} />
           </Link>
-          <p className="text-xs text-[#6b6b6b] mt-6">Free forever &middot; Pro starts at $8.99/mo</p>
+          <p className="text-xs text-[#6b6b6b] mt-6">Free forever &middot; Pro starts at $8.99/mo &middot; Earn as a Capper</p>
         </div>
       </section>
 
