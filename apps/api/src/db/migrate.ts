@@ -503,6 +503,103 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS challenges_expires_at_idx ON challenges(expires_at);
     `);
 
+    // ── DFS (Daily Fantasy Sports) ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE dfs_sport AS ENUM ('overall','nfl','nba','mlb','nhl','pga','nascar','soccer','mma','cfb','cbb'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+      DO $$ BEGIN CREATE TYPE dfs_contest_type AS ENUM ('cash','gpp','h2h','fifty_fifty','multiplier','satellite','other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+      DO $$ BEGIN CREATE TYPE dfs_platform AS ENUM ('draftkings','fanduel','yahoo','underdog','prizepicks','other'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+      DO $$ BEGIN CREATE TYPE dfs_badge_type AS ENUM ('dfs_first_cash','dfs_sharp','dfs_elite','dfs_legend','dfs_profitable_month','dfs_profitable_quarter','dfs_consistent','dfs_hot_streak','dfs_on_fire','dfs_unstoppable','dfs_nfl_sharp','dfs_nba_sharp','dfs_mlb_sharp','dfs_nhl_sharp','dfs_pga_sharp','dfs_nascar_sharp','dfs_gpp_winner','dfs_grinder','dfs_diversified'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dfs_contests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        platform dfs_platform NOT NULL,
+        sport dfs_sport NOT NULL,
+        contest_type dfs_contest_type NOT NULL,
+        contest_name TEXT,
+        contest_id VARCHAR(255),
+        entry_fee_cents INTEGER NOT NULL,
+        payout_cents INTEGER NOT NULL DEFAULT 0,
+        entries INTEGER,
+        finish_position INTEGER,
+        total_entries INTEGER,
+        points_scored NUMERIC(10,2),
+        is_manual BOOLEAN NOT NULL DEFAULT false,
+        is_csv_import BOOLEAN NOT NULL DEFAULT false,
+        contest_date TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS dfs_contests_user_idx ON dfs_contests(user_id);
+      CREATE INDEX IF NOT EXISTS dfs_contests_sport_idx ON dfs_contests(sport);
+      CREATE INDEX IF NOT EXISTS dfs_contests_type_idx ON dfs_contests(contest_type);
+      CREATE INDEX IF NOT EXISTS dfs_contests_platform_idx ON dfs_contests(platform);
+      CREATE INDEX IF NOT EXISTS dfs_contests_user_sport_idx ON dfs_contests(user_id, sport);
+      CREATE INDEX IF NOT EXISTS dfs_contests_date_idx ON dfs_contests(contest_date);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dfs_scores (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sport dfs_sport NOT NULL,
+        score NUMERIC(5,1) NOT NULL DEFAULT 0,
+        roi NUMERIC(10,4) DEFAULT 0,
+        cash_rate NUMERIC(7,4) DEFAULT 0,
+        consistency NUMERIC(7,4) DEFAULT 0,
+        volume_score NUMERIC(7,4) DEFAULT 0,
+        diversity_score NUMERIC(7,4) DEFAULT 0,
+        total_contests INTEGER NOT NULL DEFAULT 0,
+        total_entry_fees_cents INTEGER NOT NULL DEFAULT 0,
+        total_payouts_cents INTEGER NOT NULL DEFAULT 0,
+        is_unlocked BOOLEAN NOT NULL DEFAULT false,
+        calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        previous_score NUMERIC(5,1),
+        score_change_today NUMERIC(5,1) DEFAULT 0,
+        UNIQUE(user_id, sport)
+      );
+      CREATE INDEX IF NOT EXISTS dfs_scores_score_idx ON dfs_scores(score);
+      CREATE INDEX IF NOT EXISTS dfs_scores_sport_idx ON dfs_scores(sport);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dfs_score_snapshots (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sport dfs_sport NOT NULL,
+        score NUMERIC(5,1) NOT NULL,
+        snapshot_date TIMESTAMPTZ NOT NULL,
+        UNIQUE(user_id, sport, snapshot_date)
+      );
+      CREATE INDEX IF NOT EXISTS dfs_snapshots_user_idx ON dfs_score_snapshots(user_id);
+      CREATE INDEX IF NOT EXISTS dfs_snapshots_date_idx ON dfs_score_snapshots(snapshot_date);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dfs_badges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        badge_type dfs_badge_type NOT NULL,
+        earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(user_id, badge_type)
+      );
+      CREATE INDEX IF NOT EXISTS dfs_badges_user_idx ON dfs_badges(user_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS dfs_csv_imports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        platform dfs_platform NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        rows_imported INTEGER NOT NULL DEFAULT 0,
+        rows_skipped INTEGER NOT NULL DEFAULT 0,
+        imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS dfs_csv_imports_user_idx ON dfs_csv_imports(user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {
