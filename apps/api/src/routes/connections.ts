@@ -3,7 +3,10 @@ import { db } from '../db';
 import { sportsbookConnections } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
+import { attachTier } from '../middleware/subscription';
 import { initiateConnection, completeConnection, syncBets } from '../services/sharpsports';
+
+const FREE_CONNECTION_LIMIT = 1;
 
 const router = Router();
 
@@ -22,13 +25,28 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
   }
 });
 
-// POST /connections/initiate — start SharpSports OAuth flow
-router.post('/initiate', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+// POST /connections/initiate — start SharpSports OAuth flow (free: 1 max)
+router.post('/initiate', authMiddleware, attachTier, async (req: Request, res: Response): Promise<void> => {
   try {
     const { platform } = req.body;
     if (!platform) {
       res.status(400).json({ error: 'Platform is required' });
       return;
+    }
+
+    if (req.userTier === 'free') {
+      const existing = await db
+        .select()
+        .from(sportsbookConnections)
+        .where(eq(sportsbookConnections.user_id, req.user!.userId));
+
+      if (existing.length >= FREE_CONNECTION_LIMIT) {
+        res.status(403).json({
+          error: `Free accounts are limited to ${FREE_CONNECTION_LIMIT} sportsbook connection. Upgrade to Pro for unlimited.`,
+          upgrade: true,
+        });
+        return;
+      }
     }
 
     const { url } = await initiateConnection(req.user!.userId, platform);
@@ -49,8 +67,6 @@ router.post('/complete', authMiddleware, async (req: Request, res: Response): Pr
     }
 
     await completeConnection(req.user!.userId, platform, sharpsports_account_id);
-
-    // Initial sync
     const imported = await syncBets(req.user!.userId, platform);
 
     res.json({ success: true, imported });

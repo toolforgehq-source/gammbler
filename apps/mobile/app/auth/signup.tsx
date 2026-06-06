@@ -45,10 +45,10 @@ export default function SignUpScreen() {
           Get Started
         </Text>
         <Text style={{ fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.accent, textAlign: 'center', marginTop: 4 }}>
-          FREE FOR 14 DAYS
+          FREE FOREVER
         </Text>
         <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.mutedDark, textAlign: 'center', marginBottom: 24 }}>
-          No credit card required
+          Upgrade to Pro when you're ready
         </Text>
 
         {error ? (
@@ -131,7 +131,7 @@ export default function SignUpScreen() {
           }}
         >
           <Text style={{ fontFamily: fonts.display, fontSize: 16, color: colors.background, textTransform: 'uppercase', letterSpacing: 2 }}>
-            {loading ? 'Creating Account...' : 'Start Free Trial'}
+            {loading ? 'Creating Account...' : 'Create Free Account'}
           </Text>
         </TouchableOpacity>
 

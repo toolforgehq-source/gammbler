@@ -10,6 +10,7 @@ interface User {
   trial_ends_at: string;
   subscription_status: string;
   referral_code: string | null;
+  tier?: 'free' | 'pro';
 }
 
 interface AuthStore {

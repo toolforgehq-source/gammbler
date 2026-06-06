@@ -93,6 +93,11 @@ export enum BadgeType {
   ALL_IN = 'all_in',
   DIVERSIFIED = 'diversified',
   VETERAN = 'veteran',
+  // Head-to-Head
+  H2H_FIRST_WIN = 'h2h_first_win',
+  H2H_STREAK_3 = 'h2h_streak_3',
+  H2H_STREAK_5 = 'h2h_streak_5',
+  H2H_CHAMPION = 'h2h_champion',
 }
 
 export enum FeedEventType {
@@ -103,6 +108,8 @@ export enum FeedEventType {
   SCORE_HIGH = 'score_high',
   SPORTSBOOK_CONNECTED = 'sportsbook_connected',
   WEEKLY_LEADER = 'weekly_leader',
+  H2H_CHALLENGE = 'h2h_challenge',
+  H2H_RESULT = 'h2h_result',
 }
 
 export enum NotificationType {
@@ -208,6 +215,73 @@ export interface SportsbookConnection {
   last_synced_at: string | null;
 }
 
+export enum LeagueSport {
+  ALL = 'all',
+  NFL = 'nfl',
+  NBA = 'nba',
+  MLB = 'mlb',
+  NHL = 'nhl',
+  CFB = 'cfb',
+  CBB = 'cbb',
+  SOCCER = 'soccer',
+  MMA = 'mma',
+}
+
+export enum LeagueStatus {
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
+  ARCHIVED = 'archived',
+}
+
+export enum LeagueMemberRole {
+  COMMISSIONER = 'commissioner',
+  MEMBER = 'member',
+}
+
+export interface League {
+  id: string;
+  name: string;
+  sport: LeagueSport;
+  status: LeagueStatus;
+  commissioner_id: string;
+  invite_code: string;
+  min_bets_per_week: number;
+  min_active_weeks_pct: number;
+  season_name: string | null;
+  season_start: string;
+  season_end: string;
+  max_members: number;
+  created_at: string;
+}
+
+export interface LeagueMember {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  role: LeagueMemberRole;
+  season_score: number;
+  active_weeks: number;
+  total_weeks: number;
+  total_bets_in_league: number;
+  best_week_score: number;
+  current_streak: number;
+}
+
+export interface LeagueWeeklyScore {
+  user_id: string;
+  username: string;
+  week_number: number;
+  score: number;
+  bets_placed: number;
+  wins: number;
+  losses: number;
+  roi: number;
+  met_minimum: boolean;
+}
+
+export const LEAGUE_FREE_LIMIT = 2;
+export const LEAGUE_MAX_PER_USER = 10;
+
 // ── Constants ────────────────────────────────────────────────
 
 export const SCORE_WEIGHTS = {
@@ -269,3 +343,169 @@ export const BRAND = {
   greenWin: '#66bb6a',
   gold: '#FFD700',
 } as const;
+
+// ── Feature: Live Bet Slip Sharing ──────────────────────────
+
+export enum BetSlipStatus {
+  LIVE = 'live',
+  WON = 'won',
+  LOST = 'lost',
+  PUSHED = 'pushed',
+  VOID = 'void',
+}
+
+export enum SlipReactionType {
+  FIRE = 'fire',
+  SKULL = 'skull',
+  MONEY = 'money',
+  CLOWN = 'clown',
+  GOAT = 'goat',
+}
+
+export interface BetSlip {
+  id: string;
+  user_id: string;
+  bet_id: string | null;
+  title: string;
+  description: string | null;
+  sport: Sport;
+  bet_type: BetType;
+  selection: string;
+  odds: number;
+  stake: number;
+  platform: Platform;
+  status: BetSlipStatus;
+  event_name: string | null;
+  parlay_legs: number | null;
+  profit_loss: number | null;
+  views_count: number;
+  shares_count: number;
+  is_public: boolean;
+  shared_at: string;
+  settled_at: string | null;
+}
+
+export interface BetSlipReaction {
+  id: string;
+  slip_id: string;
+  user_id: string;
+  reaction: SlipReactionType;
+  created_at: string;
+}
+
+// ── Feature: Tail This / Capper Marketplace ─────────────────
+
+export enum CapperStatus {
+  PENDING = 'pending',
+  ACTIVE = 'active',
+  SUSPENDED = 'suspended',
+}
+
+export enum CapperSubStatus {
+  ACTIVE = 'active',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+}
+
+export interface CapperProfile {
+  id: string;
+  user_id: string;
+  display_name: string;
+  bio: string | null;
+  price_cents: number;
+  is_active: boolean;
+  total_subscribers: number;
+  total_tails: number;
+  total_earnings_cents: number;
+  verified_at: string;
+  verified_score: number;
+}
+
+export interface CapperSubscription {
+  id: string;
+  capper_user_id: string;
+  subscriber_user_id: string;
+  status: CapperSubStatus;
+  price_cents: number;
+  stripe_subscription_id: string | null;
+  created_at: string;
+  expires_at: string | null;
+}
+
+export interface TailEvent {
+  id: string;
+  slip_id: string;
+  capper_user_id: string;
+  tailer_user_id: string;
+  created_at: string;
+}
+
+export const CAPPER_MIN_SCORE = 80;
+export const CAPPER_MIN_BETS = 100;
+export const CAPPER_PLATFORM_RAKE = 0.30;
+export const CAPPER_DEFAULT_PRICE_CENTS = 499;
+export const CAPPER_SCORE_WARNING_THRESHOLD = 70;
+
+// ── Feature: Cash Leagues ───────────────────────────────────
+
+export enum CashLeaguePayoutStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
+export interface CashLeagueConfig {
+  buy_in_cents: number;
+  rake_pct: number;
+  prize_pool_cents: number;
+  is_cash_league: boolean;
+  payout_status: CashLeaguePayoutStatus;
+}
+
+export interface LeagueEntry {
+  id: string;
+  league_id: string;
+  user_id: string;
+  buy_in_paid_cents: number;
+  payout_cents: number;
+  stripe_payment_id: string | null;
+  paid_at: string;
+  payout_at: string | null;
+}
+
+export const CASH_LEAGUE_RAKE_PCT = 10;
+export const CASH_LEAGUE_MIN_BUY_IN_CENTS = 500;
+export const CASH_LEAGUE_MAX_BUY_IN_CENTS = 50000;
+
+// ── Feature: Head-to-Head Challenges ────────────────────────
+
+export enum ChallengeStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  DECLINED = 'declined',
+  SETTLED = 'settled',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+}
+
+export interface Challenge {
+  id: string;
+  challenger_id: string;
+  challengee_id: string;
+  sport: Sport;
+  event_name: string;
+  event_start_time: string | null;
+  challenger_pick: string;
+  challengee_pick: string | null;
+  status: ChallengeStatus;
+  winner_id: string | null;
+  message: string | null;
+  stake_display: string | null;
+  settled_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
+export const H2H_CHALLENGE_EXPIRY_HOURS = 48;
+export const H2H_MAX_ACTIVE_CHALLENGES = 10;

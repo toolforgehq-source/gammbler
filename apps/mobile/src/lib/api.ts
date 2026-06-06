@@ -37,6 +37,7 @@ export const betsAPI = {
   list: (params?: Record<string, string>) => api.get('/bets', { params }),
   create: (data: Record<string, unknown>) => api.post('/bets', data),
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
+  upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
 };
 
 export const leaderboardsAPI = {
@@ -79,4 +80,45 @@ export const connectionsAPI = {
 export const stripeAPI = {
   createCheckout: () => api.post('/stripe/create-checkout'),
   createPortal: () => api.post('/stripe/create-portal'),
+};
+
+// Bet Slips
+export const slipsAPI = {
+  feed: (params?: Record<string, string>) => api.get('/slips', { params }),
+  mine: (params?: Record<string, string>) => api.get('/slips/mine', { params }),
+  get: (id: string) => api.get(`/slips/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/slips', data),
+  settle: (id: string, data: { result: string; profit_loss?: number }) =>
+    api.patch(`/slips/${id}/settle`, data),
+  react: (id: string, reaction: string) => api.post(`/slips/${id}/react`, { reaction }),
+  share: (id: string) => api.post(`/slips/${id}/share`),
+  delete: (id: string) => api.delete(`/slips/${id}`),
+};
+
+// Cappers
+export const cappersAPI = {
+  list: (params?: Record<string, string>) => api.get('/cappers', { params }),
+  get: (userId: string) => api.get(`/cappers/${userId}`),
+  apply: () => api.post('/cappers/apply'),
+  subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
+  unsubscribe: (userId: string) => api.delete(`/cappers/${userId}/subscribe`),
+  tail: (slipId: string) => api.post(`/cappers/tail/${slipId}`),
+};
+
+export const leaguesAPI = {
+  list: () => api.get('/leagues'),
+  get: (id: string) => api.get(`/leagues/${id}`),
+  create: (data: {
+    name: string;
+    sport: string;
+    season_name?: string;
+    season_start: string;
+    season_end: string;
+    min_bets_per_week?: number;
+    max_members?: number;
+  }) => api.post('/leagues', data),
+  join: (invite_code: string) => api.post('/leagues/join', { invite_code }),
+  leave: (id: string) => api.delete(`/leagues/${id}/leave`),
+  weekly: (id: string, week?: number) => api.get(`/leagues/${id}/weekly`, { params: week ? { week } : undefined }),
+  awards: (id: string) => api.get(`/leagues/${id}/awards`),
 };

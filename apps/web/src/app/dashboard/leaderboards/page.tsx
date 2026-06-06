@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { leaderboardsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { Users, Globe, Share2 } from 'lucide-react';
+import { Users, Globe, Share2, Lock } from 'lucide-react';
 import Link from 'next/link';
+
 
 interface LeaderboardEntry {
   rank: number | null;
@@ -41,9 +42,16 @@ export default function LeaderboardsPage() {
   const [userPosition, setUserPosition] = useState<LeaderboardEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
+      if (tab === 'friends' && isFree && sport !== 'overall') {
+        setLeaderboard([]);
+        setLoading(false);
+        return;
+      }
       const res = tab === 'friends'
         ? await leaderboardsAPI.friends(sport)
         : await leaderboardsAPI.national(sport);
@@ -119,7 +127,30 @@ export default function LeaderboardsPage() {
       )}
 
       {/* Leaderboard Table */}
-      {loading ? (
+      {tab === 'friends' && isFree && sport !== 'overall' ? (
+        <div className="bg-card border border-accent/20 rounded-lg p-8 text-center space-y-4">
+          <Lock size={32} className="text-accent mx-auto" />
+          <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>
+            Per-Sport Friend Leaderboards are Pro
+          </h3>
+          <p className="text-sm text-muted-dark max-w-md mx-auto">
+            You can see the <span className="text-accent font-medium">Overall</span> friend leaderboard for free. 
+            Upgrade to Pro to compare scores across all 10 sports with your friends.
+          </p>
+          <button
+            onClick={() => setSport('overall')}
+            className="px-5 py-2.5 bg-accent/20 text-accent rounded-lg text-sm font-semibold hover:bg-accent/30 transition-colors"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            VIEW OVERALL FRIENDS
+          </button>
+          <div>
+            <Link href="/dashboard/settings" className="text-sm text-accent hover:text-accent-light font-medium">
+              Upgrade to Pro
+            </Link>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center h-40">
           <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>

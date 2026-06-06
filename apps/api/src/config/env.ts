@@ -20,4 +20,5 @@ export const env = {
   SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL || 'noreply@gammbler.com',
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   CORS_ORIGIN: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
 };

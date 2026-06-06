@@ -33,6 +33,7 @@ function getScoreColor(score: number): string {
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<BadgeInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,24 +154,37 @@ export default function ProfileScreen() {
         </View>
 
         {/* Badges */}
-        <Text style={{ fontFamily: fonts.display, fontSize: 12, color: colors.mutedDark, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>
-          Badges ({earnedBadges.length}/{badges.length})
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 32 }}>
-          {badges.slice(0, 8).map((b) => (
-            <View key={b.badge_type} style={{
-              backgroundColor: colors.card, borderWidth: 1,
-              borderColor: b.earned ? colors.gold + '60' : colors.border,
-              borderRadius: 8, padding: 10, width: '23%' as any, alignItems: 'center',
-              opacity: b.earned ? 1 : 0.3,
-            }}>
-              <Text style={{ fontSize: 20 }}>{b.icon}</Text>
-              <Text style={{ fontFamily: fonts.body, fontSize: 9, color: colors.foreground, textAlign: 'center', marginTop: 4 }}>
-                {b.name}
-              </Text>
+        {isFree ? (
+          <View style={{
+            backgroundColor: colors.card, borderWidth: 1, borderColor: colors.accent + '40',
+            borderRadius: 12, padding: 20, alignItems: 'center', marginBottom: 32,
+          }}>
+            <Text style={{ fontSize: 28, marginBottom: 8 }}>🔒</Text>
+            <Text style={{ fontFamily: fonts.display, fontSize: 14, color: colors.foreground, textTransform: 'uppercase', marginBottom: 4 }}>Badges</Text>
+            <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.mutedDark, textAlign: 'center' }}>Upgrade to Pro to earn and display badges</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={{ fontFamily: fonts.display, fontSize: 12, color: colors.mutedDark, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 12 }}>
+              Badges ({earnedBadges.length}/{badges.length})
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 32 }}>
+              {badges.slice(0, 8).map((b) => (
+                <View key={b.badge_type} style={{
+                  backgroundColor: colors.card, borderWidth: 1,
+                  borderColor: b.earned ? colors.gold + '60' : colors.border,
+                  borderRadius: 8, padding: 10, width: '23%' as any, alignItems: 'center',
+                  opacity: b.earned ? 1 : 0.3,
+                }}>
+                  <Text style={{ fontSize: 20 }}>{b.icon}</Text>
+                  <Text style={{ fontFamily: fonts.body, fontSize: 9, color: colors.foreground, textAlign: 'center', marginTop: 4 }}>
+                    {b.name}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        )}
 
         {/* Sign Out */}
         <TouchableOpacity

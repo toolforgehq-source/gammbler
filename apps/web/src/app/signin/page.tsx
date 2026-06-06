@@ -97,7 +97,7 @@ export default function SignInPage() {
         <p className="text-center text-sm text-muted-dark">
           Don&apos;t have an account?{' '}
           <Link href="/signup" className="text-accent hover:text-accent-light font-medium">
-            Start Free Trial
+            Sign Up Free
           </Link>
         </p>
       </div>

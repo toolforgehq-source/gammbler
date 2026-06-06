@@ -7,6 +7,9 @@ import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
+import cron from 'node-cron';
+import { checkTrialReminders, sendWeeklyReports } from './services/scheduled-emails';
+import { snapshotAllScores } from './services/score-snapshots';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -21,6 +24,11 @@ import connectionRoutes from './routes/connections';
 import insightRoutes from './routes/insights';
 import badgeRoutes from './routes/badges';
 import shareableRoutes from './routes/shareable';
+import leagueRoutes from './routes/leagues';
+import slipRoutes from './routes/slips';
+import capperRoutes from './routes/cappers';
+import seedRoutes from './routes/seed';
+import challengeRoutes from './routes/challenges';
 
 const app = express();
 const server = createServer(app);
@@ -65,6 +73,11 @@ app.use('/api/connections', connectionRoutes);
 app.use('/api/insights', insightRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/shareable', shareableRoutes);
+app.use('/api/leagues', leagueRoutes);
+app.use('/api/slips', slipRoutes);
+app.use('/api/cappers', capperRoutes);
+app.use('/api/seed', seedRoutes);
+app.use('/api/challenges', challengeRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -94,6 +107,25 @@ export { io };
 server.listen(env.PORT, () => {
   console.log(`Gammbler API running on port ${env.PORT}`);
   console.log(`Environment: ${env.NODE_ENV}`);
+
+  // ── Scheduled email jobs ──────────────────────────────────
+
+  // Check trial reminders every hour
+  cron.schedule('0 * * * *', () => {
+    checkTrialReminders().catch((err) => console.error('[Cron] Trial reminder error:', err));
+  });
+
+  // Send weekly reports every Monday at 9am UTC
+  cron.schedule('0 9 * * 1', () => {
+    sendWeeklyReports().catch((err) => console.error('[Cron] Weekly report error:', err));
+  });
+
+  // Snapshot all Gammbler Scores daily at midnight UTC
+  cron.schedule('0 0 * * *', () => {
+    snapshotAllScores().catch((err) => console.error('[Cron] Score snapshot error:', err));
+  });
+
+  console.log('Scheduled jobs registered');
 });
 
 export default app;

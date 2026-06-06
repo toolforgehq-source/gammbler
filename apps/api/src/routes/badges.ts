@@ -3,6 +3,7 @@ import { db } from '../db';
 import { badges } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
+import { requirePro } from '../middleware/subscription';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ const BADGE_INFO: Record<string, { name: string; description: string; icon: stri
 };
 
 // GET /badges — get user's earned badges
-router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.get('/', authMiddleware, requirePro, async (req: Request, res: Response): Promise<void> => {
   try {
     const userBadges = await db
       .select()
@@ -51,7 +52,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
 });
 
 // GET /badges/all — get all possible badges with earned status
-router.get('/all', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.get('/all', authMiddleware, requirePro, async (req: Request, res: Response): Promise<void> => {
   try {
     const userBadges = await db
       .select()

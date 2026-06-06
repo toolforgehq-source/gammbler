@@ -1,13 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { bets } from '../db/schema';
+import { bets, users } from '../db/schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { requireActiveSubscription } from '../middleware/subscription';
+import { attachTier, requirePro } from '../middleware/subscription';
 import { updateAllScores } from '../services/gammbler-score';
 import { checkAndAwardBadges } from '../services/badges';
 import { createFeedEvent } from '../services/feed';
+import { findMatchingEvent, hasGameStarted } from '../services/game-times';
+import { sendBetSettledEmail } from '../services/email';
 import multer from 'multer';
 import { parse } from 'csv-parse/sync';
 
@@ -35,7 +37,7 @@ const settleBetSchema = z.object({
 });
 
 // GET /bets — list user's bets
-router.get('/', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
     const offset = parseInt(req.query.offset as string) || 0;
@@ -66,10 +68,64 @@ router.get('/', authMiddleware, requireActiveSubscription, async (req: Request, 
   }
 });
 
-// POST /bets — create a manual bet
-router.post('/', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+// POST /bets — create a manual bet with pre-game lock enforcement
+router.post('/', authMiddleware, attachTier, async (req: Request, res: Response): Promise<void> => {
   try {
     const body = createBetSchema.parse(req.body);
+    const userId = req.user!.userId;
+    const isPro = req.userTier === 'pro';
+
+    // ── Pre-Game Lock Enforcement (free users only) ──
+    // Free users cannot enter bets after the game has started.
+    // Free users cannot submit already-settled results (win/loss/push) — bets must be 'pending'.
+    // Pro users with SharpSports bypass this (their bets come from the sportsbook directly).
+
+    let eventStartTime: Date | null = null;
+    let oddsApiEventId: string | null = null;
+    let isPregameVerified = false;
+
+    if (!isPro) {
+      // Free users MUST submit bets as 'pending' — no pre-settled results allowed
+      if (body.result !== 'pending') {
+        res.status(403).json({
+          error: 'Free users must submit bets before the game starts. Bets cannot be entered with a result. Upgrade to Pro for automatic bet syncing.',
+          code: 'RESULT_NOT_ALLOWED',
+        });
+        return;
+      }
+
+      // Try to find the matching game and check if it has started
+      const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
+
+      if (matchedEvent) {
+        eventStartTime = matchedEvent.commenceTime;
+        oddsApiEventId = matchedEvent.eventId;
+
+        if (hasGameStarted(matchedEvent.commenceTime)) {
+          res.status(403).json({
+            error: `This game has already started (${matchedEvent.matchedEvent}). Free users can only enter bets before the game begins. Upgrade to Pro for automatic bet syncing via SharpSports.`,
+            code: 'GAME_STARTED',
+            event: matchedEvent.matchedEvent,
+            commence_time: matchedEvent.commenceTime.toISOString(),
+          });
+          return;
+        }
+
+        // Game hasn't started — bet is pre-game verified
+        isPregameVerified = true;
+      }
+      // If no matching event found (e.g. futures, props not tied to a specific game),
+      // allow the bet but mark it as NOT pre-game verified.
+      // These unverified bets carry less weight / can be flagged.
+    } else {
+      // Pro users: still try to match event for data enrichment, but no blocking
+      const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
+      if (matchedEvent) {
+        eventStartTime = matchedEvent.commenceTime;
+        oddsApiEventId = matchedEvent.eventId;
+        isPregameVerified = !hasGameStarted(matchedEvent.commenceTime);
+      }
+    }
 
     const profitLoss = body.result === 'win'
       ? calculatePayout(body.odds, body.stake) - body.stake
@@ -80,7 +136,7 @@ router.post('/', authMiddleware, requireActiveSubscription, async (req: Request,
     const [bet] = await db
       .insert(bets)
       .values({
-        user_id: req.user!.userId,
+        user_id: userId,
         platform: body.platform,
         sport: body.sport,
         league: body.league,
@@ -94,16 +150,23 @@ router.post('/', authMiddleware, requireActiveSubscription, async (req: Request,
         settled_at: body.result !== 'pending' ? new Date() : null,
         event_name: body.event_name,
         parlay_legs: body.parlay_legs,
+        event_start_time: eventStartTime,
+        is_pregame_verified: isPregameVerified,
+        odds_api_event_id: oddsApiEventId,
       })
       .returning();
 
     // Recalculate scores if bet is settled
     if (body.result !== 'pending') {
-      await updateAllScores(req.user!.userId);
-      await checkAndAwardBadges(req.user!.userId);
+      await updateAllScores(userId);
+      await checkAndAwardBadges(userId);
     }
 
-    res.status(201).json({ bet });
+    res.status(201).json({
+      bet,
+      pregame_verified: isPregameVerified,
+      ...(eventStartTime && { event_start_time: eventStartTime.toISOString() }),
+    });
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: 'Validation error', details: err.errors });
@@ -115,7 +178,7 @@ router.post('/', authMiddleware, requireActiveSubscription, async (req: Request,
 });
 
 // PATCH /bets/:id/settle — settle a pending bet
-router.patch('/:id/settle', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const body = settleBetSchema.parse(req.body);
 
@@ -165,6 +228,17 @@ router.patch('/:id/settle', authMiddleware, requireActiveSubscription, async (re
       }, existing.sport);
     }
 
+    // Send bet settled email (fire & forget)
+    const [betUser] = await db
+      .select({ email: users.email, username: users.username })
+      .from(users)
+      .where(eq(users.id, req.user!.userId))
+      .limit(1);
+    if (betUser) {
+      const plStr = profitLoss >= 0 ? `+$${profitLoss.toFixed(2)}` : `-$${Math.abs(profitLoss).toFixed(2)}`;
+      sendBetSettledEmail(betUser.email, betUser.username, existing.selection, body.result, plStr).catch(() => {});
+    }
+
     res.json({ bet: updated });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -176,8 +250,35 @@ router.patch('/:id/settle', authMiddleware, requireActiveSubscription, async (re
   }
 });
 
+// GET /bets/upcoming-events — get upcoming events for a sport (for pre-game bet entry)
+router.get('/upcoming-events', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const sport = req.query.sport as string;
+    if (!sport) {
+      res.status(400).json({ error: 'Sport parameter required' });
+      return;
+    }
+
+    const { getUpcomingEvents } = await import('../services/game-times');
+    const events = await getUpcomingEvents(sport);
+
+    res.json({
+      events: events.map(e => ({
+        id: e.id,
+        home_team: e.home_team,
+        away_team: e.away_team,
+        commence_time: e.commence_time,
+        display: `${e.away_team} @ ${e.home_team}`,
+      })),
+    });
+  } catch (err) {
+    console.error('Upcoming events error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /bets/csv-import — import bets from CSV
-router.post('/csv-import', authMiddleware, requireActiveSubscription, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+router.post('/csv-import', authMiddleware, requirePro, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
@@ -233,7 +334,7 @@ router.post('/csv-import', authMiddleware, requireActiveSubscription, upload.sin
 });
 
 // GET /bets/stats — get user's betting stats
-router.get('/stats', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.get('/stats', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const sport = req.query.sport as string;
     const platform = req.query.platform as string;
@@ -387,6 +488,48 @@ function inferSport(sportStr: string): string {
   if (s.includes('dfs') || s.includes('fantasy')) return 'dfs';
   return 'nfl'; // default
 }
+
+// POST /bets/parse-screenshot — parse a sportsbook screenshot using GPT-4 Vision
+const screenshotUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+});
+
+router.post('/parse-screenshot', authMiddleware, screenshotUpload.single('screenshot'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No screenshot file provided' });
+      return;
+    }
+
+    const { parseScreenshot } = await import('../services/screenshot-parser');
+    const base64Image = req.file.buffer.toString('base64');
+    const parsed = await parseScreenshot(base64Image);
+
+    res.json({
+      success: true,
+      parsed,
+      message: parsed.confidence >= 70
+        ? 'Screenshot parsed successfully. Please review the pre-filled fields.'
+        : 'Low confidence parsing. Please verify all fields carefully.',
+    });
+  } catch (err) {
+    console.error('Screenshot parse error:', err);
+    const message = err instanceof Error ? err.message : 'Failed to parse screenshot';
+    if (message.includes('OPENAI_API_KEY not configured')) {
+      res.status(503).json({ error: 'Screenshot parsing is not yet configured. Please enter your bet manually.' });
+    } else {
+      res.status(500).json({ error: 'Failed to parse screenshot. Please try again or enter your bet manually.' });
+    }
+  }
+});
 
 function inferBetType(typeStr: string): string {
   const t = typeStr.toLowerCase();

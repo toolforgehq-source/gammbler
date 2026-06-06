@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { feedAPI } from '@/lib/api';
-import { Flame, TrendingUp, Zap, Award, BarChart3, Link2, Trophy } from 'lucide-react';
+import { Flame, TrendingUp, Zap, Award, BarChart3, Link2, Trophy, Target, Swords } from 'lucide-react';
 import Link from 'next/link';
 
 interface FeedItem {
@@ -25,6 +25,8 @@ const EVENT_ICONS: Record<string, typeof Flame> = {
   score_high: BarChart3,
   sportsbook_connected: Link2,
   weekly_leader: Trophy,
+  h2h_challenge: Target,
+  h2h_result: Swords,
 };
 
 const EVENT_EMOJIS: Record<string, string> = {
@@ -35,6 +37,8 @@ const EVENT_EMOJIS: Record<string, string> = {
   score_high: '📊',
   sportsbook_connected: '🔗',
   weekly_leader: '👑',
+  h2h_challenge: '🎯',
+  h2h_result: '⚔️',
 };
 
 function timeAgo(dateStr: string): string {

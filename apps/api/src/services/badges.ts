@@ -3,6 +3,34 @@ import { bets, badges, gammblerScores, sportsbookConnections, users } from '../d
 import { eq, and, desc, sql, inArray, gte } from 'drizzle-orm';
 import { BadgeType } from '@gammbler/shared';
 import { createFeedEvent } from './feed';
+import { sendBadgeEarnedEmail } from './email';
+
+const BADGE_DISPLAY: Record<string, { name: string; description: string }> = {
+  first_win: { name: 'First Win', description: 'Won your first bet on Gammbler' },
+  sharp_shooter: { name: 'Sharp Shooter', description: 'Achieved a 60%+ win rate over 50+ bets' },
+  elite_status: { name: 'Elite Status', description: 'Reached Elite tier (76+ Gammbler Score)' },
+  legend: { name: 'Legend', description: 'Reached Legend tier (91+ Gammbler Score)' },
+  profitable_month: { name: 'Profitable Month', description: 'Finished a month with positive ROI' },
+  profitable_quarter: { name: 'Profitable Quarter', description: 'Finished a quarter with positive ROI' },
+  consistent: { name: 'Consistent', description: 'Placed bets in 4 consecutive weeks' },
+  hot_streak: { name: 'Hot Streak', description: 'Won 5 bets in a row' },
+  on_fire: { name: 'On Fire', description: 'Won 10 bets in a row' },
+  unstoppable: { name: 'Unstoppable', description: 'Won 15 bets in a row' },
+  nfl_sharp: { name: 'NFL Sharp', description: 'Achieved Sharp tier or higher in NFL' },
+  nba_sharp: { name: 'NBA Sharp', description: 'Achieved Sharp tier or higher in NBA' },
+  mlb_sharp: { name: 'MLB Sharp', description: 'Achieved Sharp tier or higher in MLB' },
+  nhl_sharp: { name: 'NHL Sharp', description: 'Achieved Sharp tier or higher in NHL' },
+  cfb_sharp: { name: 'CFB Sharp', description: 'Achieved Sharp tier or higher in College Football' },
+  cbb_sharp: { name: 'CBB Sharp', description: 'Achieved Sharp tier or higher in College Basketball' },
+  connected: { name: 'Connected', description: 'Connected your first sportsbook' },
+  all_in: { name: 'All In', description: 'Connected 3+ sportsbooks' },
+  diversified: { name: 'Diversified', description: 'Placed bets in 5+ different sports' },
+  veteran: { name: 'Veteran', description: 'Been a Gammbler member for 1+ year' },
+  h2h_first_win: { name: 'H2H First Win', description: 'Won your first head-to-head challenge' },
+  h2h_streak_3: { name: 'H2H 3-Win Streak', description: 'Won 3 head-to-head challenges in a row' },
+  h2h_streak_5: { name: 'H2H 5-Win Streak', description: 'Won 5 head-to-head challenges in a row' },
+  h2h_champion: { name: 'H2H Champion', description: 'Won 10 or more head-to-head challenges' },
+};
 
 export async function checkAndAwardBadges(userId: string): Promise<string[]> {
   const awarded: string[] = [];
@@ -154,6 +182,17 @@ async function awardBadge(userId: string, badgeType: string): Promise<string> {
   }).onConflictDoNothing();
 
   await createFeedEvent(userId, 'badge_earned', { badge: badgeType });
+
+  // Send badge email (fire & forget)
+  const [user] = await db
+    .select({ email: users.email, username: users.username })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (user) {
+    const display = BADGE_DISPLAY[badgeType] || { name: badgeType, description: '' };
+    sendBadgeEarnedEmail(user.email, user.username, display.name, display.description).catch(() => {});
+  }
 
   return badgeType;
 }

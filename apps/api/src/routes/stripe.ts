@@ -5,6 +5,11 @@ import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { env } from '../config/env';
+import {
+  sendSubscriptionConfirmedEmail,
+  sendPaymentFailedEmail,
+  sendSubscriptionCancelledEmail,
+} from '../services/email';
 
 const router = Router();
 
@@ -129,30 +134,45 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
         else if (subscription.status === 'past_due') status = 'past_due';
         else if (subscription.status === 'canceled' || subscription.status === 'unpaid') status = 'cancelled';
 
-        await db
+        const [updatedUser] = await db
           .update(users)
           .set({ subscription_status: status })
-          .where(eq(users.stripe_customer_id, customerId));
+          .where(eq(users.stripe_customer_id, customerId))
+          .returning({ email: users.email, username: users.username });
+
+        if (updatedUser && status === 'active' && event.type === 'customer.subscription.created') {
+          sendSubscriptionConfirmedEmail(updatedUser.email, updatedUser.username).catch(() => {});
+        }
         break;
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-        await db
+        const delSub = event.data.object as Stripe.Subscription;
+        const delCustomerId = delSub.customer as string;
+        const [cancelledUser] = await db
           .update(users)
           .set({ subscription_status: 'cancelled' })
-          .where(eq(users.stripe_customer_id, customerId));
+          .where(eq(users.stripe_customer_id, delCustomerId))
+          .returning({ email: users.email, username: users.username });
+
+        if (cancelledUser) {
+          sendSubscriptionCancelledEmail(cancelledUser.email, cancelledUser.username).catch(() => {});
+        }
         break;
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
-        await db
+        const failedInvoice = event.data.object as Stripe.Invoice;
+        const failedCustomerId = failedInvoice.customer as string;
+        const [pastDueUser] = await db
           .update(users)
           .set({ subscription_status: 'past_due' })
-          .where(eq(users.stripe_customer_id, customerId));
+          .where(eq(users.stripe_customer_id, failedCustomerId))
+          .returning({ email: users.email, username: users.username });
+
+        if (pastDueUser) {
+          sendPaymentFailedEmail(pastDueUser.email, pastDueUser.username).catch(() => {});
+        }
         break;
       }
 

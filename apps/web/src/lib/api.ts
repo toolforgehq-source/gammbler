@@ -56,6 +56,12 @@ export const betsAPI = {
     return api.post('/bets/csv-import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
+  upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
+  parseScreenshot: (file: File) => {
+    const form = new FormData();
+    form.append('screenshot', file);
+    return api.post('/bets/parse-screenshot', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // Scores
@@ -83,6 +89,7 @@ export const profileAPI = {
   update: (data: Record<string, unknown>) => api.patch('/profile', data),
   follow: (userId: string) => api.post(`/profile/follow/${userId}`),
   unfollow: (userId: string) => api.delete(`/profile/follow/${userId}`),
+  scoreHistory: (username: string) => api.get(`/profile/${username}/score-history`),
 };
 
 // Notifications
@@ -119,4 +126,97 @@ export const insightsAPI = {
 export const badgesAPI = {
   get: () => api.get('/badges'),
   getAll: () => api.get('/badges/all'),
+};
+
+// Bet Slips (Live Bet Slip Sharing)
+export const slipsAPI = {
+  feed: (params?: Record<string, string>) => api.get('/slips', { params }),
+  mine: (params?: Record<string, string>) => api.get('/slips/mine', { params }),
+  get: (id: string) => api.get(`/slips/${id}`),
+  create: (data: {
+    title: string;
+    description?: string;
+    sport: string;
+    bet_type: string;
+    selection: string;
+    odds: number;
+    stake: number;
+    platform: string;
+    event_name?: string;
+    parlay_legs?: number;
+    bet_id?: string;
+    is_public?: boolean;
+  }) => api.post('/slips', data),
+  settle: (id: string, data: { result: string; profit_loss?: number }) =>
+    api.patch(`/slips/${id}/settle`, data),
+  react: (id: string, reaction: string) => api.post(`/slips/${id}/react`, { reaction }),
+  share: (id: string) => api.post(`/slips/${id}/share`),
+  cardUrl: (id: string) => `${api.defaults.baseURL}/slips/${id}/card`,
+  delete: (id: string) => api.delete(`/slips/${id}`),
+};
+
+// Cappers (Tail This)
+export const cappersAPI = {
+  list: (params?: Record<string, string>) => api.get('/cappers', { params }),
+  get: (userId: string) => api.get(`/cappers/${userId}`),
+  apply: () => api.post('/cappers/apply'),
+  updateProfile: (data: { display_name?: string; bio?: string; price_cents?: number }) =>
+    api.patch('/cappers/me', data),
+  subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
+  unsubscribe: (userId: string) => api.delete(`/cappers/${userId}/subscribe`),
+  tail: (slipId: string) => api.post(`/cappers/tail/${slipId}`),
+  mySubscribers: () => api.get('/cappers/me/subscribers'),
+  myEarnings: () => api.get('/cappers/me/earnings'),
+};
+
+// Shareable Cards
+export const shareableAPI = {
+  generateCard: (sport: string = 'overall') =>
+    api.post('/shareable/card', { sport }, { responseType: 'blob' }),
+  cardStatus: () => api.get('/shareable/card-status'),
+  h2hCard: (challenge_id: string) =>
+    api.post('/shareable/h2h-card', { challenge_id }, { responseType: 'blob' }),
+};
+
+// Challenges (Head-to-Head)
+export const challengesAPI = {
+  list: (params?: Record<string, string>) => api.get('/challenges', { params }),
+  get: (id: string) => api.get(`/challenges/${id}`),
+  stats: () => api.get('/challenges/stats'),
+  create: (data: {
+    challengee_username: string;
+    sport: string;
+    event_name: string;
+    event_start_time?: string;
+    challenger_pick: string;
+    message?: string;
+    stake_display?: string;
+  }) => api.post('/challenges', data),
+  accept: (id: string, pick: string) => api.patch(`/challenges/${id}/accept`, { pick }),
+  decline: (id: string) => api.patch(`/challenges/${id}/decline`),
+  cancel: (id: string) => api.patch(`/challenges/${id}/cancel`),
+  settle: (id: string, winner_id: string) => api.patch(`/challenges/${id}/settle`, { winner_id }),
+  searchUsers: (q: string) => api.get('/challenges/search-users', { params: { q } }),
+};
+
+// Leagues
+export const leaguesAPI = {
+  list: () => api.get('/leagues'),
+  get: (id: string) => api.get(`/leagues/${id}`),
+  create: (data: {
+    name: string;
+    sport: string;
+    season_name?: string;
+    season_start: string;
+    season_end: string;
+    min_bets_per_week?: number;
+    max_members?: number;
+  }) => api.post('/leagues', data),
+  join: (invite_code: string) => api.post('/leagues/join', { invite_code }),
+  leave: (id: string) => api.delete(`/leagues/${id}/leave`),
+  delete: (id: string) => api.delete(`/leagues/${id}`),
+  updateSettings: (id: string, data: Record<string, unknown>) => api.put(`/leagues/${id}/settings`, data),
+  weekly: (id: string, week?: number) => api.get(`/leagues/${id}/weekly`, { params: week ? { week } : undefined }),
+  awards: (id: string) => api.get(`/leagues/${id}/awards`),
+  kick: (id: string, target_user_id: string) => api.post(`/leagues/${id}/kick`, { target_user_id }),
 };

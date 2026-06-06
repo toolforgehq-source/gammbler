@@ -3,35 +3,54 @@ import { db } from '../db';
 import { gammblerScores, users } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { requireActiveSubscription } from '../middleware/subscription';
+import { attachTier, requirePro } from '../middleware/subscription';
 
 const router = Router();
 
-// GET /scores — get all scores for current user
-router.get('/', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+// GET /scores — free users get overall only, pro gets all
+router.get('/', authMiddleware, attachTier, async (req: Request, res: Response): Promise<void> => {
   try {
     const scores = await db
       .select()
       .from(gammblerScores)
       .where(eq(gammblerScores.user_id, req.user!.userId));
 
-    res.json({ scores });
+    if (req.userTier === 'free') {
+      const overall = scores.find((s) => s.sport === 'overall');
+      const locked = scores
+        .filter((s) => s.sport !== 'overall')
+        .map((s) => ({ sport: s.sport, score: null, is_unlocked: false, settled_bet_count: s.settled_bet_count, locked: true }));
+      res.json({
+        scores: overall ? [overall, ...locked] : locked,
+        tier: 'free',
+      });
+      return;
+    }
+
+    res.json({ scores, tier: 'pro' });
   } catch (err) {
     console.error('Get scores error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /scores/:sport — get specific sport score for current user
-router.get('/:sport', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+// GET /scores/:sport — pro only for sport-specific scores
+router.get('/:sport', authMiddleware, attachTier, async (req: Request, res: Response): Promise<void> => {
   try {
+    const sport = req.params.sport;
+
+    if (req.userTier === 'free' && sport !== 'overall') {
+      res.status(403).json({ error: 'Pro subscription required for sport-specific scores', upgrade: true });
+      return;
+    }
+
     const [score] = await db
       .select()
       .from(gammblerScores)
       .where(
         and(
           eq(gammblerScores.user_id, req.user!.userId),
-          eq(gammblerScores.sport, req.params.sport as any)
+          eq(gammblerScores.sport, sport as any)
         )
       )
       .limit(1);
@@ -73,7 +92,6 @@ router.get('/user/:userId', authMiddleware, async (req: Request, res: Response):
       .from(gammblerScores)
       .where(eq(gammblerScores.user_id, req.params.userId));
 
-    // If profile is private, only show score values (no detailed breakdown)
     if (!user.is_profile_public) {
       const publicScores = scores.map((s) => ({
         sport: s.sport,

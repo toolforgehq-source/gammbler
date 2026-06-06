@@ -3,12 +3,12 @@ import { db } from '../db';
 import { feedEvents, follows, users, gammblerScores } from '../db/schema';
 import { eq, and, desc, inArray, sql, or } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { requireActiveSubscription } from '../middleware/subscription';
+import { attachTier } from '../middleware/subscription';
 
 const router = Router();
 
 // GET /feed — get community feed
-router.get('/', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
     const limit = Math.min(parseInt(req.query.limit as string) || 30, 50);
@@ -84,7 +84,7 @@ function formatFeedEvent(
     case 'parlay_hit':
       return `${username} just hit a ${data.legs} leg parlay`;
     case 'rank_up':
-      return `${username} moved up to #${data.rank} in ${(sport || 'Overall').toUpperCase()} rankings`;
+      return `${username} moved up to #${data.new_rank ?? data.rank} in ${(sport || 'Overall').toUpperCase()} rankings`;
     case 'win_streak':
       return `${username} is on a ${data.streak} bet winning streak`;
     case 'badge_earned':
@@ -95,6 +95,10 @@ function formatFeedEvent(
       return `${username} just connected their ${formatPlatformName(data.platform)} account`;
     case 'weekly_leader':
       return `New week, new leaderboard. ${username} is currently #1 among your friends`;
+    case 'h2h_challenge':
+      return `${username} challenged @${data.challengee_username || 'someone'} on ${data.event_name || 'a game'}`;
+    case 'h2h_result':
+      return `${username} won a head-to-head vs @${data.loser_username || 'opponent'} on ${data.event_name || 'a game'}`;
     default:
       return `${username} had activity on Gammbler`;
   }

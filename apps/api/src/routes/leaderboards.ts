@@ -3,12 +3,12 @@ import { db } from '../db';
 import { gammblerScores, follows, users } from '../db/schema';
 import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { requireActiveSubscription } from '../middleware/subscription';
+import { requirePro, attachTier } from '../middleware/subscription';
 
 const router = Router();
 
-// GET /leaderboards/:sport/friends — friend leaderboard for a sport
-router.get('/:sport/friends', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+// GET /leaderboards/:sport/friends — PRO ONLY
+router.get('/:sport/friends', authMiddleware, requirePro, async (req: Request, res: Response): Promise<void> => {
   try {
     const sport = req.params.sport;
     const userId = req.user!.userId;
@@ -76,8 +76,8 @@ router.get('/:sport/friends', authMiddleware, requireActiveSubscription, async (
   }
 });
 
-// GET /leaderboards/:sport/national — national leaderboard for a sport
-router.get('/:sport/national', authMiddleware, requireActiveSubscription, async (req: Request, res: Response): Promise<void> => {
+// GET /leaderboards/:sport/national — free + pro
+router.get('/:sport/national', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const sport = req.params.sport;
     const userId = req.user!.userId;

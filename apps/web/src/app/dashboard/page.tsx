@@ -1,19 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { scoresAPI, betsAPI, insightsAPI } from '@/lib/api';
+import { scoresAPI, betsAPI, insightsAPI, shareableAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { TrendingUp, TrendingDown, Target, Zap, BarChart3, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, ChevronRight, Lock, Download } from 'lucide-react';
 import Link from 'next/link';
+import UpgradeBanner from '@/components/ui/UpgradeBanner';
 
 interface Score {
   sport: string;
-  score: string;
+  score: string | null;
   is_unlocked: boolean;
   settled_bet_count: number;
-  score_change_today: string;
-  win_rate: string;
-  roi: string;
+  score_change_today?: string;
+  win_rate?: string;
+  roi?: string;
+  locked?: boolean;
 }
 
 interface Stats {
@@ -81,18 +83,23 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [timeFilter, setTimeFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [tier, setTier] = useState<'free' | 'pro'>(user?.tier || 'free');
+  const [cardStatus, setCardStatus] = useState<{ unlimited: boolean; cards_remaining: number | null } | null>(null);
+  const [generatingCard, setGeneratingCard] = useState(false);
+  const [cardError, setCardError] = useState('');
 
   useEffect(() => {
     async function fetchData() {
       try {
         const [scoresRes, statsRes, insightsRes] = await Promise.all([
-          scoresAPI.getAll().catch(() => ({ data: { scores: [] } })),
+          scoresAPI.getAll().catch(() => ({ data: { scores: [], tier: 'free' } })),
           betsAPI.stats({ time: timeFilter }).catch(() => ({ data: null })),
           insightsAPI.get().catch(() => ({ data: { insights: [] } })),
         ]);
         setScores(scoresRes.data.scores || []);
         setStats(statsRes.data);
         setInsights(insightsRes.data?.insights || []);
+        if (scoresRes.data.tier) setTier(scoresRes.data.tier);
       } catch {
         // handled by individual catches
       } finally {
@@ -102,9 +109,42 @@ export default function DashboardPage() {
     fetchData();
   }, [timeFilter]);
 
+  useEffect(() => {
+    shareableAPI.cardStatus()
+      .then(res => setCardStatus(res.data))
+      .catch(() => {});
+  }, []);
+
+  const handleGenerateCard = async () => {
+    setGeneratingCard(true);
+    setCardError('');
+    try {
+      const res = await shareableAPI.generateCard('overall');
+      const blob = new Blob([res.data], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gammbler-score.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      // Refresh card status after generation
+      shareableAPI.cardStatus().then(r => setCardStatus(r.data)).catch(() => {});
+    } catch (err: unknown) {
+      const errData = (err as { response?: { data?: Blob } })?.response?.data;
+      if (errData instanceof Blob) {
+        const text = await errData.text();
+        try { setCardError(JSON.parse(text).message || 'Failed to generate card'); } catch { setCardError('Failed to generate card'); }
+      } else {
+        setCardError('Failed to generate card');
+      }
+    } finally {
+      setGeneratingCard(false);
+    }
+  };
+
   const overallScore = scores.find((s) => s.sport === 'overall');
   const sportScores = scores.filter((s) => s.sport !== 'overall');
-  const scoreVal = overallScore ? parseFloat(overallScore.score) : 0;
+  const scoreVal = overallScore?.score ? parseFloat(overallScore.score) : 0;
   const scoreChange = overallScore ? parseFloat(overallScore.score_change_today || '0') : 0;
 
   if (loading) {
@@ -157,10 +197,31 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <div className="w-32 h-32 rounded-full border-4 border-accent/30 flex items-center justify-center">
-            <span className={`text-4xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
-              {overallScore?.is_unlocked ? scoreVal.toFixed(0) : '?'}
-            </span>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-32 h-32 rounded-full border-4 border-accent/30 flex items-center justify-center">
+              <span className={`text-4xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
+                {overallScore?.is_unlocked ? scoreVal.toFixed(0) : '?'}
+              </span>
+            </div>
+            {overallScore?.is_unlocked && (
+              <button
+                onClick={handleGenerateCard}
+                disabled={generatingCard || (cardStatus !== null && !cardStatus.unlimited && cardStatus.cards_remaining === 0)}
+                className="flex items-center gap-2 px-4 py-2 bg-accent/20 text-accent rounded-lg text-xs font-semibold hover:bg-accent/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                <Download size={14} />
+                {generatingCard ? 'GENERATING...' : 'SHARE SCORE'}
+              </button>
+            )}
+            {cardStatus && !cardStatus.unlimited && (
+              <p className="text-xs text-muted-dark">
+                {cardStatus.cards_remaining === 0
+                  ? 'Monthly card used — upgrade for unlimited'
+                  : `${cardStatus.cards_remaining} free card this month`}
+              </p>
+            )}
+            {cardError && <p className="text-xs text-loss">{cardError}</p>}
           </div>
         </div>
       </div>
@@ -169,12 +230,13 @@ export default function DashboardPage() {
       <div className="overflow-x-auto pb-2">
         <div className="flex gap-4 min-w-max">
           {sportScores.map((s) => {
-            const val = parseFloat(s.score);
+            const val = s.score ? parseFloat(s.score) : 0;
+            const isLocked = s.locked;
             return (
               <div
                 key={s.sport}
-                className={`bg-card border border-accent/20 rounded-lg p-4 min-w-[140px] ${
-                  !s.is_unlocked ? 'opacity-50' : ''
+                className={`bg-card border rounded-lg p-4 min-w-[140px] ${
+                  isLocked ? 'border-accent/10 opacity-60' : !s.is_unlocked ? 'border-accent/20 opacity-50' : 'border-accent/20'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -182,8 +244,11 @@ export default function DashboardPage() {
                   <span className="text-xs uppercase tracking-wider text-muted-dark font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
                     {SPORT_LABELS[s.sport] || s.sport}
                   </span>
+                  {isLocked && <Lock size={12} className="text-accent ml-auto" />}
                 </div>
-                {s.is_unlocked ? (
+                {isLocked ? (
+                  <p className="text-xs text-accent">Pro only</p>
+                ) : s.is_unlocked ? (
                   <p className={`text-2xl font-bold ${getScoreColor(val)}`} style={{ fontFamily: 'var(--font-number)' }}>
                     {val.toFixed(1)}
                   </p>
@@ -196,6 +261,11 @@ export default function DashboardPage() {
             );
           })}
         </div>
+        {tier === 'free' && (
+          <div className="mt-3">
+            <UpgradeBanner feature="Unlock all 10 sport-specific scores" compact />
+          </div>
+        )}
       </div>
 
       {/* Quick Stats Row */}
@@ -256,7 +326,22 @@ export default function DashboardPage() {
       </div>
 
       {/* Insights */}
-      {insights.length > 0 && (
+      {tier === 'free' ? (
+        <Link href="/dashboard/insights" className="block bg-card border border-accent/20 rounded-lg p-5 hover:border-accent/40 transition-colors">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                <BarChart3 size={20} className="text-accent" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Personalized Insights Waiting</p>
+                <p className="text-xs text-muted-dark mt-0.5">See which sports you&apos;re strongest and weakest in — then unlock the full analysis with Pro</p>
+              </div>
+            </div>
+            <ChevronRight size={20} className="text-accent" />
+          </div>
+        </Link>
+      ) : insights.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg uppercase tracking-wider font-bold" style={{ fontFamily: 'var(--font-display)' }}>
