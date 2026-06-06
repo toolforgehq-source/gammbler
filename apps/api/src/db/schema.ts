@@ -498,3 +498,110 @@ export const weeklyReports = pgTable('weekly_reports', {
 }, (table) => ({
   userWeekUnique: uniqueIndex('reports_user_week_unique').on(table.user_id, table.week_start),
 }));
+
+// ── DFS (Daily Fantasy Sports) ───────────────────────────────
+
+export const dfsSportEnum = pgEnum('dfs_sport', [
+  'overall', 'nfl', 'nba', 'mlb', 'nhl', 'pga', 'nascar', 'soccer', 'mma', 'cfb', 'cbb',
+]);
+
+export const dfsContestTypeEnum = pgEnum('dfs_contest_type', [
+  'cash', 'gpp', 'h2h', 'fifty_fifty', 'multiplier', 'satellite', 'other',
+]);
+
+export const dfsPlatformEnum = pgEnum('dfs_platform', [
+  'draftkings', 'fanduel', 'yahoo', 'underdog', 'prizepicks', 'other',
+]);
+
+export const dfsBadgeTypeEnum = pgEnum('dfs_badge_type', [
+  'dfs_first_cash', 'dfs_sharp', 'dfs_elite', 'dfs_legend',
+  'dfs_profitable_month', 'dfs_profitable_quarter', 'dfs_consistent',
+  'dfs_hot_streak', 'dfs_on_fire', 'dfs_unstoppable',
+  'dfs_nfl_sharp', 'dfs_nba_sharp', 'dfs_mlb_sharp', 'dfs_nhl_sharp',
+  'dfs_pga_sharp', 'dfs_nascar_sharp',
+  'dfs_gpp_winner', 'dfs_grinder', 'dfs_diversified',
+]);
+
+export const dfsContests = pgTable('dfs_contests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: dfsPlatformEnum('platform').notNull(),
+  sport: dfsSportEnum('sport').notNull(),
+  contest_type: dfsContestTypeEnum('contest_type').notNull(),
+  contest_name: text('contest_name'),
+  contest_id: varchar('contest_id', { length: 255 }),
+  entry_fee_cents: integer('entry_fee_cents').notNull(),
+  payout_cents: integer('payout_cents').default(0).notNull(),
+  entries: integer('entries'),
+  finish_position: integer('finish_position'),
+  total_entries: integer('total_entries'),
+  points_scored: numeric('points_scored', { precision: 10, scale: 2 }),
+  is_manual: boolean('is_manual').default(false).notNull(),
+  is_csv_import: boolean('is_csv_import').default(false).notNull(),
+  contest_date: timestamp('contest_date', { withTimezone: true }).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('dfs_contests_user_idx').on(table.user_id),
+  sportIdx: index('dfs_contests_sport_idx').on(table.sport),
+  contestTypeIdx: index('dfs_contests_type_idx').on(table.contest_type),
+  platformIdx: index('dfs_contests_platform_idx').on(table.platform),
+  userSportIdx: index('dfs_contests_user_sport_idx').on(table.user_id, table.sport),
+  contestDateIdx: index('dfs_contests_date_idx').on(table.contest_date),
+}));
+
+export const dfsScores = pgTable('dfs_scores', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sport: dfsSportEnum('sport').notNull(),
+  score: numeric('score', { precision: 5, scale: 1 }).default('0').notNull(),
+  roi: numeric('roi', { precision: 10, scale: 4 }).default('0'),
+  cash_rate: numeric('cash_rate', { precision: 7, scale: 4 }).default('0'),
+  consistency: numeric('consistency', { precision: 7, scale: 4 }).default('0'),
+  volume_score: numeric('volume_score', { precision: 7, scale: 4 }).default('0'),
+  diversity_score: numeric('diversity_score', { precision: 7, scale: 4 }).default('0'),
+  total_contests: integer('total_contests').default(0).notNull(),
+  total_entry_fees_cents: integer('total_entry_fees_cents').default(0).notNull(),
+  total_payouts_cents: integer('total_payouts_cents').default(0).notNull(),
+  is_unlocked: boolean('is_unlocked').default(false).notNull(),
+  calculated_at: timestamp('calculated_at', { withTimezone: true }).defaultNow().notNull(),
+  previous_score: numeric('previous_score', { precision: 5, scale: 1 }),
+  score_change_today: numeric('score_change_today', { precision: 5, scale: 1 }).default('0'),
+}, (table) => ({
+  userSportUnique: uniqueIndex('dfs_scores_user_sport_unique').on(table.user_id, table.sport),
+  scoreIdx: index('dfs_scores_score_idx').on(table.score),
+  sportIdx: index('dfs_scores_sport_idx').on(table.sport),
+}));
+
+export const dfsScoreSnapshots = pgTable('dfs_score_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sport: dfsSportEnum('sport').notNull(),
+  score: numeric('score', { precision: 5, scale: 1 }).notNull(),
+  snapshot_date: timestamp('snapshot_date', { withTimezone: true }).notNull(),
+}, (table) => ({
+  userSportDateUnique: uniqueIndex('dfs_snapshots_user_sport_date').on(table.user_id, table.sport, table.snapshot_date),
+  userIdx: index('dfs_snapshots_user_idx').on(table.user_id),
+  dateIdx: index('dfs_snapshots_date_idx').on(table.snapshot_date),
+}));
+
+export const dfsBadges = pgTable('dfs_badges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  badge_type: dfsBadgeTypeEnum('badge_type').notNull(),
+  earned_at: timestamp('earned_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userBadgeUnique: uniqueIndex('dfs_badges_user_type_unique').on(table.user_id, table.badge_type),
+  userIdx: index('dfs_badges_user_idx').on(table.user_id),
+}));
+
+export const dfsCsvImports = pgTable('dfs_csv_imports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: dfsPlatformEnum('platform').notNull(),
+  file_name: varchar('file_name', { length: 255 }).notNull(),
+  rows_imported: integer('rows_imported').default(0).notNull(),
+  rows_skipped: integer('rows_skipped').default(0).notNull(),
+  imported_at: timestamp('imported_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('dfs_csv_imports_user_idx').on(table.user_id),
+}));

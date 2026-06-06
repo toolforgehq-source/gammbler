@@ -20,6 +20,7 @@ import {
   Heart,
   DollarSign,
   Swords,
+  Upload,
 } from 'lucide-react';
 
 const leaderboardData = [
@@ -1098,6 +1099,131 @@ export default function HomePage() {
               ))}
             </div>
             <p className="text-xs text-[#6b6b6b] mt-6">+ CSV import for any platform &middot; Manual entry always available</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ========== DFS SCORE ========== */}
+      <div className="section-divider" />
+      <section className="py-24 md:py-32 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+              Now Tracking DFS
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+              Your{' '}<span className="text-gradient">DFS Score</span>
+            </h2>
+            <p className="text-[#9e9e9e] max-w-xl mx-auto">
+              Play on DraftKings or FanDuel? Get a verified DFS Score that proves your edge. Completely separate from your Betting Score — two reputations, one platform.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+            {/* DFS Score Card */}
+            <div className="glass-card rounded-2xl p-8">
+              <div className="flex items-start gap-6">
+                <div className="text-center">
+                  <p className="text-xs text-[#9e9e9e] uppercase tracking-widest mb-2">DFS Score</p>
+                  <div className="relative w-32 h-32">
+                    <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
+                      <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+                      <circle cx="60" cy="60" r="52" fill="none" stroke="#4caf50" strokeWidth="8"
+                        strokeLinecap="round" strokeDasharray={`${(83.6 / 100) * 327} 327`} />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>83.6</span>
+                      <span className="text-xs font-semibold text-purple-400">Elite</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/[0.04] rounded-lg p-3">
+                      <p className="text-[10px] text-[#6b6b6b] uppercase">Contest ROI</p>
+                      <p className="text-lg font-bold text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>+14.2%</p>
+                    </div>
+                    <div className="bg-white/[0.04] rounded-lg p-3">
+                      <p className="text-[10px] text-[#6b6b6b] uppercase">Cash Rate</p>
+                      <p className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>58.3%</p>
+                    </div>
+                    <div className="bg-white/[0.04] rounded-lg p-3">
+                      <p className="text-[10px] text-[#6b6b6b] uppercase">Contests</p>
+                      <p className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>347</p>
+                    </div>
+                    <div className="bg-white/[0.04] rounded-lg p-3">
+                      <p className="text-[10px] text-[#6b6b6b] uppercase">Net Profit</p>
+                      <p className="text-lg font-bold text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>+$4,218</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sport-specific DFS scores */}
+              <div className="grid grid-cols-6 gap-2 mt-6">
+                {[
+                  { sport: 'NFL', score: 87.2, color: '#FFD700' },
+                  { sport: 'NBA', score: 79.1, color: '#4caf50' },
+                  { sport: 'MLB', score: 72.4, color: '#4caf50' },
+                  { sport: 'PGA', score: 65.8, color: '#4caf50' },
+                  { sport: 'NHL', score: 58.3, color: '#42a5f5' },
+                  { sport: 'NASCAR', score: 51.2, color: '#42a5f5' },
+                ].map((s) => (
+                  <div key={s.sport} className="bg-white/[0.04] rounded-lg p-2 text-center">
+                    <p className="text-[10px] text-[#6b6b6b] uppercase">{s.sport}</p>
+                    <p className="text-sm font-bold" style={{ color: s.color, fontFamily: 'var(--font-number)' }}>{s.score}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* DFS Features */}
+            <div className="space-y-5">
+              <div className="glass-card rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#4caf50]/10 flex items-center justify-center">
+                    <Upload size={18} className="text-[#4caf50]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>CSV Import</h3>
+                    <p className="text-xs text-[#6b6b6b]">One upload = instant DFS Score</p>
+                  </div>
+                </div>
+                <p className="text-sm text-[#9e9e9e]">
+                  Export your contest history from DraftKings or FanDuel and upload it. We parse hundreds of contests and calculate your DFS Score in seconds.
+                </p>
+              </div>
+
+              <div className="glass-card rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#4caf50]/10 flex items-center justify-center">
+                    <Trophy size={18} className="text-[#4caf50]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>Separate Leaderboards</h3>
+                    <p className="text-xs text-[#6b6b6b]">DFS has its own rankings</p>
+                  </div>
+                </div>
+                <p className="text-sm text-[#9e9e9e]">
+                  National DFS leaderboard + sport-specific rankings (NFL DFS, NBA DFS, MLB DFS, and more). Your DFS reputation stays separate from betting.
+                </p>
+              </div>
+
+              <div className="glass-card rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#4caf50]/10 flex items-center justify-center">
+                    <Crown size={18} className="text-[#4caf50]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>DFS Cappers</h3>
+                    <p className="text-xs text-[#6b6b6b]">Sell your lineups with a verified score</p>
+                  </div>
+                </div>
+                <p className="text-sm text-[#9e9e9e]">
+                  Hit 80+ DFS Score? Become a DFS Capper and sell your daily lineup builds. Subscribers get your core plays — backed by a verified track record.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
