@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { gammblerScores, users } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { attachTier, requirePro } from '../middleware/subscription';
 
@@ -30,6 +30,61 @@ router.get('/', authMiddleware, attachTier, async (req: Request, res: Response):
     res.json({ scores, tier: 'pro' });
   } catch (err) {
     console.error('Get scores error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /scores/my-rank — get user's overall national rank
+router.get('/my-rank', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+
+    const [userScore] = await db
+      .select({
+        score: gammblerScores.score,
+        is_unlocked: gammblerScores.is_unlocked,
+      })
+      .from(gammblerScores)
+      .where(
+        and(
+          eq(gammblerScores.user_id, userId),
+          eq(gammblerScores.sport, 'overall' as any)
+        )
+      )
+      .limit(1);
+
+    if (!userScore || !userScore.is_unlocked) {
+      res.json({ rank: null, total_ranked: 0 });
+      return;
+    }
+
+    const [countAbove] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(gammblerScores)
+      .where(
+        and(
+          eq(gammblerScores.sport, 'overall' as any),
+          eq(gammblerScores.is_unlocked, true),
+          sql`${gammblerScores.score} > ${userScore.score}`
+        )
+      );
+
+    const [totalRanked] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(gammblerScores)
+      .where(
+        and(
+          eq(gammblerScores.sport, 'overall' as any),
+          eq(gammblerScores.is_unlocked, true)
+        )
+      );
+
+    res.json({
+      rank: (countAbove?.count || 0) + 1,
+      total_ranked: totalRanked?.count || 0,
+    });
+  } catch (err) {
+    console.error('Get my rank error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

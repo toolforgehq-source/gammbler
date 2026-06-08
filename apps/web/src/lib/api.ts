@@ -69,6 +69,7 @@ export const scoresAPI = {
   getAll: () => api.get('/scores'),
   getBySport: (sport: string) => api.get(`/scores/${sport}`),
   getForUser: (userId: string) => api.get(`/scores/user/${userId}`),
+  getMyRank: () => api.get('/scores/my-rank'),
 };
 
 // Leaderboards
