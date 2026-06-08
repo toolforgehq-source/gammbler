@@ -199,6 +199,48 @@ export const challengesAPI = {
   searchUsers: (q: string) => api.get('/challenges/search-users', { params: { q } }),
 };
 
+// DFS (Daily Fantasy Sports)
+export const dfsAPI = {
+  // Contests
+  addContest: (data: {
+    platform: string;
+    sport: string;
+    contest_type: string;
+    contest_name?: string;
+    entry_fee: number;
+    payout: number;
+    finish_position?: number;
+    total_entries?: number;
+    points_scored?: number;
+    contest_date: string;
+  }) => api.post('/dfs/contests', data),
+  listContests: (params?: Record<string, string>) => api.get('/dfs/contests', { params }),
+  stats: () => api.get('/dfs/stats'),
+
+  // Scores
+  getScores: () => api.get('/dfs/scores'),
+  getUserScores: (userId: string) => api.get(`/dfs/scores/user/${userId}`),
+
+  // Leaderboards
+  nationalLeaderboard: (sport: string, params?: Record<string, string>) =>
+    api.get(`/dfs/leaderboards/${sport}/national`, { params }),
+  friendsLeaderboard: (sport: string) => api.get(`/dfs/leaderboards/${sport}/friends`),
+
+  // Badges
+  getBadges: () => api.get('/dfs/badges'),
+
+  // Score History
+  scoreHistory: (sport?: string) => api.get('/dfs/score-history', { params: sport ? { sport } : undefined }),
+
+  // CSV Import
+  csvImport: (file: File, platform: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('platform', platform);
+    return api.post('/dfs/csv-import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
 // Leagues
 export const leaguesAPI = {
   list: () => api.get('/leagues'),

@@ -10,6 +10,7 @@ import { env } from './config/env';
 import cron from 'node-cron';
 import { checkTrialReminders, sendWeeklyReports } from './services/scheduled-emails';
 import { snapshotAllScores } from './services/score-snapshots';
+import { snapshotAllDfsScores } from './services/dfs-score-snapshots';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -29,6 +30,7 @@ import slipRoutes from './routes/slips';
 import capperRoutes from './routes/cappers';
 import seedRoutes from './routes/seed';
 import challengeRoutes from './routes/challenges';
+import dfsRoutes from './routes/dfs';
 
 const app = express();
 const server = createServer(app);
@@ -78,6 +80,7 @@ app.use('/api/slips', slipRoutes);
 app.use('/api/cappers', capperRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/challenges', challengeRoutes);
+app.use('/api/dfs', dfsRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -123,6 +126,7 @@ server.listen(env.PORT, () => {
   // Snapshot all Gammbler Scores daily at midnight UTC
   cron.schedule('0 0 * * *', () => {
     snapshotAllScores().catch((err) => console.error('[Cron] Score snapshot error:', err));
+    snapshotAllDfsScores().catch((err) => console.error('[Cron] DFS score snapshot error:', err));
   });
 
   console.log('Scheduled jobs registered');

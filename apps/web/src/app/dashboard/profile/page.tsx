@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { profileAPI, badgesAPI } from '@/lib/api';
+import { profileAPI, badgesAPI, dfsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { Settings, Calendar, TrendingUp, Users, Download } from 'lucide-react';
+import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2 } from 'lucide-react';
 import { shareableAPI } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -62,6 +62,8 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [allBadges, setAllBadges] = useState<BadgeInfo[]>([]);
   const [scoreHistory, setScoreHistory] = useState<Record<string, Array<{ date: string; score: number }>>>({});
+  const [dfsScores, setDfsScores] = useState<Array<{ sport: string; score: string; is_unlocked: boolean; total_contests: number; roi: string; cash_rate: string }>>([]);
+  const [dfsBadges, setDfsBadges] = useState<Array<{ badge_type: string; earned_at: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [generatingCard, setGeneratingCard] = useState(false);
   const cardSport = 'overall';
@@ -70,14 +72,18 @@ export default function ProfilePage() {
     async function fetchProfile() {
       if (!user) return;
       try {
-        const [profileRes, badgesRes, historyRes] = await Promise.all([
+        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes] = await Promise.all([
           profileAPI.get(user.username),
           badgesAPI.getAll(),
           profileAPI.scoreHistory(user.username),
+          dfsAPI.getScores().catch(() => ({ data: { scores: [] } })),
+          dfsAPI.getBadges().catch(() => ({ data: { badges: [] } })),
         ]);
         setProfile(profileRes.data.profile);
         setAllBadges(badgesRes.data.badges || []);
         setScoreHistory(historyRes.data.history || {});
+        setDfsScores(dfsScoresRes.data.scores || []);
+        setDfsBadges(dfsBadgesRes.data.badges || []);
       } catch {
         // ignore
       } finally {
@@ -290,6 +296,105 @@ export default function ProfilePage() {
           })}
         </div>
       </div>
+
+      {/* DFS Score Section */}
+      {(() => {
+        const dfsOverall = dfsScores.find((s) => s.sport === 'overall');
+        const dfsSportScores = dfsScores.filter((s) => s.sport !== 'overall');
+
+        function getDfsTier(score: number): { label: string; color: string } {
+          if (score >= 91) return { label: 'Legend', color: 'text-yellow-400' };
+          if (score >= 76) return { label: 'Elite', color: 'text-purple-400' };
+          if (score >= 61) return { label: 'Sharp', color: 'text-accent' };
+          if (score >= 41) return { label: 'Developing', color: 'text-blue-400' };
+          return { label: 'Recreational', color: 'text-muted' };
+        }
+
+        return (
+          <div className="bg-card border border-accent/20 rounded-lg p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Gamepad2 size={16} className="text-accent" />
+              <h3 className="text-sm uppercase tracking-wider text-muted-dark font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+                DFS Score
+              </h3>
+              <Link href="/dashboard/dfs" className="text-xs text-accent hover:text-accent-light ml-auto">
+                View Dashboard →
+              </Link>
+            </div>
+
+            {dfsOverall?.is_unlocked ? (
+              <div className="flex items-center gap-6 mb-4">
+                <div className="relative w-20 h-20">
+                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="#4caf50" strokeWidth="8"
+                      strokeLinecap="round" strokeDasharray={`${(Number(dfsOverall.score) / 100) * 327} 327`} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold">{dfsOverall.score}</span>
+                    <span className={`text-[10px] font-semibold ${getDfsTier(Number(dfsOverall.score)).color}`}>
+                      {getDfsTier(Number(dfsOverall.score)).label}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex-1 grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-dark">Contests</p>
+                    <p className="text-lg font-bold">{dfsOverall.total_contests}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-dark">ROI</p>
+                    <p className={`text-lg font-bold ${Number(dfsOverall.roi) >= 0 ? 'text-accent' : 'text-loss'}`}>
+                      {(Number(dfsOverall.roi) * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-dark">Cash Rate</p>
+                    <p className="text-lg font-bold">{(Number(dfsOverall.cash_rate) * 100).toFixed(1)}%</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-dark mb-2">
+                  {dfsOverall ? `${20 - dfsOverall.total_contests} more contests to unlock` : 'No DFS contests yet'}
+                </p>
+                <Link href="/dashboard/dfs" className="text-sm text-accent hover:text-accent-light">
+                  Start tracking your DFS performance →
+                </Link>
+              </div>
+            )}
+
+            {dfsSportScores.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {dfsSportScores.map((s) => (
+                  <div key={s.sport} className={`bg-secondary rounded-lg p-2 text-center ${!s.is_unlocked ? 'opacity-40' : ''}`}>
+                    <p className="text-[10px] uppercase text-muted-dark">{s.sport.toUpperCase()} DFS</p>
+                    {s.is_unlocked ? (
+                      <p className={`text-sm font-bold ${getDfsTier(Number(s.score)).color}`}>{s.score}</p>
+                    ) : (
+                      <p className="text-[10px] text-muted-dark">{s.total_contests}/20</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {dfsBadges.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs text-muted-dark mb-2">DFS Badges</p>
+                <div className="flex flex-wrap gap-2">
+                  {dfsBadges.map((b) => (
+                    <span key={b.badge_type} className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-full text-xs text-accent capitalize">
+                      {b.badge_type.replace(/^dfs_/, '').replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Badges */}
       <div>

@@ -20,7 +20,7 @@ export default function TopBar() {
   const title = pageTitles[pathname] || 'Gammbler';
 
   return (
-    <header className="h-16 bg-secondary border-b border-accent/20 flex items-center justify-between px-8 sticky top-0 z-40">
+    <header className="h-16 bg-secondary border-b border-accent/20 hidden lg:flex items-center justify-between px-8 sticky top-0 z-40">
       <h1
         className="text-xl font-bold uppercase tracking-wider"
         style={{ fontFamily: 'var(--font-display)' }}
