@@ -59,7 +59,7 @@ router.get('/my-rank', authMiddleware, async (req: Request, res: Response): Prom
     }
 
     const [countAbove] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(gammblerScores)
       .where(
         and(
@@ -70,7 +70,7 @@ router.get('/my-rank', authMiddleware, async (req: Request, res: Response): Prom
       );
 
     const [totalRanked] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(gammblerScores)
       .where(
         and(
