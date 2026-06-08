@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { profileAPI, badgesAPI, dfsAPI } from '@/lib/api';
+import { profileAPI, badgesAPI, dfsAPI, scoresAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2 } from 'lucide-react';
 import { shareableAPI } from '@/lib/api';
@@ -66,24 +66,27 @@ export default function ProfilePage() {
   const [dfsBadges, setDfsBadges] = useState<Array<{ badge_type: string; earned_at: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [generatingCard, setGeneratingCard] = useState(false);
+  const [nationalRank, setNationalRank] = useState<{ rank: number | null; total_ranked: number } | null>(null);
   const cardSport = 'overall';
 
   useEffect(() => {
     async function fetchProfile() {
       if (!user) return;
       try {
-        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes] = await Promise.all([
+        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes, rankRes] = await Promise.all([
           profileAPI.get(user.username),
           badgesAPI.getAll(),
           profileAPI.scoreHistory(user.username),
           dfsAPI.getScores().catch(() => ({ data: { scores: [] } })),
           dfsAPI.getBadges().catch(() => ({ data: { badges: [] } })),
+          scoresAPI.getMyRank().catch(() => ({ data: { rank: null, total_ranked: 0 } })),
         ]);
         setProfile(profileRes.data.profile);
         setAllBadges(badgesRes.data.badges || []);
         setScoreHistory(historyRes.data.history || {});
         setDfsScores(dfsScoresRes.data.scores || []);
         setDfsBadges(dfsBadgesRes.data.badges || []);
+        setNationalRank(rankRes.data);
       } catch {
         // ignore
       } finally {
@@ -149,7 +152,7 @@ export default function ProfilePage() {
 
             {/* Score + Tier */}
             {overallScore?.is_unlocked ? (
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4 mb-4 flex-wrap">
                 <span className={`text-4xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
                   {scoreVal.toFixed(1)}
                 </span>
@@ -162,6 +165,11 @@ export default function ProfilePage() {
                 }`}>
                   {scoreVal <= 40 ? 'Recreational' : scoreVal <= 60 ? 'Developing' : scoreVal <= 75 ? 'Sharp' : scoreVal <= 90 ? 'Elite' : 'Legend'}
                 </span>
+                {nationalRank?.rank && (
+                  <Link href="/dashboard/leaderboards" className="text-sm font-semibold px-3 py-1 rounded-full bg-gold/20 text-gold hover:bg-gold/30 transition-colors" style={{ fontFamily: 'var(--font-number)' }}>
+                    #{nationalRank.rank} National
+                  </Link>
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-dark mb-4">Score locked — {overallScore?.settled_bet_count || 0}/10 bets needed</p>
