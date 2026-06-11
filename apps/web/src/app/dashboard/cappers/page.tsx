@@ -195,72 +195,73 @@ export default function CappersPage() {
             return (
               <div
                 key={capper.id}
-                className="bg-card border border-accent/20 rounded-lg p-5 hover:border-accent/40 transition-colors"
+                className="bg-card border border-accent/20 rounded-lg p-4 sm:p-5 hover:border-accent/40 transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  {/* Avatar + Info */}
-                  <div className="w-14 h-14 rounded-full bg-gold/20 flex items-center justify-center text-gold font-bold text-xl shrink-0">
+                {/* Mobile layout: stacked */}
+                <div className="flex items-center gap-3 sm:gap-4">
+                  {/* Avatar */}
+                  <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gold/20 flex items-center justify-center text-gold font-bold text-lg sm:text-xl shrink-0">
                     {capper.display_name.charAt(0).toUpperCase()}
                   </div>
+
+                  {/* Name + Score row */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-white text-lg" style={{ fontFamily: 'var(--font-display)' }}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-white text-base sm:text-lg truncate" style={{ fontFamily: 'var(--font-display)' }}>
                         {capper.display_name}
                       </h3>
                       <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full flex items-center gap-1">
                         <Award size={10} /> VERIFIED
                       </span>
                     </div>
-                    <p className="text-muted-dark text-sm">@{capper.user.username}</p>
-                    {capper.bio && <p className="text-muted text-sm mt-1 line-clamp-1">{capper.bio}</p>}
+                    <p className="text-muted-dark text-sm truncate">@{capper.user.username}</p>
+                    {capper.bio && <p className="text-muted text-sm mt-1 line-clamp-1 hidden sm:block">{capper.bio}</p>}
                   </div>
 
-                  {/* Score */}
+                  {/* Score - visible on all sizes */}
                   <div className="text-center shrink-0">
-                    <p className={`text-3xl font-bold ${getScoreColor(score)}`} style={{ fontFamily: 'var(--font-number)' }}>
+                    <p className={`text-2xl sm:text-3xl font-bold ${getScoreColor(score)}`} style={{ fontFamily: 'var(--font-number)' }}>
                       {score.toFixed(1)}
                     </p>
                     <p className={`text-xs font-semibold ${getScoreColor(score)}`}>{getTierName(score)}</p>
                   </div>
+                </div>
 
-                  {/* Stats */}
-                  <div className="flex gap-4 shrink-0">
+                {/* Stats + Subscribe row */}
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-accent/10">
+                  <div className="flex gap-4">
                     <div className="text-center">
-                      <p className="text-white font-bold" style={{ fontFamily: 'var(--font-number)' }}>{capper.total_subscribers}</p>
+                      <p className="text-white font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>{capper.total_subscribers}</p>
                       <p className="text-xs text-muted-dark">Subs</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-white font-bold" style={{ fontFamily: 'var(--font-number)' }}>{capper.total_tails}</p>
+                      <p className="text-white font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>{capper.total_tails}</p>
                       <p className="text-xs text-muted-dark">Tails</p>
                     </div>
-                  </div>
-
-                  {/* Price + Subscribe */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right">
-                      <p className="text-accent font-bold" style={{ fontFamily: 'var(--font-number)' }}>
+                    <div className="text-center">
+                      <p className="text-accent font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>
                         ${(capper.price_cents / 100).toFixed(2)}
                       </p>
                       <p className="text-xs text-muted-dark">/month</p>
                     </div>
-                    {capper.user_id !== user?.id && (
-                      capper.is_subscribed ? (
-                        <button
-                          onClick={() => handleUnsubscribe(capper.user_id)}
-                          className="px-4 py-2 border border-accent/40 text-accent rounded-lg text-sm font-semibold hover:bg-accent/10 transition-colors flex items-center gap-1"
-                        >
-                          <UserMinus size={14} /> Subscribed
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleSubscribe(capper.user_id)}
-                          className="px-4 py-2 bg-accent text-background rounded-lg text-sm font-semibold hover:bg-accent-light transition-colors flex items-center gap-1"
-                        >
-                          <UserPlus size={14} /> Subscribe
-                        </button>
-                      )
-                    )}
                   </div>
+                  {capper.user_id !== user?.id && (
+                    capper.is_subscribed ? (
+                      <button
+                        onClick={() => handleUnsubscribe(capper.user_id)}
+                        className="px-3 sm:px-4 py-2 border border-accent/40 text-accent rounded-lg text-sm font-semibold hover:bg-accent/10 transition-colors flex items-center gap-1"
+                      >
+                        <UserMinus size={14} /> <span className="hidden sm:inline">Subscribed</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSubscribe(capper.user_id)}
+                        className="px-3 sm:px-4 py-2 bg-accent text-background rounded-lg text-sm font-semibold hover:bg-accent-light transition-colors flex items-center gap-1"
+                      >
+                        <UserPlus size={14} /> <span className="hidden sm:inline">Subscribe</span>
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
             );
