@@ -162,15 +162,15 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 max-w-7xl">
       {/* Overall Score Card */}
-      <div className="bg-card border border-accent/20 rounded-lg p-8">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="bg-card border border-accent/20 rounded-lg p-4 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-4">
+          <div className="text-center sm:text-left w-full sm:w-auto">
             <p className="text-sm uppercase tracking-widest text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
               Gammbler Score
             </p>
             {overallScore?.is_unlocked ? (
               <>
-                <p className={`text-7xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
+                <p className={`text-5xl sm:text-7xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
                   {scoreVal.toFixed(1)}
                 </p>
                 <div className="flex items-center gap-3 mt-2 flex-wrap">

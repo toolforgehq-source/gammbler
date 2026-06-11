@@ -237,13 +237,13 @@ export default function LeaguesPage() {
           </div>
 
           {/* Header */}
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs uppercase tracking-wider text-muted-dark border-b border-accent/10" style={{ fontFamily: 'var(--font-display)' }}>
-            <div className="col-span-1">Rank</div>
-            <div className="col-span-3">Player</div>
-            <div className="col-span-2 text-right">Score</div>
-            <div className="col-span-2 text-right">Active Wks</div>
-            <div className="col-span-2 text-right">Bets</div>
-            <div className="col-span-2 text-right">Best Week</div>
+          <div className="grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-6 py-3 text-xs uppercase tracking-wider text-muted-dark border-b border-accent/10" style={{ fontFamily: 'var(--font-display)' }}>
+            <div className="sm:col-span-1">Rank</div>
+            <div className="sm:col-span-3">Player</div>
+            <div className="text-right sm:col-span-2">Score</div>
+            <div className="hidden sm:block sm:col-span-2 text-right">Active Wks</div>
+            <div className="hidden sm:block sm:col-span-2 text-right">Bets</div>
+            <div className="hidden sm:block sm:col-span-2 text-right">Best Week</div>
           </div>
 
           {standingsLoading ? (
@@ -256,45 +256,45 @@ export default function LeaguesPage() {
             standings.map((member) => (
               <div
                 key={member.user_id}
-                className={`grid grid-cols-12 gap-4 px-6 py-4 items-center border-b border-accent/10 ${
+                className={`grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 items-center border-b border-accent/10 ${
                   member.is_self ? 'bg-accent/10' : 'hover:bg-secondary/50'
                 } transition-colors`}
               >
-                <div className="col-span-1">
-                  <span className={`text-lg font-bold ${member.rank <= 3 ? 'text-gold' : 'text-muted'}`} style={{ fontFamily: 'var(--font-number)' }}>
+                <div className="sm:col-span-1">
+                  <span className={`text-base sm:text-lg font-bold ${member.rank <= 3 ? 'text-gold' : 'text-muted'}`} style={{ fontFamily: 'var(--font-number)' }}>
                     {member.rank}
                   </span>
                 </div>
-                <div className="col-span-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs flex-shrink-0">
+                <div className="sm:col-span-3 flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs flex-shrink-0">
                     {member.avatar_url ? (
                       <img src={member.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
                     ) : (
                       member.username.charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div>
-                    <span className={`text-sm font-medium ${member.is_self ? 'text-accent' : 'text-white'}`}>
+                  <div className="min-w-0">
+                    <span className={`text-sm font-medium truncate block ${member.is_self ? 'text-accent' : 'text-white'}`}>
                       {member.username}
                       {member.is_self && <span className="text-xs text-accent ml-1">(You)</span>}
                     </span>
                     {member.is_commissioner && (
-                      <span className="text-xs text-gold ml-2">Commissioner</span>
+                      <span className="text-xs text-gold">Commissioner</span>
                     )}
                   </div>
                 </div>
-                <div className="col-span-2 text-right">
-                  <span className="text-lg font-bold text-accent" style={{ fontFamily: 'var(--font-number)' }}>
+                <div className="text-right sm:col-span-2">
+                  <span className="text-base sm:text-lg font-bold text-accent" style={{ fontFamily: 'var(--font-number)' }}>
                     {parseFloat(member.season_score).toFixed(1)}
                   </span>
                 </div>
-                <div className="col-span-2 text-right text-sm text-muted">
+                <div className="hidden sm:block sm:col-span-2 text-right text-sm text-muted">
                   {member.active_weeks}/{member.total_weeks}
                 </div>
-                <div className="col-span-2 text-right text-sm text-muted">
+                <div className="hidden sm:block sm:col-span-2 text-right text-sm text-muted">
                   {member.total_bets_in_league}
                 </div>
-                <div className="col-span-2 text-right">
+                <div className="hidden sm:block sm:col-span-2 text-right">
                   <span className="text-sm text-gold" style={{ fontFamily: 'var(--font-number)' }}>
                     {parseFloat(member.best_week_score || '0').toFixed(1)}
                   </span>
@@ -310,17 +310,17 @@ export default function LeaguesPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Swords className="text-accent" size={28} />
           <h1 className="text-2xl font-bold text-white uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>
             Leagues
           </h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <button
             onClick={() => setShowJoin(true)}
-            className="px-4 py-2 rounded-lg bg-card border border-accent/20 text-sm font-semibold text-white hover:bg-secondary transition-colors uppercase tracking-wide"
+            className="px-3 sm:px-4 py-2 rounded-lg bg-card border border-accent/20 text-sm font-semibold text-white hover:bg-secondary transition-colors uppercase tracking-wide"
             style={{ fontFamily: 'var(--font-display)' }}
           >
             Join League

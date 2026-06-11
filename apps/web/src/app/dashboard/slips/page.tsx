@@ -126,19 +126,19 @@ export default function SlipsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+          <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
             LIVE BET SLIPS
           </h1>
           <p className="text-muted-dark text-sm mt-1">Watch bets resolve in real-time</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors shrink-0"
         >
           <Plus size={18} />
-          <span style={{ fontFamily: 'var(--font-display)' }}>SHARE A BET</span>
+          <span style={{ fontFamily: 'var(--font-display)' }} className="text-sm sm:text-base">SHARE A BET</span>
         </button>
       </div>
 

@@ -161,13 +161,13 @@ export default function LeaderboardsPage() {
       ) : (
         <div className="bg-card border border-accent/20 rounded-lg overflow-hidden">
           {/* Header */}
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-secondary text-xs uppercase tracking-wider text-muted-dark border-b border-accent/20" style={{ fontFamily: 'var(--font-display)' }}>
-            <div className="col-span-1">Rank</div>
-            <div className="col-span-4">Player</div>
-            <div className="col-span-2 text-right">Score</div>
-            <div className="col-span-2 text-right">Record</div>
-            <div className="col-span-2 text-right">ROI</div>
-            <div className="col-span-1"></div>
+          <div className="grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-6 py-3 bg-secondary text-xs uppercase tracking-wider text-muted-dark border-b border-accent/20" style={{ fontFamily: 'var(--font-display)' }}>
+            <div className="sm:col-span-1">Rank</div>
+            <div className="sm:col-span-4">Player</div>
+            <div className="text-right sm:col-span-2">Score</div>
+            <div className="hidden sm:block sm:col-span-2 text-right">Record</div>
+            <div className="hidden sm:block sm:col-span-2 text-right">ROI</div>
+            <div className="hidden sm:block sm:col-span-1"></div>
           </div>
 
           {/* Rows */}
@@ -175,21 +175,21 @@ export default function LeaderboardsPage() {
             <Link
               key={`${entry.user_id}-${i}`}
               href={`/dashboard/profile/${entry.username}`}
-              className={`grid grid-cols-12 gap-4 px-6 py-4 items-center border-b border-accent/10 hover:bg-secondary/50 transition-colors ${
+              className={`grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 items-center border-b border-accent/10 hover:bg-secondary/50 transition-colors ${
                 entry.is_self ? 'bg-accent/10' : ''
               }`}
             >
-              <div className="col-span-1">
+              <div className="sm:col-span-1">
                 {entry.rank ? (
-                  <span className={`text-lg font-bold ${entry.rank <= 3 ? 'text-gold' : 'text-muted'}`} style={{ fontFamily: 'var(--font-number)' }}>
+                  <span className={`text-base sm:text-lg font-bold ${entry.rank <= 3 ? 'text-gold' : 'text-muted'}`} style={{ fontFamily: 'var(--font-number)' }}>
                     {entry.rank}
                   </span>
                 ) : (
                   <span className="text-xs text-muted-dark">—</span>
                 )}
               </div>
-              <div className="col-span-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs flex-shrink-0">
+              <div className="sm:col-span-4 flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs flex-shrink-0">
                   {entry.avatar_url ? (
                     <img src={entry.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
                   ) : (
@@ -201,19 +201,19 @@ export default function LeaderboardsPage() {
                   {entry.is_self && <span className="text-xs text-accent ml-1">(You)</span>}
                 </span>
               </div>
-              <div className="col-span-2 text-right">
+              <div className="text-right sm:col-span-2">
                 {entry.locked_label ? (
                   <span className="text-xs text-muted-dark">{entry.locked_label}</span>
                 ) : (
-                  <span className="text-lg font-bold text-accent" style={{ fontFamily: 'var(--font-number)' }}>
+                  <span className="text-base sm:text-lg font-bold text-accent" style={{ fontFamily: 'var(--font-number)' }}>
                     {parseFloat(entry.score).toFixed(1)}
                   </span>
                 )}
               </div>
-              <div className="col-span-2 text-right text-sm text-muted">
+              <div className="hidden sm:block sm:col-span-2 text-right text-sm text-muted">
                 {entry.win_rate ? `${(parseFloat(entry.win_rate) * 100).toFixed(0)}%` : '—'}
               </div>
-              <div className="col-span-2 text-right">
+              <div className="hidden sm:block sm:col-span-2 text-right">
                 {entry.roi ? (
                   <span className={`text-sm font-medium ${parseFloat(entry.roi) >= 0 ? 'text-win' : 'text-loss'}`}>
                     {parseFloat(entry.roi) >= 0 ? '+' : ''}{parseFloat(entry.roi).toFixed(1)}%
@@ -222,7 +222,7 @@ export default function LeaderboardsPage() {
                   <span className="text-sm text-muted-dark">—</span>
                 )}
               </div>
-              <div className="col-span-1"></div>
+              <div className="hidden sm:block sm:col-span-1"></div>
             </Link>
           ))}
         </div>

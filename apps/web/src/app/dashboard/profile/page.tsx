@@ -129,16 +129,16 @@ export default function ProfilePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Profile Header */}
-      <div className="bg-card border border-accent/20 rounded-lg p-8">
-        <div className="flex items-start gap-6">
-          <div className="w-24 h-24 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-3xl flex-shrink-0" style={{ fontFamily: 'var(--font-display)' }}>
+      <div className="bg-card border border-accent/20 rounded-lg p-4 sm:p-8">
+        <div className="flex items-start gap-4 sm:gap-6">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-2xl sm:text-3xl flex-shrink-0" style={{ fontFamily: 'var(--font-display)' }}>
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.username} className="w-full h-full rounded-full object-cover" />
             ) : (
               profile.username.charAt(0).toUpperCase()
             )}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
                 {profile.username}
@@ -176,7 +176,7 @@ export default function ProfilePage() {
             )}
 
             {/* Stats Row */}
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-3 sm:gap-6 text-sm flex-wrap">
               <div>
                 <span className="font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>
                   {profile.record.wins}-{profile.record.losses}-{profile.record.pushes}
