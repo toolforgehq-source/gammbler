@@ -554,39 +554,43 @@ function parseDfsRow(row: Record<string, string>, platform: string): ParsedDfsRo
   return parseGenericRow(row);
 }
 
+function cleanMoney(val: string): number {
+  return parseFloat(val.replace(/[$,]/g, ''));
+}
+
 function parseDraftKingsRow(row: Record<string, string>): ParsedDfsRow | null {
-  // DraftKings CSV columns: Contest_Key, Sport, Date, Contest, Entry_Key, Entry_Fee, Winnings, Points, Position, Entries
-  const entryFee = parseFloat(row['entry_fee'] || row['entry fee'] || row['entryfee'] || '0');
-  const winnings = parseFloat(row['winnings'] || row['payout'] || row['prize'] || '0');
+  const entryFee = cleanMoney(row['entry_fee'] || row['entry fee'] || row['entryfee'] || row['entry ($)'] || '0');
+  const winnings = cleanMoney(row['winnings'] || row['winnings ($)'] || row['payout'] || row['prize'] || '0');
   const dateStr = row['date'] || row['contest_date'] || row['contest date'] || '';
   const sport = mapSport(row['sport'] || row['game_type'] || row['game type'] || '');
-  const contestType = mapContestType(row['contest'] || row['contest_name'] || row['contest name'] || '', entryFee);
+  const contestType = mapContestType(row['contest'] || row['contest_name'] || row['contest name'] || row['title'] || '', entryFee);
 
   if (!dateStr || isNaN(entryFee)) return null;
 
   const contestDate = new Date(dateStr);
   if (isNaN(contestDate.getTime())) return null;
 
+  const entriesStr = row['entries'] || row['contest entries'] || row['total_entries'] || row['contest_entries'] || '0';
+
   return {
     sport,
     contest_type: contestType,
-    contest_name: row['contest'] || row['contest_name'] || row['contest name'] || null,
-    contest_id: row['contest_key'] || row['contest key'] || row['contestkey'] || null,
+    contest_name: row['contest'] || row['contest_name'] || row['contest name'] || row['title'] || null,
+    contest_id: row['contest_key'] || row['contest key'] || row['contestkey'] || row['contest_id'] || null,
     entry_fee_cents: Math.round(entryFee * 100),
     payout_cents: Math.round(winnings * 100),
-    entries: parseInt(row['entries'] || '0') || null,
-    finish_position: parseInt(row['position'] || row['place'] || '0') || null,
-    total_entries: parseInt(row['entries'] || row['total_entries'] || '0') || null,
-    points_scored: parseFloat(row['points'] || row['fpts'] || '0') || null,
+    entries: parseInt(entriesStr) || null,
+    finish_position: parseInt(row['position'] || row['place'] || row['finish'] || '0') || null,
+    total_entries: parseInt(entriesStr) || null,
+    points_scored: parseFloat(row['points'] || row['fpts'] || row['fantasy points'] || '0') || null,
     contest_date: contestDate,
   };
 }
 
 function parseFanDuelRow(row: Record<string, string>): ParsedDfsRow | null {
-  // FanDuel CSV: Date, Sport, Title, Entry ($), Winnings ($), Points, Position, Entries
-  const entryFee = parseFloat((row['entry ($)'] || row['entry'] || row['entry_fee'] || row['fee'] || '0').replace('$', ''));
-  const winnings = parseFloat((row['winnings ($)'] || row['winnings'] || row['payout'] || '0').replace('$', ''));
-  const dateStr = row['date'] || '';
+  const entryFee = cleanMoney(row['entry ($)'] || row['entry'] || row['entry_fee'] || row['fee'] || '0');
+  const winnings = cleanMoney(row['winnings ($)'] || row['winnings'] || row['payout'] || '0');
+  const dateStr = row['date'] || row['contest_date'] || '';
   const sport = mapSport(row['sport'] || '');
   const contestType = mapContestType(row['title'] || row['contest'] || '', entryFee);
 
@@ -595,6 +599,8 @@ function parseFanDuelRow(row: Record<string, string>): ParsedDfsRow | null {
   const contestDate = new Date(dateStr);
   if (isNaN(contestDate.getTime())) return null;
 
+  const entriesStr = row['entries'] || row['contest entries'] || row['total_entries'] || '0';
+
   return {
     sport,
     contest_type: contestType,
@@ -602,23 +608,25 @@ function parseFanDuelRow(row: Record<string, string>): ParsedDfsRow | null {
     contest_id: row['contest_id'] || null,
     entry_fee_cents: Math.round(entryFee * 100),
     payout_cents: Math.round(winnings * 100),
-    entries: parseInt(row['entries'] || '0') || null,
-    finish_position: parseInt(row['position'] || row['place'] || '0') || null,
-    total_entries: parseInt(row['entries'] || '0') || null,
-    points_scored: parseFloat(row['points'] || row['fpts'] || '0') || null,
+    entries: parseInt(entriesStr) || null,
+    finish_position: parseInt(row['position'] || row['place'] || row['finish'] || '0') || null,
+    total_entries: parseInt(entriesStr) || null,
+    points_scored: parseFloat(row['points'] || row['fpts'] || row['fantasy points'] || '0') || null,
     contest_date: contestDate,
   };
 }
 
 function parseGenericRow(row: Record<string, string>): ParsedDfsRow | null {
-  const entryFee = parseFloat(row['entry_fee'] || row['entry fee'] || row['fee'] || row['buyin'] || row['buy_in'] || '0');
-  const payout = parseFloat(row['payout'] || row['winnings'] || row['prize'] || '0');
+  const entryFee = cleanMoney(row['entry_fee'] || row['entry fee'] || row['fee'] || row['buyin'] || row['buy_in'] || row['entry ($)'] || '0');
+  const payout = cleanMoney(row['payout'] || row['winnings'] || row['winnings ($)'] || row['prize'] || '0');
   const dateStr = row['date'] || row['contest_date'] || '';
 
   if (!dateStr || isNaN(entryFee)) return null;
 
   const contestDate = new Date(dateStr);
   if (isNaN(contestDate.getTime())) return null;
+
+  const entriesStr = row['entries'] || row['contest entries'] || row['total_entries'] || '0';
 
   return {
     sport: mapSport(row['sport'] || 'other'),
@@ -627,10 +635,10 @@ function parseGenericRow(row: Record<string, string>): ParsedDfsRow | null {
     contest_id: row['contest_id'] || row['id'] || null,
     entry_fee_cents: Math.round(entryFee * 100),
     payout_cents: Math.round(payout * 100),
-    entries: parseInt(row['entries'] || '0') || null,
+    entries: parseInt(entriesStr) || null,
     finish_position: parseInt(row['position'] || row['place'] || row['finish'] || '0') || null,
-    total_entries: parseInt(row['total_entries'] || row['entries'] || '0') || null,
-    points_scored: parseFloat(row['points'] || row['fpts'] || '0') || null,
+    total_entries: parseInt(entriesStr) || null,
+    points_scored: parseFloat(row['points'] || row['fpts'] || row['fantasy points'] || '0') || null,
     contest_date: contestDate,
   };
 }

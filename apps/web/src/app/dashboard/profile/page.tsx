@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { profileAPI, badgesAPI, dfsAPI, scoresAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2 } from 'lucide-react';
+import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2, ShieldCheck } from 'lucide-react';
 import { shareableAPI } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -67,6 +67,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [generatingCard, setGeneratingCard] = useState(false);
   const [nationalRank, setNationalRank] = useState<{ rank: number | null; total_ranked: number } | null>(null);
+  const [verification, setVerification] = useState<{
+    verification_pct: number;
+    verification_level: string;
+  } | null>(null);
   const cardSport = 'overall';
 
   useEffect(() => {
@@ -87,6 +91,13 @@ export default function ProfilePage() {
         setDfsScores(dfsScoresRes.data.scores || []);
         setDfsBadges(dfsBadgesRes.data.badges || []);
         setNationalRank(rankRes.data);
+
+        // Fetch verification stats
+        if (profileRes.data.profile?.id) {
+          scoresAPI.getVerification(profileRes.data.profile.id).then((vRes) => {
+            setVerification(vRes.data);
+          }).catch(() => {});
+        }
       } catch {
         // ignore
       } finally {
@@ -173,6 +184,26 @@ export default function ProfilePage() {
               </div>
             ) : (
               <p className="text-sm text-muted-dark mb-4">Score locked — {overallScore?.settled_bet_count || 0}/10 bets needed</p>
+            )}
+
+            {/* Verification Badge */}
+            {verification && verification.verification_pct > 0 && (
+              <div className="flex items-center gap-1.5 mb-3">
+                <ShieldCheck size={14} className={
+                  verification.verification_level === 'diamond' ? 'text-blue-400' :
+                  verification.verification_level === 'gold' ? 'text-gold' :
+                  verification.verification_level === 'silver' ? 'text-gray-300' :
+                  'text-amber-700'
+                } />
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  verification.verification_level === 'diamond' ? 'bg-blue-400/20 text-blue-400' :
+                  verification.verification_level === 'gold' ? 'bg-gold/20 text-gold' :
+                  verification.verification_level === 'silver' ? 'bg-gray-300/20 text-gray-300' :
+                  'bg-amber-700/20 text-amber-700'
+                }`}>
+                  {verification.verification_pct}% Verified
+                </span>
+              </div>
             )}
 
             {/* Stats Row */}

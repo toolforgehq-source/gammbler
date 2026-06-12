@@ -169,6 +169,27 @@ export const feedEvents = pgTable('feed_events', {
   userIdx: index('feed_events_user_idx').on(table.user_id),
 }));
 
+export const feedLikes = pgTable('feed_likes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  event_id: uuid('event_id').notNull().references(() => feedEvents.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userEventUnique: uniqueIndex('feed_likes_user_event_unique').on(table.user_id, table.event_id),
+  eventIdx: index('feed_likes_event_idx').on(table.event_id),
+}));
+
+export const feedComments = pgTable('feed_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  event_id: uuid('event_id').notNull().references(() => feedEvents.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  text: text('text').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  eventIdx: index('feed_comments_event_idx').on(table.event_id),
+  userIdx: index('feed_comments_user_idx').on(table.user_id),
+}));
+
 export const notifications = pgTable('notifications', {
   id: uuid('id').defaultRandom().primaryKey(),
   user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
