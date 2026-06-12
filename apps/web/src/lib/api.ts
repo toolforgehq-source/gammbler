@@ -35,7 +35,7 @@ export default api;
 
 // Auth
 export const authAPI = {
-  signup: (data: { email: string; password: string; username: string; tos_accepted: boolean; referral_code?: string }) =>
+  signup: (data: { email: string; password: string; username: string; date_of_birth: string; tos_accepted: boolean; referral_code?: string }) =>
     api.post('/auth/signup', data),
   signin: (data: { email: string; password: string }) =>
     api.post('/auth/signin', data),

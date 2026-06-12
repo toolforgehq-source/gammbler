@@ -6,7 +6,7 @@ import { useAuthStore } from '@/lib/store';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Check, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export default function SignUpPage() {
   return (
@@ -21,8 +21,10 @@ function SignUpForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
@@ -44,9 +46,27 @@ function SignUpForm() {
     }
   };
 
+  const isUnder18 = (dob: string): boolean => {
+    if (!dob) return false;
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age < 18;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (isUnder18(dateOfBirth)) {
+      setError('You must be at least 18 years old to use Gammbler');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -54,6 +74,7 @@ function SignUpForm() {
         email,
         password,
         username,
+        date_of_birth: dateOfBirth,
         tos_accepted: tosAccepted,
         referral_code: referralCode || undefined,
       });
@@ -82,7 +103,7 @@ function SignUpForm() {
             Get Started
           </h1>
           <p className="text-accent text-sm mt-2 font-semibold">FREE FOREVER</p>
-          <p className="text-muted-dark text-xs mt-1">Upgrade to Pro when you're ready</p>
+          <p className="text-muted-dark text-xs mt-1">Upgrade to Pro when you&apos;re ready</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -137,6 +158,23 @@ function SignUpForm() {
 
           <div>
             <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+              Date of Birth
+            </label>
+            <input
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white placeholder-muted-dark focus:outline-none focus:border-accent transition-colors"
+              required
+              max={new Date().toISOString().split('T')[0]}
+            />
+            {dateOfBirth && isUnder18(dateOfBirth) && (
+              <p className="text-xs text-loss mt-1">You must be at least 18 years old to use Gammbler</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
               Password
             </label>
             <input
@@ -150,26 +188,50 @@ function SignUpForm() {
             />
           </div>
 
-          <div className="flex items-start gap-3 py-2">
-            <input
-              type="checkbox"
-              id="tos"
-              checked={tosAccepted}
-              onChange={(e) => setTosAccepted(e.target.checked)}
-              className="mt-0.5 accent-accent"
-              required
-            />
-            <label htmlFor="tos" className="text-xs text-muted-dark leading-relaxed">
-              I agree to the{' '}
-              <Link href="/terms" className="text-accent hover:text-accent-light">Terms of Service</Link>,{' '}
-              <Link href="/privacy" className="text-accent hover:text-accent-light">Privacy Policy</Link>,
-              and acknowledge that sports betting legality varies by state. I confirm I am in compliance with my local regulations.
-            </label>
+          <div className="space-y-3 py-2">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="age"
+                checked={ageConfirmed}
+                onChange={(e) => setAgeConfirmed(e.target.checked)}
+                className="mt-0.5 accent-accent"
+                required
+              />
+              <label htmlFor="age" className="text-xs text-muted-dark leading-relaxed">
+                I confirm that I am at least 18 years of age (or the legal betting age in my jurisdiction) and that online sports betting tracking is legal in my location.
+              </label>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="tos"
+                checked={tosAccepted}
+                onChange={(e) => setTosAccepted(e.target.checked)}
+                className="mt-0.5 accent-accent"
+                required
+              />
+              <label htmlFor="tos" className="text-xs text-muted-dark leading-relaxed">
+                I agree to the{' '}
+                <Link href="/terms" className="text-accent hover:text-accent-light">Terms of Service</Link>,{' '}
+                <Link href="/privacy" className="text-accent hover:text-accent-light">Privacy Policy</Link>,
+                {' '}and{' '}
+                <Link href="/responsible-gambling" className="text-accent hover:text-accent-light">Responsible Gambling Policy</Link>.
+              </label>
+            </div>
+          </div>
+
+          <div className="bg-card/50 border border-accent/10 rounded-lg p-3 flex items-start gap-2">
+            <ShieldCheck size={14} className="text-accent mt-0.5 shrink-0" />
+            <p className="text-[10px] text-muted-dark leading-relaxed">
+              Gammbler is NOT a sportsbook and does not accept wagers or bets of any kind. Gammbler is a skill-based analytics and score-tracking platform. Users are responsible for complying with all applicable laws in their jurisdiction.
+            </p>
           </div>
 
           <button
             type="submit"
-            disabled={loading || !tosAccepted || usernameAvailable === false}
+            disabled={loading || !tosAccepted || !ageConfirmed || usernameAvailable === false || (dateOfBirth !== '' && isUnder18(dateOfBirth))}
             className="w-full bg-accent text-background font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-accent-light transition-colors disabled:opacity-50"
             style={{ fontFamily: 'var(--font-display)' }}
           >

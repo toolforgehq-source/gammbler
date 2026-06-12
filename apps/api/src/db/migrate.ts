@@ -623,6 +623,11 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS dfs_csv_imports_user_idx ON dfs_csv_imports(user_id);
     `);
 
+    // Add date_of_birth column to users
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(10);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

@@ -72,6 +72,7 @@ export const users = pgTable('users', {
   stripe_customer_id: varchar('stripe_customer_id', { length: 255 }),
   is_profile_public: boolean('is_profile_public').default(true).notNull(),
   tos_accepted_at: timestamp('tos_accepted_at', { withTimezone: true }),
+  date_of_birth: varchar('date_of_birth', { length: 10 }),
   referral_code: varchar('referral_code', { length: 20 }).unique(),
   referred_by: uuid('referred_by'),
   notification_preferences: jsonb('notification_preferences').default('{}'),
