@@ -38,6 +38,7 @@ interface Profile {
   following: number;
   is_self: boolean;
   total_profit_loss?: number;
+  capper_tier: 'capper' | 'verified' | 'elite' | null;
 }
 
 interface BadgeInfo {
@@ -180,6 +181,15 @@ export default function ProfilePage() {
                   <Link href="/dashboard/leaderboards" className="text-sm font-semibold px-3 py-1 rounded-full bg-gold/20 text-gold hover:bg-gold/30 transition-colors" style={{ fontFamily: 'var(--font-number)' }}>
                     #{nationalRank.rank} National
                   </Link>
+                )}
+                {profile.capper_tier === 'elite' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-gold/20 text-gold">ELITE CAPPER</span>
+                )}
+                {profile.capper_tier === 'verified' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-accent/20 text-accent">VERIFIED CAPPER</span>
+                )}
+                {profile.capper_tier === 'capper' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary text-muted">CAPPER</span>
                 )}
               </div>
             ) : (

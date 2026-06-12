@@ -166,6 +166,7 @@ export const cappersAPI = {
   list: (params?: Record<string, string>) => api.get('/cappers', { params }),
   get: (userId: string) => api.get(`/cappers/${userId}`),
   apply: () => api.post('/cappers/apply'),
+  refreshTier: () => api.post('/cappers/refresh-tier'),
   updateProfile: (data: { display_name?: string; bio?: string; price_cents?: number }) =>
     api.patch('/cappers/me', data),
   subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),

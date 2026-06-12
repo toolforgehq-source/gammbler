@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { users, gammblerScores, badges, follows, bets, scoreSnapshots } from '../db/schema';
+import { users, gammblerScores, badges, follows, bets, scoreSnapshots, capperProfiles } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { attachTier } from '../middleware/subscription';
@@ -96,6 +96,13 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
     const totalPL = settled.reduce((s, b) => s + parseFloat(String(b.profit_loss || '0')), 0);
     const roi = totalStake > 0 ? Math.round((totalPL / totalStake) * 10000) / 100 : 0;
 
+    // Get capper status
+    const [capperProfile] = await db
+      .select({ tier: capperProfiles.tier, status: capperProfiles.status })
+      .from(capperProfiles)
+      .where(eq(capperProfiles.user_id, user.id))
+      .limit(1);
+
     const publicProfile: Record<string, unknown> = {
       id: user.id,
       username: user.username,
@@ -115,6 +122,7 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       following: followingCount?.count || 0,
       is_following: isFollowing,
       is_self: req.user?.userId === user.id,
+      capper_tier: capperProfile?.status === 'active' ? capperProfile.tier : null,
     };
 
     // Add private fields if viewing own profile
