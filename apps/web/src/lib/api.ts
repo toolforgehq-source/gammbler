@@ -53,14 +53,14 @@ export const betsAPI = {
     const form = new FormData();
     form.append('file', file);
     form.append('platform', platform);
-    return api.post('/bets/csv-import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return api.post('/bets/csv-import', form, { headers: { 'Content-Type': undefined } });
   },
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
   upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
   parseScreenshot: (file: File) => {
     const form = new FormData();
     form.append('screenshot', file);
-    return api.post('/bets/parse-screenshot', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return api.post('/bets/parse-screenshot', form, { headers: { 'Content-Type': undefined } });
   },
 };
 
@@ -70,6 +70,7 @@ export const scoresAPI = {
   getBySport: (sport: string) => api.get(`/scores/${sport}`),
   getForUser: (userId: string) => api.get(`/scores/user/${userId}`),
   getMyRank: () => api.get('/scores/my-rank'),
+  getVerification: (userId: string) => api.get(`/scores/verification/${userId}`),
 };
 
 // Leaderboards
@@ -82,6 +83,10 @@ export const leaderboardsAPI = {
 // Feed
 export const feedAPI = {
   get: (params?: Record<string, string>) => api.get('/feed', { params }),
+  like: (eventId: string) => api.post(`/feed/${eventId}/like`),
+  unlike: (eventId: string) => api.delete(`/feed/${eventId}/like`),
+  getComments: (eventId: string) => api.get(`/feed/${eventId}/comments`),
+  addComment: (eventId: string, text: string) => api.post(`/feed/${eventId}/comments`, { text }),
 };
 
 // Profile
@@ -238,7 +243,7 @@ export const dfsAPI = {
     const form = new FormData();
     form.append('file', file);
     form.append('platform', platform);
-    return api.post('/dfs/csv-import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return api.post('/dfs/csv-import', form, { headers: { 'Content-Type': undefined } });
   },
 };
 

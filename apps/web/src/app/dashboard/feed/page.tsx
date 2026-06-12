@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { feedAPI } from '@/lib/api';
-import { Flame, TrendingUp, Zap, Award, BarChart3, Link2, Trophy, Target, Swords } from 'lucide-react';
+import { Flame, TrendingUp, Zap, Award, BarChart3, Link2, Trophy, Target, Swords, Heart, MessageCircle, Send } from 'lucide-react';
 import Link from 'next/link';
 
 interface FeedItem {
@@ -15,6 +15,18 @@ interface FeedItem {
   sport: string | null;
   created_at: string;
   display_text: string;
+  like_count: number;
+  is_liked: boolean;
+  comment_count: number;
+}
+
+interface Comment {
+  id: string;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  text: string;
+  created_at: string;
 }
 
 const EVENT_ICONS: Record<string, typeof Flame> = {
@@ -53,11 +65,93 @@ function timeAgo(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
+function CommentSection({ eventId }: { eventId: string }) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    feedAPI.getComments(eventId).then((res) => {
+      setComments(res.data.comments || []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [eventId]);
+
+  const handleSubmit = async () => {
+    if (!text.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await feedAPI.addComment(eventId, text.trim());
+      setComments((prev) => [...prev, res.data.comment]);
+      setText('');
+    } catch {
+      // ignore
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-accent/10">
+      {loading ? (
+        <div className="text-xs text-muted-dark py-2">Loading...</div>
+      ) : (
+        <>
+          {comments.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {comments.map((c) => (
+                <div key={c.id} className="flex items-start gap-2">
+                  <Link href={`/dashboard/profile/${c.username}`}>
+                    <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-[10px] flex-shrink-0">
+                      {c.avatar_url ? (
+                        <img src={c.avatar_url} alt={c.username} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        c.username.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs">
+                      <Link href={`/dashboard/profile/${c.username}`} className="font-semibold text-accent hover:text-accent-light">
+                        {c.username}
+                      </Link>{' '}
+                      <span className="text-white/80">{c.text}</span>
+                    </p>
+                    <p className="text-[10px] text-muted-dark mt-0.5">{timeAgo(c.created_at)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              placeholder="Add a comment..."
+              maxLength={500}
+              className="flex-1 bg-background border border-accent/20 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-muted-dark focus:outline-none focus:border-accent/50"
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={!text.trim() || submitting}
+              className="p-1.5 text-accent hover:text-accent-light disabled:opacity-30 transition-colors"
+            >
+              <Send size={14} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function FeedPage() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
   const fetchFeed = useCallback(async (newOffset: number) => {
     try {
@@ -78,7 +172,6 @@ export default function FeedPage() {
 
   useEffect(() => {
     fetchFeed(0);
-    // Poll every 60 seconds
     const interval = setInterval(() => fetchFeed(0), 60000);
     return () => clearInterval(interval);
   }, [fetchFeed]);
@@ -87,6 +180,32 @@ export default function FeedPage() {
     const newOffset = offset + 30;
     setOffset(newOffset);
     fetchFeed(newOffset);
+  };
+
+  const handleLike = async (eventId: string, isLiked: boolean) => {
+    try {
+      const res = isLiked
+        ? await feedAPI.unlike(eventId)
+        : await feedAPI.like(eventId);
+      setFeed((prev) =>
+        prev.map((item) =>
+          item.id === eventId
+            ? { ...item, is_liked: res.data.liked, like_count: res.data.like_count }
+            : item
+        )
+      );
+    } catch {
+      // ignore
+    }
+  };
+
+  const toggleComments = (eventId: string) => {
+    setExpandedComments((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
+      return next;
+    });
   };
 
   if (loading) {
@@ -146,6 +265,31 @@ export default function FeedPage() {
                 </span>
               )}
             </div>
+
+            {/* Like & Comment buttons */}
+            <div className="flex items-center gap-4 mt-3 pt-2 border-t border-accent/10">
+              <button
+                onClick={() => handleLike(item.id, item.is_liked)}
+                className={`flex items-center gap-1.5 text-xs transition-colors ${
+                  item.is_liked ? 'text-red-500' : 'text-muted-dark hover:text-red-400'
+                }`}
+              >
+                <Heart size={14} fill={item.is_liked ? 'currentColor' : 'none'} />
+                {item.like_count > 0 && <span>{item.like_count}</span>}
+              </button>
+              <button
+                onClick={() => toggleComments(item.id)}
+                className="flex items-center gap-1.5 text-xs text-muted-dark hover:text-accent transition-colors"
+              >
+                <MessageCircle size={14} />
+                {item.comment_count > 0 && <span>{item.comment_count}</span>}
+              </button>
+            </div>
+
+            {/* Comment section */}
+            {expandedComments.has(item.id) && (
+              <CommentSection eventId={item.id} />
+            )}
           </div>
         );
       })}
