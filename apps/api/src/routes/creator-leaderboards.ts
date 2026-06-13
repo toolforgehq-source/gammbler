@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { capperProfiles, users, follows, creatorPosts, gammblerScores } from '../db/schema';
-import { eq, desc, sql, and, gte } from 'drizzle-orm';
+import { eq, desc, sql, and, gte, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -169,7 +169,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         .from(gammblerScores)
         .where(
           and(
-            sql`${gammblerScores.user_id} = ANY(${userIds})`,
+            inArray(gammblerScores.user_id, userIds),
             eq(gammblerScores.sport, 'overall')
           )
         );
