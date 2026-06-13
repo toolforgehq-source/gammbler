@@ -5,8 +5,9 @@ import { cappersAPI, scoresAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import {
   Crown, Shield,
-  UserPlus, UserMinus, Award,
+  UserPlus, UserMinus, Award, Settings,
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface CapperUser {
   username: string;
@@ -20,7 +21,14 @@ interface Capper {
   bio: string | null;
   price_cents: number;
   status: string;
+  banner_url: string | null;
+  profile_photo_url: string | null;
+  favorite_sports: string[] | null;
+  favorite_teams: string[] | null;
+  betting_style: string | null;
+  social_links: Record<string, string> | null;
   total_subscribers: number;
+  total_followers: number;
   total_tails: number;
   total_earnings_cents: number;
   verified_at: string;
@@ -52,12 +60,14 @@ export default function CappersPage() {
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState('score');
   const [canApply, setCanApply] = useState(false);
+  const [isCapper, setIsCapper] = useState(false);
   const [userScore, setUserScore] = useState(0);
   const [applyLoading, setApplyLoading] = useState(false);
 
   useEffect(() => {
     fetchCappers();
     checkEligibility();
+    cappersAPI.myEarnings().then(() => setIsCapper(true)).catch(() => setIsCapper(false));
   }, [sort]);
 
   async function fetchCappers() {
@@ -130,27 +140,38 @@ export default function CappersPage() {
           </h1>
           <p className="text-muted-dark text-sm mt-1">Subscribe to top bettors. Tail their picks.</p>
         </div>
-        {canApply && (
-          <button
-            onClick={handleApply}
-            disabled={applyLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-gold text-background rounded-lg font-semibold hover:bg-gold/80 transition-colors disabled:opacity-50"
-          >
-            <Crown size={18} />
-            <span style={{ fontFamily: 'var(--font-display)' }}>
-              {applyLoading ? 'APPLYING...' : 'BECOME A CAPPER'}
-            </span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isCapper && (
+            <Link
+              href="/dashboard/cappers/edit"
+              className="flex items-center gap-2 px-4 py-2 border border-accent/40 text-accent rounded-lg font-semibold hover:bg-accent/10 transition-colors"
+            >
+              <Settings size={16} />
+              <span className="hidden sm:inline">Edit Profile</span>
+            </Link>
+          )}
+          {canApply && (
+            <button
+              onClick={handleApply}
+              disabled={applyLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-gold text-background rounded-lg font-semibold hover:bg-gold/80 transition-colors disabled:opacity-50"
+            >
+              <Crown size={18} />
+              <span style={{ fontFamily: 'var(--font-display)' }}>
+                {applyLoading ? 'APPLYING...' : 'BECOME A CAPPER'}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Info banner */}
       <div className="bg-card border border-gold/20 rounded-lg p-4 flex items-start gap-3">
         <Shield size={20} className="text-gold mt-0.5 shrink-0" />
         <div className="text-sm text-muted">
-          <p><span className="text-gold font-semibold">Verified Cappers</span> have a Gammbler Score of 80+ with 100+ settled bets.</p>
-          <p className="mt-1">Subscribe to get instant access to their live bet slips and one-tap copy betting.</p>
-          <p className="text-muted-dark mt-1">Gammbler takes a 30% platform fee. Cappers keep 70%.</p>
+          <p><span className="text-gold font-semibold">Anyone can become a Capper</span> — no minimum score required. Build your audience and earn from subscribers.</p>
+          <p className="mt-1">Subscribe to get instant access to their live bet slips, creator posts, and subscriber-only content.</p>
+          <p className="text-muted-dark mt-1">Creators keep 80%. Gammbler takes a 20% platform fee.</p>
         </div>
       </div>
 
@@ -216,6 +237,13 @@ export default function CappersPage() {
                     </div>
                     <p className="text-muted-dark text-sm truncate">@{capper.user.username}</p>
                     {capper.bio && <p className="text-muted text-sm mt-1 line-clamp-1 hidden sm:block">{capper.bio}</p>}
+                    {capper.favorite_sports && capper.favorite_sports.length > 0 && (
+                      <div className="flex gap-1 mt-1 hidden sm:flex">
+                        {capper.favorite_sports.slice(0, 4).map((sport: string) => (
+                          <span key={sport} className="px-1.5 py-0.5 bg-accent/10 text-accent text-[10px] rounded">{sport}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Score - visible on all sizes */}

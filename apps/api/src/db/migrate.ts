@@ -628,6 +628,57 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(10);
     `);
 
+    // ── Creator Profile Expansion ───────────────────────────────
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS banner_url TEXT;
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS profile_photo_url TEXT;
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS favorite_sports JSONB DEFAULT '[]';
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS favorite_teams JSONB DEFAULT '[]';
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS betting_style VARCHAR(100);
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS total_followers INTEGER NOT NULL DEFAULT 0;
+    `);
+
+    // ── Creator Posts ───────────────────────────────────────────
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_posts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        image_url TEXT,
+        is_subscriber_only BOOLEAN NOT NULL DEFAULT false,
+        like_count INTEGER NOT NULL DEFAULT 0,
+        comment_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS creator_posts_user_idx ON creator_posts(user_id);
+      CREATE INDEX IF NOT EXISTS creator_posts_created_at_idx ON creator_posts(created_at);
+      CREATE INDEX IF NOT EXISTS creator_posts_sub_only_idx ON creator_posts(is_subscriber_only);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_post_likes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES creator_posts(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(user_id, post_id)
+      );
+      CREATE INDEX IF NOT EXISTS creator_post_likes_post_idx ON creator_post_likes(post_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_post_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES creator_posts(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS creator_post_comments_post_idx ON creator_post_comments(post_id);
+      CREATE INDEX IF NOT EXISTS creator_post_comments_user_idx ON creator_post_comments(user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

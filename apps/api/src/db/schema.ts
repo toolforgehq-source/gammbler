@@ -385,7 +385,14 @@ export const capperProfiles = pgTable('capper_profiles', {
   bio: text('bio'),
   price_cents: integer('price_cents').default(499).notNull(),
   status: capperStatusEnum('status').default('active').notNull(),
+  banner_url: text('banner_url'),
+  profile_photo_url: text('profile_photo_url'),
+  favorite_sports: jsonb('favorite_sports').default('[]'),
+  favorite_teams: jsonb('favorite_teams').default('[]'),
+  betting_style: varchar('betting_style', { length: 100 }),
+  social_links: jsonb('social_links').default('{}'),
   total_subscribers: integer('total_subscribers').default(0).notNull(),
+  total_followers: integer('total_followers').default(0).notNull(),
   total_tails: integer('total_tails').default(0).notNull(),
   total_earnings_cents: integer('total_earnings_cents').default(0).notNull(),
   verified_at: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
@@ -422,6 +429,44 @@ export const tailEvents = pgTable('tail_events', {
   slipIdx: index('tail_events_slip_idx').on(table.slip_id),
   capperIdx: index('tail_events_capper_idx').on(table.capper_user_id),
   tailerIdx: index('tail_events_tailer_idx').on(table.tailer_user_id),
+}));
+
+// ── Creator Posts (Feed Content) ─────────────────────────────
+
+export const creatorPosts = pgTable('creator_posts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  image_url: text('image_url'),
+  is_subscriber_only: boolean('is_subscriber_only').default(false).notNull(),
+  like_count: integer('like_count').default(0).notNull(),
+  comment_count: integer('comment_count').default(0).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('creator_posts_user_idx').on(table.user_id),
+  createdAtIdx: index('creator_posts_created_at_idx').on(table.created_at),
+  subscriberOnlyIdx: index('creator_posts_sub_only_idx').on(table.is_subscriber_only),
+}));
+
+export const creatorPostLikes = pgTable('creator_post_likes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  post_id: uuid('post_id').notNull().references(() => creatorPosts.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userPostUnique: uniqueIndex('creator_post_likes_unique').on(table.user_id, table.post_id),
+  postIdx: index('creator_post_likes_post_idx').on(table.post_id),
+}));
+
+export const creatorPostComments = pgTable('creator_post_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  post_id: uuid('post_id').notNull().references(() => creatorPosts.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  text: text('text').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  postIdx: index('creator_post_comments_post_idx').on(table.post_id),
+  userIdx: index('creator_post_comments_user_idx').on(table.user_id),
 }));
 
 // ── Score Card Generations (monthly tracking for free users) ─

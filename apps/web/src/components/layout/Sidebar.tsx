@@ -19,11 +19,13 @@ import {
   Gamepad2,
   Menu,
   X,
+  PenLine,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 
 const navItems = [
   { href: '/dashboard/feed', label: 'Community', icon: Activity },
+  { href: '/dashboard/creator-feed', label: 'Creator Feed', icon: PenLine },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/dfs', label: 'DFS Score', icon: Gamepad2 },
   { href: '/dashboard/slips', label: 'Bet Slips', icon: Share2 },
