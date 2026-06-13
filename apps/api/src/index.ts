@@ -32,6 +32,7 @@ import seedRoutes from './routes/seed';
 import challengeRoutes from './routes/challenges';
 import dfsRoutes from './routes/dfs';
 import creatorPostRoutes from './routes/creator-posts';
+import creatorLeaderboardRoutes from './routes/creator-leaderboards';
 
 const app = express();
 const server = createServer(app);
@@ -83,6 +84,7 @@ app.use('/api/seed', seedRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/dfs', dfsRoutes);
 app.use('/api/creator-posts', creatorPostRoutes);
+app.use('/api/creator-leaderboards', creatorLeaderboardRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
