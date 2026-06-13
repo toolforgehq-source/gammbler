@@ -18,8 +18,20 @@ const router = Router();
 
 const updateCapperSchema = z.object({
   display_name: z.string().min(1).max(100).optional(),
-  bio: z.string().max(500).optional(),
+  bio: z.string().max(2000).optional(),
   price_cents: z.number().int().min(199).max(9999).optional(),
+  banner_url: z.string().url().optional().nullable(),
+  profile_photo_url: z.string().url().optional().nullable(),
+  favorite_sports: z.array(z.string()).max(6).optional(),
+  favorite_teams: z.array(z.string()).max(10).optional(),
+  betting_style: z.string().max(100).optional().nullable(),
+  social_links: z.object({
+    twitter: z.string().max(200).optional(),
+    instagram: z.string().max(200).optional(),
+    youtube: z.string().max(200).optional(),
+    tiktok: z.string().max(200).optional(),
+    website: z.string().max(200).optional(),
+  }).optional(),
 });
 
 // POST /cappers/apply — apply to become a verified capper
@@ -278,6 +290,12 @@ router.patch('/me', authMiddleware, async (req: Request, res: Response): Promise
     if (body.display_name) updateData.display_name = body.display_name;
     if (body.bio !== undefined) updateData.bio = body.bio;
     if (body.price_cents !== undefined) updateData.price_cents = body.price_cents;
+    if (body.banner_url !== undefined) updateData.banner_url = body.banner_url;
+    if (body.profile_photo_url !== undefined) updateData.profile_photo_url = body.profile_photo_url;
+    if (body.favorite_sports !== undefined) updateData.favorite_sports = body.favorite_sports;
+    if (body.favorite_teams !== undefined) updateData.favorite_teams = body.favorite_teams;
+    if (body.betting_style !== undefined) updateData.betting_style = body.betting_style;
+    if (body.social_links !== undefined) updateData.social_links = body.social_links;
 
     const [updated] = await db.update(capperProfiles)
       .set(updateData)
@@ -561,6 +579,7 @@ router.get('/me/earnings', authMiddleware, async (req: Request, res: Response): 
     const netEarnings = totalGross - platformTake;
 
     res.json({
+      ...capper,
       total_gross_cents: totalGross,
       platform_rake_cents: platformTake,
       net_earnings_cents: netEarnings,

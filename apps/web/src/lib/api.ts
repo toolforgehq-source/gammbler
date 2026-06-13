@@ -166,13 +166,25 @@ export const cappersAPI = {
   list: (params?: Record<string, string>) => api.get('/cappers', { params }),
   get: (userId: string) => api.get(`/cappers/${userId}`),
   apply: () => api.post('/cappers/apply'),
-  updateProfile: (data: { display_name?: string; bio?: string; price_cents?: number }) =>
+  updateProfile: (data: Record<string, unknown>) =>
     api.patch('/cappers/me', data),
   subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
   unsubscribe: (userId: string) => api.delete(`/cappers/${userId}/subscribe`),
   tail: (slipId: string) => api.post(`/cappers/tail/${slipId}`),
   mySubscribers: () => api.get('/cappers/me/subscribers'),
   myEarnings: () => api.get('/cappers/me/earnings'),
+};
+
+// Creator Posts
+export const creatorPostsAPI = {
+  list: (params?: Record<string, string>) => api.get('/creator-posts', { params }),
+  create: (data: { content: string; image_url?: string; is_subscriber_only?: boolean }) =>
+    api.post('/creator-posts', data),
+  like: (postId: string) => api.post(`/creator-posts/${postId}/like`),
+  unlike: (postId: string) => api.delete(`/creator-posts/${postId}/like`),
+  getComments: (postId: string) => api.get(`/creator-posts/${postId}/comments`),
+  addComment: (postId: string, text: string) => api.post(`/creator-posts/${postId}/comments`, { text }),
+  delete: (postId: string) => api.delete(`/creator-posts/${postId}`),
 };
 
 // Shareable Cards
