@@ -13,6 +13,7 @@ import {
   CAPPER_PLATFORM_RAKE,
   CAPPER_DEFAULT_PRICE_CENTS,
 } from '@gammbler/shared';
+import { checkAndAwardCreatorBadges } from '../services/creator-badges';
 
 const router = Router();
 
@@ -386,6 +387,9 @@ router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Resp
     await db.update(capperProfiles)
       .set({ total_subscribers: sql`${capperProfiles.total_subscribers} + 1` })
       .where(eq(capperProfiles.user_id, capperUserId));
+
+    // Check creator badges for the capper (fire & forget)
+    checkAndAwardCreatorBadges(capperUserId).catch(() => {});
 
     res.status(201).json({ subscription });
   } catch (err) {

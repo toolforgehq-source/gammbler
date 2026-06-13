@@ -6,6 +6,7 @@ import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
 import { sendNewFollowerEmail } from '../services/email';
+import { checkAndAwardCreatorBadges } from '../services/creator-badges';
 
 const router = Router();
 
@@ -201,6 +202,9 @@ router.post('/follow/:userId', authMiddleware, async (req: Request, res: Respons
     if (followedUser && followerUser) {
       sendNewFollowerEmail(followedUser.email, followedUser.username, followerUser.username).catch(() => {});
     }
+
+    // Check creator badges for the followed user (fire & forget)
+    checkAndAwardCreatorBadges(req.params.userId).catch(() => {});
 
     res.json({ success: true });
   } catch (err) {
