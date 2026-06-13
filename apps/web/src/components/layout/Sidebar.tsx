@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   PenLine,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/dashboard/dfs', label: 'DFS Score', icon: Gamepad2 },
   { href: '/dashboard/slips', label: 'Bet Slips', icon: Share2 },
   { href: '/dashboard/cappers', label: 'Cappers', icon: Crown },
+  { href: '/dashboard/creator-leaderboards', label: 'Creator Rankings', icon: TrendingUp },
   { href: '/dashboard/challenges', label: 'H2H', icon: Target },
   { href: '/dashboard/leaderboards', label: 'Leaderboards', icon: Trophy },
   { href: '/dashboard/leagues', label: 'Leagues', icon: Swords },

@@ -80,6 +80,12 @@ export const leaderboardsAPI = {
     api.get(`/leaderboards/${sport}/national`, { params }),
 };
 
+// Creator Leaderboards
+export const creatorLeaderboardsAPI = {
+  get: (category: string, params?: Record<string, string>) =>
+    api.get('/creator-leaderboards', { params: { category, ...params } }),
+};
+
 // Feed
 export const feedAPI = {
   get: (params?: Record<string, string>) => api.get('/feed', { params }),
