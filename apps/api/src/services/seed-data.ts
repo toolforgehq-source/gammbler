@@ -191,15 +191,20 @@ export async function seedSocialData(): Promise<{ seeded: boolean; users_created
           SharpMike: 'Sharp bettor with an edge in NFL and NBA markets. 5+ years of tracked results.',
         };
 
+        const capperTier = userData.score >= 85 ? 'elite' : userData.score >= 75 ? 'verified' : 'capper';
         await db.insert(capperProfiles).values({
           user_id: newUser.id,
           display_name: userData.username,
-          bio: bios[userData.username] || 'Verified capper with a proven track record.',
+          bio: bios[userData.username] || 'Capper with a proven track record.',
           price_cents: 499 + Math.floor(Math.random() * 500),
           status: 'active',
+          tier: capperTier as any,
+          creator_plan_type: 'standard',
+          revenue_share_pct: '80.00',
           total_subscribers: 10 + Math.floor(Math.random() * 90),
           total_tails: 50 + Math.floor(Math.random() * 200),
           verified_score: userData.score.toFixed(1),
+          verified_at: capperTier !== 'capper' ? new Date() : null,
         });
       }
 

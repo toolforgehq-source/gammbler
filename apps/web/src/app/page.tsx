@@ -157,7 +157,7 @@ const faqs = [
   },
   {
     q: 'How do I make money as a Capper?',
-    a: 'Score 80+ with 100+ verified bets to get Capper status. Set your monthly subscription price ($1.99–$99.99), and subscribers pay to see your picks. You keep 70% of all subscriber revenue — paid out monthly. The higher your score, the more you can charge.',
+    a: 'Anyone can become a Capper — no minimum score required. Set your monthly subscription price ($1.99–$99.99), and subscribers pay to see your picks. You keep 80% of all subscriber revenue — paid out monthly. Earn Verified Capper status at 75+ score with 50+ picks, or Elite Capper at 85+ score with 100+ picks for premium visibility.',
   },
   {
     q: 'What are H2H Challenges?',
@@ -479,7 +479,7 @@ export default function HomePage() {
               <span className="text-gradient-gold">Income</span>
             </h2>
             <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
-              Score 80+ with 100 verified bets to become a Capper. Set your price, build a subscriber base, and earn monthly income from your betting expertise — like Twitch for sports betting.
+              Anyone can become a Capper — no minimum score required. Set your price, build a subscriber base, and earn monthly income from your betting expertise — like Twitch for sports betting.
             </p>
           </div>
 
@@ -526,15 +526,15 @@ export default function HomePage() {
             <div className="glass-card rounded-xl p-8">
               <h3 className="text-xl font-bold text-[#FFD700] mb-5" style={{ fontFamily: 'var(--font-display)' }}>FOR CAPPERS</h3>
               <ul className="space-y-3 text-sm text-[#e0e0e0]">
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Score 80+ with 100+ bets to get Verified</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Set your own monthly price ($1.99–$99.99)</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Keep 70% of subscriber revenue</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Become a Capper instantly — no score requirement</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Earn Verified (75+ score) or Elite (85+ score) status</li>
+                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Keep 80% of subscriber revenue</li>
                 <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Build your brand with live bet slips</li>
                 <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Track earnings and subscriber analytics</li>
               </ul>
               <div className="mt-6 pt-4 border-t border-white/[0.06]">
                 <p className="text-xs text-[#9e9e9e]">
-                  <span className="text-[#FFD700] font-semibold">Example:</span> 200 subscribers at $19.99/mo = <span className="text-[#FFD700] font-bold">$2,799/mo</span> in your pocket
+                  <span className="text-[#FFD700] font-semibold">Example:</span> 200 subscribers at $19.99/mo = <span className="text-[#FFD700] font-bold">$3,199/mo</span> in your pocket
                 </p>
               </div>
             </div>
@@ -1220,7 +1220,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <p className="text-sm text-[#9e9e9e]">
-                  Hit 80+ DFS Score? Become a DFS Capper and sell your daily lineup builds. Subscribers get your core plays — backed by a verified track record.
+                  Become a DFS Capper and sell your daily lineup builds. Earn Verified status at 75+ DFS Score. Subscribers get your core plays — backed by a verified track record.
                 </p>
               </div>
             </div>

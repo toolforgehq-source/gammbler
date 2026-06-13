@@ -72,6 +72,7 @@ export const users = pgTable('users', {
   stripe_customer_id: varchar('stripe_customer_id', { length: 255 }),
   is_profile_public: boolean('is_profile_public').default(true).notNull(),
   tos_accepted_at: timestamp('tos_accepted_at', { withTimezone: true }),
+  date_of_birth: varchar('date_of_birth', { length: 10 }),
   referral_code: varchar('referral_code', { length: 20 }).unique(),
   referred_by: uuid('referred_by'),
   notification_preferences: jsonb('notification_preferences').default('{}'),
@@ -167,6 +168,27 @@ export const feedEvents = pgTable('feed_events', {
 }, (table) => ({
   createdAtIdx: index('feed_events_created_at_idx').on(table.created_at),
   userIdx: index('feed_events_user_idx').on(table.user_id),
+}));
+
+export const feedLikes = pgTable('feed_likes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  event_id: uuid('event_id').notNull().references(() => feedEvents.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userEventUnique: uniqueIndex('feed_likes_user_event_unique').on(table.user_id, table.event_id),
+  eventIdx: index('feed_likes_event_idx').on(table.event_id),
+}));
+
+export const feedComments = pgTable('feed_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  event_id: uuid('event_id').notNull().references(() => feedEvents.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  text: text('text').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  eventIdx: index('feed_comments_event_idx').on(table.event_id),
+  userIdx: index('feed_comments_user_idx').on(table.user_id),
 }));
 
 export const notifications = pgTable('notifications', {
@@ -352,6 +374,10 @@ export const capperStatusEnum = pgEnum('capper_status', [
   'pending', 'active', 'suspended',
 ]);
 
+export const capperTierEnum = pgEnum('capper_tier', [
+  'capper', 'verified', 'elite',
+]);
+
 export const capperSubStatusEnum = pgEnum('capper_sub_status', [
   'active', 'cancelled', 'expired',
 ]);
@@ -363,15 +389,19 @@ export const capperProfiles = pgTable('capper_profiles', {
   bio: text('bio'),
   price_cents: integer('price_cents').default(499).notNull(),
   status: capperStatusEnum('status').default('active').notNull(),
+  tier: capperTierEnum('tier').default('capper').notNull(),
+  creator_plan_type: varchar('creator_plan_type', { length: 50 }).default('standard').notNull(),
+  revenue_share_pct: numeric('revenue_share_pct', { precision: 5, scale: 2 }).default('80.00').notNull(),
   total_subscribers: integer('total_subscribers').default(0).notNull(),
   total_tails: integer('total_tails').default(0).notNull(),
   total_earnings_cents: integer('total_earnings_cents').default(0).notNull(),
-  verified_at: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
+  verified_at: timestamp('verified_at', { withTimezone: true }),
   verified_score: numeric('verified_score', { precision: 5, scale: 1 }).default('0').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('capper_profiles_user_idx').on(table.user_id),
   statusIdx: index('capper_profiles_status_idx').on(table.status),
+  tierIdx: index('capper_profiles_tier_idx').on(table.tier),
 }));
 
 export const capperSubscriptions = pgTable('capper_subscriptions', {

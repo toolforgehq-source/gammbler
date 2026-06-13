@@ -247,7 +247,7 @@ export default function ChallengesPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3" style={{ fontFamily: 'var(--font-display)' }}>
             <Target className="text-accent" size={28} />
@@ -257,7 +257,7 @@ export default function ChallengesPage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors text-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors text-sm self-start sm:self-auto"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           <Plus size={16} />

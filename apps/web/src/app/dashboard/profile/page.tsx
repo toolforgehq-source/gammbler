@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { profileAPI, badgesAPI, dfsAPI } from '@/lib/api';
+import { profileAPI, badgesAPI, dfsAPI, scoresAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2 } from 'lucide-react';
+import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2, ShieldCheck } from 'lucide-react';
 import { shareableAPI } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -38,6 +38,7 @@ interface Profile {
   following: number;
   is_self: boolean;
   total_profit_loss?: number;
+  capper_tier: 'capper' | 'verified' | 'elite' | null;
 }
 
 interface BadgeInfo {
@@ -66,24 +67,38 @@ export default function ProfilePage() {
   const [dfsBadges, setDfsBadges] = useState<Array<{ badge_type: string; earned_at: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [generatingCard, setGeneratingCard] = useState(false);
+  const [nationalRank, setNationalRank] = useState<{ rank: number | null; total_ranked: number } | null>(null);
+  const [verification, setVerification] = useState<{
+    verification_pct: number;
+    verification_level: string;
+  } | null>(null);
   const cardSport = 'overall';
 
   useEffect(() => {
     async function fetchProfile() {
       if (!user) return;
       try {
-        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes] = await Promise.all([
+        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes, rankRes] = await Promise.all([
           profileAPI.get(user.username),
           badgesAPI.getAll(),
           profileAPI.scoreHistory(user.username),
           dfsAPI.getScores().catch(() => ({ data: { scores: [] } })),
           dfsAPI.getBadges().catch(() => ({ data: { badges: [] } })),
+          scoresAPI.getMyRank().catch(() => ({ data: { rank: null, total_ranked: 0 } })),
         ]);
         setProfile(profileRes.data.profile);
         setAllBadges(badgesRes.data.badges || []);
         setScoreHistory(historyRes.data.history || {});
         setDfsScores(dfsScoresRes.data.scores || []);
         setDfsBadges(dfsBadgesRes.data.badges || []);
+        setNationalRank(rankRes.data);
+
+        // Fetch verification stats
+        if (profileRes.data.profile?.id) {
+          scoresAPI.getVerification(profileRes.data.profile.id).then((vRes) => {
+            setVerification(vRes.data);
+          }).catch(() => {});
+        }
       } catch {
         // ignore
       } finally {
@@ -126,16 +141,16 @@ export default function ProfilePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Profile Header */}
-      <div className="bg-card border border-accent/20 rounded-lg p-8">
-        <div className="flex items-start gap-6">
-          <div className="w-24 h-24 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-3xl flex-shrink-0" style={{ fontFamily: 'var(--font-display)' }}>
+      <div className="bg-card border border-accent/20 rounded-lg p-4 sm:p-8">
+        <div className="flex items-start gap-4 sm:gap-6">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-2xl sm:text-3xl flex-shrink-0" style={{ fontFamily: 'var(--font-display)' }}>
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.username} className="w-full h-full rounded-full object-cover" />
             ) : (
               profile.username.charAt(0).toUpperCase()
             )}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
                 {profile.username}
@@ -149,7 +164,7 @@ export default function ProfilePage() {
 
             {/* Score + Tier */}
             {overallScore?.is_unlocked ? (
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4 mb-2 flex-wrap">
                 <span className={`text-4xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
                   {scoreVal.toFixed(1)}
                 </span>
@@ -162,13 +177,52 @@ export default function ProfilePage() {
                 }`}>
                   {scoreVal <= 40 ? 'Recreational' : scoreVal <= 60 ? 'Developing' : scoreVal <= 75 ? 'Sharp' : scoreVal <= 90 ? 'Elite' : 'Legend'}
                 </span>
+                {nationalRank?.rank && (
+                  <Link href="/dashboard/leaderboards" className="text-sm font-semibold px-3 py-1 rounded-full bg-gold/20 text-gold hover:bg-gold/30 transition-colors" style={{ fontFamily: 'var(--font-number)' }}>
+                    #{nationalRank.rank} National
+                  </Link>
+                )}
               </div>
             ) : (
-              <p className="text-sm text-muted-dark mb-4">Score locked — {overallScore?.settled_bet_count || 0}/10 bets needed</p>
+              <p className="text-sm text-muted-dark mb-2">Score locked — {overallScore?.settled_bet_count || 0}/10 bets needed</p>
+            )}
+            {/* Capper Tier Badge — shown regardless of score unlock status */}
+            {profile.capper_tier && (
+              <div className="flex items-center gap-2 mb-4">
+                {profile.capper_tier === 'elite' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-gold/20 text-gold">ELITE CAPPER</span>
+                )}
+                {profile.capper_tier === 'verified' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-accent/20 text-accent">VERIFIED CAPPER</span>
+                )}
+                {profile.capper_tier === 'capper' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary text-muted">CAPPER</span>
+                )}
+              </div>
+            )}
+
+            {/* Verification Badge */}
+            {verification && verification.verification_pct > 0 && (
+              <div className="flex items-center gap-1.5 mb-3">
+                <ShieldCheck size={14} className={
+                  verification.verification_level === 'diamond' ? 'text-blue-400' :
+                  verification.verification_level === 'gold' ? 'text-gold' :
+                  verification.verification_level === 'silver' ? 'text-gray-300' :
+                  'text-amber-700'
+                } />
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  verification.verification_level === 'diamond' ? 'bg-blue-400/20 text-blue-400' :
+                  verification.verification_level === 'gold' ? 'bg-gold/20 text-gold' :
+                  verification.verification_level === 'silver' ? 'bg-gray-300/20 text-gray-300' :
+                  'bg-amber-700/20 text-amber-700'
+                }`}>
+                  {verification.verification_pct}% Verified
+                </span>
+              </div>
             )}
 
             {/* Stats Row */}
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-3 sm:gap-6 text-sm flex-wrap">
               <div>
                 <span className="font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>
                   {profile.record.wins}-{profile.record.losses}-{profile.record.pushes}

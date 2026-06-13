@@ -246,7 +246,7 @@ export default function DFSPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
             DFS Score
@@ -254,10 +254,10 @@ export default function DFSPage() {
           <p className="text-muted text-sm mt-1">Daily Fantasy Sports Performance Tracker</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setActiveTab('add')} className="flex items-center gap-2 px-4 py-2 bg-accent text-background rounded-lg text-sm font-medium hover:bg-accent-light transition-colors">
+          <button onClick={() => setActiveTab('add')} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-accent text-background rounded-lg text-sm font-medium hover:bg-accent-light transition-colors">
             <PlusCircle size={16} /> Add Contest
           </button>
-          <button onClick={() => setActiveTab('import')} className="flex items-center gap-2 px-4 py-2 bg-card border border-accent/30 text-accent rounded-lg text-sm font-medium hover:bg-accent/10 transition-colors">
+          <button onClick={() => setActiveTab('import')} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-card border border-accent/30 text-accent rounded-lg text-sm font-medium hover:bg-accent/10 transition-colors">
             <Upload size={16} /> Import CSV
           </button>
         </div>
@@ -283,8 +283,8 @@ export default function DFSPage() {
         <div className="space-y-6">
           {/* DFS Score Circle */}
           {overallScore && overallScore.is_unlocked ? (
-            <div className="bg-card rounded-2xl p-8 border border-accent/20">
-              <div className="flex items-start gap-8">
+            <div className="bg-card rounded-2xl p-4 sm:p-8 border border-accent/20">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
                 <div className="text-center">
                   <p className="text-xs text-muted uppercase tracking-wider mb-2">Overall DFS Score</p>
                   <div className="relative w-36 h-36 mx-auto">
@@ -615,7 +615,7 @@ export default function DFSPage() {
       {/* Leaderboards Tab */}
       {activeTab === 'leaderboards' && (
         <div className="bg-card rounded-2xl p-6 border border-accent/20">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <h2 className="text-lg font-bold">DFS Leaderboards</h2>
             <div className="flex gap-2">
               <select value={leaderboardSport} onChange={(e) => setLeaderboardSport(e.target.value)}

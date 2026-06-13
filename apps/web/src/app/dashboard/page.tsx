@@ -87,6 +87,7 @@ export default function DashboardPage() {
   const [cardStatus, setCardStatus] = useState<{ unlimited: boolean; cards_remaining: number | null } | null>(null);
   const [generatingCard, setGeneratingCard] = useState(false);
   const [cardError, setCardError] = useState('');
+  const [nationalRank, setNationalRank] = useState<{ rank: number | null; total_ranked: number } | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -112,6 +113,9 @@ export default function DashboardPage() {
   useEffect(() => {
     shareableAPI.cardStatus()
       .then(res => setCardStatus(res.data))
+      .catch(() => {});
+    scoresAPI.getMyRank()
+      .then(res => setNationalRank(res.data))
       .catch(() => {});
   }, []);
 
@@ -158,18 +162,18 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 max-w-7xl">
       {/* Overall Score Card */}
-      <div className="bg-card border border-accent/20 rounded-lg p-8">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="bg-card border border-accent/20 rounded-lg p-4 sm:p-8">
+        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-4">
+          <div className="text-center sm:text-left w-full sm:w-auto">
             <p className="text-sm uppercase tracking-widest text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
               Gammbler Score
             </p>
             {overallScore?.is_unlocked ? (
               <>
-                <p className={`text-7xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
+                <p className={`text-5xl sm:text-7xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
                   {scoreVal.toFixed(1)}
                 </p>
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
                   <span className={`inline-flex items-center gap-1 text-sm ${scoreChange >= 0 ? 'text-win' : 'text-loss'}`}>
                     {scoreChange >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                     {scoreChange >= 0 ? '+' : ''}{scoreChange.toFixed(1)} this week
@@ -178,6 +182,15 @@ export default function DashboardPage() {
                   <span className={`text-sm font-semibold ${getScoreColor(scoreVal)}`}>
                     {getTierName(scoreVal)}
                   </span>
+                  {nationalRank?.rank && (
+                    <>
+                      <span className="text-sm text-muted-dark">•</span>
+                      <Link href="/dashboard/leaderboards" className="inline-flex items-center gap-1 text-sm text-gold hover:text-gold/80 transition-colors">
+                        <span className="font-bold" style={{ fontFamily: 'var(--font-number)' }}>#{nationalRank.rank}</span>
+                        <span>National</span>
+                      </Link>
+                    </>
+                  )}
                 </div>
               </>
             ) : (

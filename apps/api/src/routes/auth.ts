@@ -16,9 +16,21 @@ const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/),
+  date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth must be YYYY-MM-DD'),
   tos_accepted: z.boolean().refine((v) => v === true, { message: 'You must accept the Terms of Service' }),
   referral_code: z.string().optional(),
 });
+
+function isAtLeast18(dob: string): boolean {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 18;
+}
 
 const signinSchema = z.object({
   email: z.string().email(),
@@ -41,6 +53,11 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
     const existingUsername = await db.select().from(users).where(eq(users.username, body.username)).limit(1);
     if (existingUsername.length > 0) {
       res.status(409).json({ error: 'Username already taken' });
+      return;
+    }
+
+    if (!isAtLeast18(body.date_of_birth)) {
+      res.status(403).json({ error: 'You must be at least 18 years old to use Gammbler' });
       return;
     }
 
@@ -70,6 +87,7 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
         email: body.email,
         password_hash: passwordHash,
         username: body.username,
+        date_of_birth: body.date_of_birth,
         trial_ends_at: trialEndsAt,
         tos_accepted_at: new Date(),
         referral_code: referralCode,

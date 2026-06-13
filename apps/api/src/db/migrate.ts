@@ -142,6 +142,29 @@ async function migrate() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS feed_likes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID NOT NULL REFERENCES feed_events(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(user_id, event_id)
+      );
+      CREATE INDEX IF NOT EXISTS feed_likes_event_idx ON feed_likes(event_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS feed_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID NOT NULL REFERENCES feed_events(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS feed_comments_event_idx ON feed_comments(event_id);
+      CREATE INDEX IF NOT EXISTS feed_comments_user_idx ON feed_comments(user_id);
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -598,6 +621,40 @@ async function migrate() {
         imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS dfs_csv_imports_user_idx ON dfs_csv_imports(user_id);
+    `);
+
+    // Add date_of_birth column to users
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(10);
+    `);
+
+    // ── Capper system overhaul: tier, creator plan, revenue share ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE capper_tier AS ENUM ('capper','verified','elite'); EXCEPTION WHEN duplicate_object THEN null; END $$
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS tier capper_tier NOT NULL DEFAULT 'capper';
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS creator_plan_type VARCHAR(50) NOT NULL DEFAULT 'standard';
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS revenue_share_pct NUMERIC(5,2) NOT NULL DEFAULT 80.00;
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ALTER COLUMN verified_at DROP NOT NULL;
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ALTER COLUMN verified_at DROP DEFAULT;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS capper_profiles_tier_idx ON capper_profiles(tier);
     `);
 
     await client.query('COMMIT');
