@@ -11,6 +11,7 @@ interface User {
   subscription_status: string;
   referral_code: string | null;
   tier?: 'free' | 'pro';
+  verified_score_pass?: boolean;
 }
 
 interface AuthStore {

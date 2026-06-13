@@ -627,7 +627,7 @@ export default function HomePage() {
             Get your score. See your ranking. Challenge your friends. Join leagues. Build your reputation.
           </p>
           <p className="text-sm text-[#6b6b6b] mb-10">
-            Free forever &middot; Pro starts at $8.99/mo
+            Free forever &middot; Verified Score Pass $4.99 one-time &middot; Pro $8.99/mo
           </p>
           <Link
             href="/signup"

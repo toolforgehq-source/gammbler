@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { profileAPI, connectionsAPI, stripeAPI } from '@/lib/api';
-import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield } from 'lucide-react';
+import { profileAPI, connectionsAPI, stripeAPI, authAPI } from '@/lib/api';
+import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck } from 'lucide-react';
+import VerifiedScorePassModal from '@/components/ui/VerifiedScorePassModal';
 
 const PLATFORMS = [
   { key: 'draftkings', name: 'DraftKings', logo: '🟢' },
@@ -24,13 +26,32 @@ interface Connection {
 
 export default function SettingsPage() {
   const { user, updateUser, logout } = useAuthStore();
+  const router = useRouter();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPassModal, setShowPassModal] = useState(false);
+
+  const isPro = user?.tier === 'pro' || user?.subscription_status === 'active' || user?.subscription_status === 'trialing';
+  const hasVerifiedPass = user?.verified_score_pass || false;
+  const canConnectSportsbook = isPro || hasVerifiedPass;
 
   useEffect(() => {
     connectionsAPI.list().then((res) => setConnections(res.data.connections || [])).catch(() => {});
-  }, []);
+
+    // Check for verified_pass success redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('verified_pass') === 'success') {
+      // Refresh user data to get updated verified_score_pass
+      authAPI.me().then((res) => {
+        if (res.data.user) {
+          updateUser(res.data.user);
+        }
+      }).catch(() => {});
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard/settings');
+    }
+  }, [updateUser]);
 
   const toggleProfile = async () => {
     setSaving(true);
@@ -47,6 +68,10 @@ export default function SettingsPage() {
   };
 
   const connectPlatform = async (platform: string) => {
+    if (!canConnectSportsbook) {
+      setShowPassModal(true);
+      return;
+    }
     try {
       const res = await connectionsAPI.initiate(platform);
       window.open(res.data.url, '_blank');
@@ -115,6 +140,22 @@ export default function SettingsPage() {
             }`}>
               {user?.subscription_status || 'trialing'}
             </span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="text-muted-dark">Verified Score Pass</span>
+            {hasVerifiedPass || isPro ? (
+              <span className="inline-flex items-center gap-1 text-accent text-sm font-semibold">
+                <ShieldCheck size={14} />
+                {isPro ? 'Included with Pro' : 'Active'}
+              </span>
+            ) : (
+              <button
+                onClick={() => setShowPassModal(true)}
+                className="text-xs bg-accent/20 text-accent px-3 py-1 rounded hover:bg-accent/30 transition-colors font-semibold"
+              >
+                Get Verified — $4.99
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -210,6 +251,12 @@ export default function SettingsPage() {
       >
         <LogOut size={16} /> Sign Out
       </button>
+
+      <VerifiedScorePassModal
+        isOpen={showPassModal}
+        onClose={() => setShowPassModal(false)}
+        onCsvUpload={() => router.push('/dashboard/add-bet')}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { leaderboardsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { Users, Globe, Share2, Lock } from 'lucide-react';
 import Link from 'next/link';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 
 interface LeaderboardEntry {
@@ -19,6 +20,7 @@ interface LeaderboardEntry {
   roi: string | null;
   is_self: boolean;
   locked_label?: string;
+  is_verified?: boolean;
 }
 
 const SPORTS = [
@@ -200,6 +202,7 @@ export default function LeaderboardsPage() {
                   {entry.username}
                   {entry.is_self && <span className="text-xs text-accent ml-1">(You)</span>}
                 </span>
+                {entry.is_verified && <VerifiedBadge size="sm" />}
               </div>
               <div className="text-right sm:col-span-2">
                 {entry.locked_label ? (
