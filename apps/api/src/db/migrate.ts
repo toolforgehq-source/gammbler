@@ -679,6 +679,17 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS creator_post_comments_user_idx ON creator_post_comments(user_id);
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_badges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        badge_id VARCHAR(50) NOT NULL,
+        earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS creator_badges_user_badge_unique ON creator_badges(user_id, badge_id);
+      CREATE INDEX IF NOT EXISTS creator_badges_user_idx ON creator_badges(user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {
