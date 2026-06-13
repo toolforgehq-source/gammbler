@@ -672,3 +672,15 @@ export const dfsCsvImports = pgTable('dfs_csv_imports', {
 }, (table) => ({
   userIdx: index('dfs_csv_imports_user_idx').on(table.user_id),
 }));
+
+// ── Creator Badges (separate from betting badges) ─────────────
+
+export const creatorBadges = pgTable('creator_badges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  badge_id: varchar('badge_id', { length: 50 }).notNull(),
+  earned_at: timestamp('earned_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userBadgeUnique: uniqueIndex('creator_badges_user_badge_unique').on(table.user_id, table.badge_id),
+  userIdx: index('creator_badges_user_idx').on(table.user_id),
+}));

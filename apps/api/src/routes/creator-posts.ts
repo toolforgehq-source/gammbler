@@ -7,6 +7,7 @@ import {
 import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { z } from 'zod';
+import { checkAndAwardCreatorBadges } from '../services/creator-badges';
 
 const router = Router();
 
@@ -51,6 +52,9 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
+
+    // Check creator badges (fire & forget)
+    checkAndAwardCreatorBadges(userId).catch(() => {});
 
     res.status(201).json({
       post: {

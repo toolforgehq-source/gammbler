@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { capperProfiles, users, follows, creatorPosts, gammblerScores } from '../db/schema';
+import { capperProfiles, users, follows, creatorPosts, gammblerScores, creatorBadges } from '../db/schema';
 import { eq, desc, sql, and, gte, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 
@@ -175,12 +175,26 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         );
 
       const scoreMap = new Map(scores.map((s) => [s.user_id, s]));
+
+      // Attach creator badges
+      const badgeRows = await db
+        .select({ user_id: creatorBadges.user_id, badge_id: creatorBadges.badge_id })
+        .from(creatorBadges)
+        .where(inArray(creatorBadges.user_id, userIds));
+
+      const badgeMap = new Map<string, string[]>();
+      for (const row of badgeRows) {
+        if (!badgeMap.has(row.user_id)) badgeMap.set(row.user_id, []);
+        badgeMap.get(row.user_id)!.push(row.badge_id);
+      }
+
       leaderboard = leaderboard.map((entry) => {
         const scoreData = scoreMap.get(entry.user_id);
         return {
           ...entry,
           betting_score: scoreData?.is_unlocked ? parseFloat(scoreData.score as string) : null,
           score_unlocked: scoreData?.is_unlocked || false,
+          creator_badges: badgeMap.get(entry.user_id) || [],
         };
       });
     }

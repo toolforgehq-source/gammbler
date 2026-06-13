@@ -86,6 +86,19 @@ export const creatorLeaderboardsAPI = {
     api.get('/creator-leaderboards', { params: { category, ...params } }),
 };
 
+// Creator Badges
+export const creatorBadgesAPI = {
+  getDefinitions: () => api.get('/creator-badges/definitions'),
+  getForUser: (userId: string) => api.get(`/creator-badges/${userId}`),
+  check: () => api.post('/creator-badges/check'),
+};
+
+// Creator Discovery
+export const creatorDiscoveryAPI = {
+  get: (section: string, params?: Record<string, string>) =>
+    api.get('/creator-discovery', { params: { section, ...params } }),
+};
+
 // Feed
 export const feedAPI = {
   get: (params?: Record<string, string>) => api.get('/feed', { params }),
