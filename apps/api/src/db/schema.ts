@@ -78,6 +78,8 @@ export const users = pgTable('users', {
   notification_preferences: jsonb('notification_preferences').default('{}'),
   do_not_disturb_start: varchar('do_not_disturb_start', { length: 5 }),
   do_not_disturb_end: varchar('do_not_disturb_end', { length: 5 }),
+  verified_score_pass: boolean('verified_score_pass').default(false).notNull(),
+  verified_score_pass_purchased_at: timestamp('verified_score_pass_purchased_at', { withTimezone: true }),
 }, (table) => ({
   emailIdx: index('users_email_idx').on(table.email),
   usernameIdx: index('users_username_idx').on(table.username),

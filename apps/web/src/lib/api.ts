@@ -128,6 +128,7 @@ export const notificationsAPI = {
 export const stripeAPI = {
   createCheckout: () => api.post('/stripe/create-checkout'),
   createPortal: () => api.post('/stripe/create-portal'),
+  createVerifiedPassCheckout: () => api.post('/stripe/create-verified-pass-checkout'),
 };
 
 // Connections

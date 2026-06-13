@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { creatorLeaderboardsAPI } from '@/lib/api';
 import { Users, TrendingUp, Heart, Star, Crown, Award } from 'lucide-react';
 import Link from 'next/link';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 interface CreatorEntry {
   rank: number;
@@ -21,6 +22,7 @@ interface CreatorEntry {
   metric_label: string;
   betting_score: number | null;
   score_unlocked: boolean;
+  is_verified?: boolean;
 }
 
 const CATEGORIES = [
@@ -185,6 +187,7 @@ export default function CreatorLeaderboardsPage() {
                       {entry.display_name}
                     </Link>
                     <span className="text-xs text-muted">@{entry.username}</span>
+                    {entry.is_verified && <VerifiedBadge size="sm" />}
                   </div>
                   {entry.bio && (
                     <p className="text-xs text-muted mt-0.5 line-clamp-1">{entry.bio}</p>

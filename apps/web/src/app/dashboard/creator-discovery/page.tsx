@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { creatorDiscoveryAPI } from '@/lib/api';
 import { Users, TrendingUp, Sparkles, Star, Crown, UserPlus, Heart, Award, Trophy, Shield, PenTool, BookOpen } from 'lucide-react';
 import Link from 'next/link';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 interface Creator {
   user_id: string;
@@ -20,6 +21,7 @@ interface Creator {
   metric_value: number | string;
   metric_label: string;
   rank: number;
+  is_verified?: boolean;
 }
 
 const SECTIONS = [
@@ -204,6 +206,7 @@ export default function CreatorDiscoveryPage() {
                         {creator.display_name}
                       </Link>
                       <span className="text-xs text-muted">@{creator.username}</span>
+                      {creator.is_verified && <VerifiedBadge size="sm" />}
                     </div>
 
                     {/* Bio */}

@@ -188,6 +188,21 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         badgeMap.get(row.user_id)!.push(row.badge_id);
       }
 
+      // Check verified status
+      const verifiedUsers = await db
+        .select({
+          id: users.id,
+          verified_score_pass: users.verified_score_pass,
+          subscription_status: users.subscription_status,
+        })
+        .from(users)
+        .where(inArray(users.id, userIds));
+
+      const verifiedMap = new Map(verifiedUsers.map((u) => [
+        u.id,
+        u.verified_score_pass || u.subscription_status === 'active',
+      ]));
+
       leaderboard = leaderboard.map((entry) => {
         const scoreData = scoreMap.get(entry.user_id);
         return {
@@ -195,6 +210,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
           betting_score: scoreData?.is_unlocked ? parseFloat(scoreData.score as string) : null,
           score_unlocked: scoreData?.is_unlocked || false,
           creator_badges: badgeMap.get(entry.user_id) || [],
+          is_verified: verifiedMap.get(entry.user_id) || false,
         };
       });
     }

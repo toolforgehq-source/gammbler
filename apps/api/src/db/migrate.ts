@@ -690,6 +690,12 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS creator_badges_user_idx ON creator_badges(user_id);
     `);
 
+    // Verified Score Pass columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_score_pass BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_score_pass_purchased_at TIMESTAMPTZ;
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

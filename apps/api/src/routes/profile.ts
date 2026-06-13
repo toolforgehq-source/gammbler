@@ -30,6 +30,9 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
         avatar_url: users.avatar_url,
         created_at: users.created_at,
         is_profile_public: users.is_profile_public,
+        verified_score_pass: users.verified_score_pass,
+        subscription_status: users.subscription_status,
+        trial_ends_at: users.trial_ends_at,
       })
       .from(users)
       .where(eq(users.username, req.params.username))
@@ -116,6 +119,7 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       following: followingCount?.count || 0,
       is_following: isFollowing,
       is_self: req.user?.userId === user.id,
+      is_verified: user.verified_score_pass || user.subscription_status === 'active',
     };
 
     // Add private fields if viewing own profile

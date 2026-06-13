@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { sportsbookConnections } from '../db/schema';
+import { sportsbookConnections, users } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { attachTier } from '../middleware/subscription';
@@ -35,15 +35,18 @@ router.post('/initiate', authMiddleware, attachTier, async (req: Request, res: R
     }
 
     if (req.userTier === 'free') {
-      const existing = await db
-        .select()
-        .from(sportsbookConnections)
-        .where(eq(sportsbookConnections.user_id, req.user!.userId));
+      // Check if user has Verified Score Pass
+      const [currentUser] = await db
+        .select({ verified_score_pass: users.verified_score_pass })
+        .from(users)
+        .where(eq(users.id, req.user!.userId))
+        .limit(1);
 
-      if (existing.length >= FREE_CONNECTION_LIMIT) {
+      if (!currentUser?.verified_score_pass) {
         res.status(403).json({
-          error: `Free accounts are limited to ${FREE_CONNECTION_LIMIT} sportsbook connection. Upgrade to Pro for unlimited.`,
+          error: 'Sportsbook connection requires a Verified Score Pass ($4.99 one-time) or Pro subscription.',
           upgrade: true,
+          requires_verified_pass: true,
         });
         return;
       }

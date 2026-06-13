@@ -175,10 +175,26 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
         badgeMap.get(row.user_id)!.push(row.badge_id);
       }
 
+      // Check verified status
+      const verifiedUsers = await db
+        .select({
+          id: users.id,
+          verified_score_pass: users.verified_score_pass,
+          subscription_status: users.subscription_status,
+        })
+        .from(users)
+        .where(inArray(users.id, userIds));
+
+      const verifiedMap = new Map(verifiedUsers.map((u) => [
+        u.id,
+        u.verified_score_pass || u.subscription_status === 'active',
+      ]));
+
       creators = creators.map((c) => ({
         ...c,
         betting_score: scoreMap.get(c.user_id) || null,
         creator_badges: badgeMap.get(c.user_id) || [],
+        is_verified: verifiedMap.get(c.user_id) || false,
       }));
     }
 

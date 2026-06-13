@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { profileAPI, badgesAPI, dfsAPI, scoresAPI } from '@/lib/api';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { useAuthStore } from '@/lib/store';
 import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2, ShieldCheck } from 'lucide-react';
 import { shareableAPI } from '@/lib/api';
@@ -38,6 +39,7 @@ interface Profile {
   following: number;
   is_self: boolean;
   total_profit_loss?: number;
+  is_verified?: boolean;
 }
 
 interface BadgeInfo {
@@ -154,6 +156,7 @@ export default function ProfilePage() {
               <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
                 {profile.username}
               </h2>
+              {profile.is_verified && <VerifiedBadge size="md" />}
               {profile.is_self && (
                 <Link href="/dashboard/settings" className="text-muted-dark hover:text-white">
                   <Settings size={18} />

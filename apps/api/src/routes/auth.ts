@@ -151,6 +151,7 @@ router.post('/signin', async (req: Request, res: Response): Promise<void> => {
         trial_ends_at: user.trial_ends_at,
         subscription_status: user.subscription_status,
         referral_code: user.referral_code,
+        verified_score_pass: user.verified_score_pass,
       },
     });
   } catch (err) {
@@ -178,6 +179,7 @@ router.get('/me', authMiddleware, async (req: Request, res: Response): Promise<v
         is_profile_public: users.is_profile_public,
         referral_code: users.referral_code,
         notification_preferences: users.notification_preferences,
+        verified_score_pass: users.verified_score_pass,
       })
       .from(users)
       .where(eq(users.id, req.user!.userId))
