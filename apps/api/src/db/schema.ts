@@ -56,6 +56,8 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'trial_ending_10', 'trial_ending_13', 'trial_ended',
   'weekly_report', 'badge_earned', 'leaderboard_passed',
   'score_change', 'bet_settled', 'new_follower',
+  'challenge_received', 'challenge_accepted', 'challenge_settled',
+  'creator_post', 'league_invite', 'rank_milestone',
 ]);
 
 // ── Tables ───────────────────────────────────────────────────
@@ -203,11 +205,24 @@ export const notifications = pgTable('notifications', {
   type: notificationTypeEnum('type').notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   body: text('body').notNull(),
+  data: jsonb('data').default('{}'),
   read: boolean('read').default(false).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('notifications_user_idx').on(table.user_id),
   readIdx: index('notifications_read_idx').on(table.user_id, table.read),
+}));
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('push_subscriptions_user_idx').on(table.user_id),
+  endpointIdx: uniqueIndex('push_subscriptions_endpoint_idx').on(table.endpoint),
 }));
 
 export const sportsbookConnections = pgTable('sportsbook_connections', {

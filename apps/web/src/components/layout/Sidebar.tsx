@@ -22,8 +22,10 @@ import {
   PenLine,
   TrendingUp,
   Sparkles,
+  Bell,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
+import { notificationsAPI } from '@/lib/api';
 
 const navItems = [
   { href: '/dashboard/feed', label: 'Community', icon: Activity },
@@ -41,6 +43,7 @@ const navItems = [
 ];
 
 const bottomItems = [
+  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -48,11 +51,24 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  // Poll unread notification count
+  useEffect(() => {
+    const fetchCount = () => {
+      notificationsAPI.unreadCount()
+        .then((res) => setUnreadCount(res.data.unread_count || 0))
+        .catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
@@ -138,6 +154,7 @@ export default function Sidebar() {
         {bottomItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
+          const isNotif = item.href === '/dashboard/notifications';
 
           return (
             <Link
@@ -149,7 +166,14 @@ export default function Sidebar() {
                   : 'text-muted hover:bg-card hover:text-white'
               }`}
             >
-              <Icon size={20} />
+              <div className="relative">
+                <Icon size={20} />
+                {isNotif && unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-accent text-background text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
               <span className="uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>
                 {item.label}
               </span>

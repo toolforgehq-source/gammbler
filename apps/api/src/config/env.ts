@@ -23,4 +23,7 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   CORS_ORIGIN: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || '',
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || '',
+  VAPID_EMAIL: process.env.VAPID_EMAIL || 'mailto:noreply@gammbler.com',
 };
