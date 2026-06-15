@@ -40,6 +40,7 @@ interface Profile {
   is_self: boolean;
   total_profit_loss?: number;
   is_verified?: boolean;
+  capper_tier: 'capper' | 'verified' | 'elite' | null;
 }
 
 interface BadgeInfo {
@@ -166,7 +167,7 @@ export default function ProfilePage() {
 
             {/* Score + Tier */}
             {overallScore?.is_unlocked ? (
-              <div className="flex items-center gap-4 mb-4 flex-wrap">
+              <div className="flex items-center gap-4 mb-2 flex-wrap">
                 <span className={`text-4xl font-bold ${getScoreColor(scoreVal)}`} style={{ fontFamily: 'var(--font-number)' }}>
                   {scoreVal.toFixed(1)}
                 </span>
@@ -186,7 +187,21 @@ export default function ProfilePage() {
                 )}
               </div>
             ) : (
-              <p className="text-sm text-muted-dark mb-4">Score locked — {overallScore?.settled_bet_count || 0}/10 bets needed</p>
+              <p className="text-sm text-muted-dark mb-2">Score locked — {overallScore?.settled_bet_count || 0}/10 bets needed</p>
+            )}
+            {/* Capper Tier Badge — shown regardless of score unlock status */}
+            {profile.capper_tier && (
+              <div className="flex items-center gap-2 mb-4">
+                {profile.capper_tier === 'elite' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-gold/20 text-gold">ELITE CAPPER</span>
+                )}
+                {profile.capper_tier === 'verified' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-accent/20 text-accent">VERIFIED CAPPER</span>
+                )}
+                {profile.capper_tier === 'capper' && (
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary text-muted">CAPPER</span>
+                )}
+              </div>
             )}
 
             {/* Verification Badge */}

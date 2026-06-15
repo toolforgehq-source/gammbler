@@ -118,9 +118,9 @@ router.get('/', optionalAuth, async (req: Request, res: Response): Promise<void>
           userReaction = ur?.reaction || null;
         }
 
-        // Check if slip owner is a verified capper
+        // Check if slip owner is a capper and get their tier
         const [capper] = await db
-          .select({ id: capperProfiles.id })
+          .select({ id: capperProfiles.id, tier: capperProfiles.tier })
           .from(capperProfiles)
           .where(
             and(
@@ -139,6 +139,7 @@ router.get('/', optionalAuth, async (req: Request, res: Response): Promise<void>
           reactions: reactions.reduce((acc, r) => ({ ...acc, [r.reaction]: Number(r.count) }), {} as Record<string, number>),
           user_reaction: userReaction,
           is_verified_capper: !!capper,
+          capper_tier: capper?.tier || null,
         };
       })
     );

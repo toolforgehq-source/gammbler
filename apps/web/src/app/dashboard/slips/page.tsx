@@ -37,6 +37,7 @@ interface Slip {
   reactions: Record<string, number>;
   user_reaction: string | null;
   is_verified_capper: boolean;
+  capper_tier: 'capper' | 'verified' | 'elite' | null;
 }
 
 const REACTION_MAP: Record<string, { icon: typeof Flame; label: string }> = {
@@ -231,8 +232,14 @@ function SlipCard({
               <Link href={`/dashboard/profile?user=${slip.user.username}`} className="text-white font-medium hover:text-accent transition-colors">
                 @{slip.user.username}
               </Link>
-              {slip.is_verified_capper && (
-                <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full">VERIFIED</span>
+              {slip.capper_tier === 'elite' && (
+                <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full">ELITE CAPPER</span>
+              )}
+              {slip.capper_tier === 'verified' && (
+                <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs font-semibold rounded-full">VERIFIED</span>
+              )}
+              {slip.capper_tier === 'capper' && (
+                <span className="px-2 py-0.5 bg-secondary text-muted text-xs font-semibold rounded-full">CAPPER</span>
               )}
             </div>
             <p className="text-xs text-muted-dark">{timeAgo(slip.shared_at)}</p>
@@ -316,7 +323,7 @@ function SlipCard({
           <span className="text-xs text-muted-dark flex items-center gap-1">
             <Eye size={12} /> {slip.views_count}
           </span>
-          {slip.is_verified_capper && slip.status === 'live' && slip.user_id !== currentUserId && (
+          {slip.capper_tier && slip.status === 'live' && slip.user_id !== currentUserId && (
             <button
               onClick={() => onTail(slip.id)}
               className="px-3 py-1.5 bg-gold text-background rounded-lg text-xs font-bold hover:bg-gold/80 transition-colors"

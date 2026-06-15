@@ -395,6 +395,10 @@ export const capperStatusEnum = pgEnum('capper_status', [
   'pending', 'active', 'suspended',
 ]);
 
+export const capperTierEnum = pgEnum('capper_tier', [
+  'capper', 'verified', 'elite',
+]);
+
 export const capperSubStatusEnum = pgEnum('capper_sub_status', [
   'active', 'cancelled', 'expired',
 ]);
@@ -412,16 +416,20 @@ export const capperProfiles = pgTable('capper_profiles', {
   favorite_teams: jsonb('favorite_teams').default('[]'),
   betting_style: varchar('betting_style', { length: 100 }),
   social_links: jsonb('social_links').default('{}'),
+  tier: capperTierEnum('tier').default('capper').notNull(),
+  creator_plan_type: varchar('creator_plan_type', { length: 50 }).default('standard').notNull(),
+  revenue_share_pct: numeric('revenue_share_pct', { precision: 5, scale: 2 }).default('80.00').notNull(),
   total_subscribers: integer('total_subscribers').default(0).notNull(),
   total_followers: integer('total_followers').default(0).notNull(),
   total_tails: integer('total_tails').default(0).notNull(),
   total_earnings_cents: integer('total_earnings_cents').default(0).notNull(),
-  verified_at: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
+  verified_at: timestamp('verified_at', { withTimezone: true }),
   verified_score: numeric('verified_score', { precision: 5, scale: 1 }).default('0').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('capper_profiles_user_idx').on(table.user_id),
   statusIdx: index('capper_profiles_status_idx').on(table.status),
+  tierIdx: index('capper_profiles_tier_idx').on(table.tier),
 }));
 
 export const capperSubscriptions = pgTable('capper_subscriptions', {

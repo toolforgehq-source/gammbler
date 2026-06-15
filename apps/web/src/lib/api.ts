@@ -200,6 +200,7 @@ export const cappersAPI = {
   list: (params?: Record<string, string>) => api.get('/cappers', { params }),
   get: (userId: string) => api.get(`/cappers/${userId}`),
   apply: () => api.post('/cappers/apply'),
+  refreshTier: () => api.post('/cappers/refresh-tier'),
   updateProfile: (data: Record<string, unknown>) =>
     api.patch('/cappers/me', data),
   subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),

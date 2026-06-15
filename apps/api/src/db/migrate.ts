@@ -732,6 +732,35 @@ async function migrate() {
       CREATE UNIQUE INDEX IF NOT EXISTS push_subscriptions_endpoint_idx ON push_subscriptions(endpoint);
     `);
 
+    // ── Capper system overhaul: tier, creator plan, revenue share ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE capper_tier AS ENUM ('capper','verified','elite'); EXCEPTION WHEN duplicate_object THEN null; END $$
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS tier capper_tier NOT NULL DEFAULT 'capper';
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS creator_plan_type VARCHAR(50) NOT NULL DEFAULT 'standard';
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS revenue_share_pct NUMERIC(5,2) NOT NULL DEFAULT 80.00;
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ALTER COLUMN verified_at DROP NOT NULL;
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ALTER COLUMN verified_at DROP DEFAULT;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS capper_profiles_tier_idx ON capper_profiles(tier);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

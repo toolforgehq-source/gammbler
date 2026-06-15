@@ -8,10 +8,13 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { z } from 'zod';
 import {
-  CAPPER_MIN_SCORE,
-  CAPPER_MIN_BETS,
-  CAPPER_PLATFORM_RAKE,
+  CAPPER_VERIFIED_MIN_SCORE,
+  CAPPER_VERIFIED_MIN_BETS,
+  CAPPER_ELITE_MIN_SCORE,
+  CAPPER_ELITE_MIN_BETS,
   CAPPER_DEFAULT_PRICE_CENTS,
+  CREATOR_PLAN_TYPES,
+  CapperTier,
 } from '@gammbler/shared';
 import { checkAndAwardCreatorBadges } from '../services/creator-badges';
 
@@ -35,12 +38,21 @@ const updateCapperSchema = z.object({
   }).optional(),
 });
 
-// POST /cappers/apply — apply to become a verified capper
+function computeCapperTier(score: number | null, betCount: number): CapperTier {
+  if (score !== null && score >= CAPPER_ELITE_MIN_SCORE && betCount >= CAPPER_ELITE_MIN_BETS) {
+    return 'elite';
+  }
+  if (score !== null && score >= CAPPER_VERIFIED_MIN_SCORE && betCount >= CAPPER_VERIFIED_MIN_BETS) {
+    return 'verified';
+  }
+  return 'capper';
+}
+
+// POST /cappers/apply — become a capper (no score requirement)
 router.post('/apply', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
 
-    // Check if already a capper
     const [existing] = await db
       .select()
       .from(capperProfiles)
@@ -48,11 +60,17 @@ router.post('/apply', authMiddleware, async (req: Request, res: Response): Promi
       .limit(1);
 
     if (existing) {
-      res.status(409).json({ error: 'Already a verified capper', capper: existing });
+      res.status(409).json({ error: 'Already a capper', capper: existing });
       return;
     }
 
-    // Get user's overall score and bet count
+    const [user] = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    // Check score to determine initial tier
     const [score] = await db
       .select()
       .from(gammblerScores)
@@ -64,43 +82,19 @@ router.post('/apply', authMiddleware, async (req: Request, res: Response): Promi
       )
       .limit(1);
 
-    if (!score || !score.is_unlocked) {
-      res.status(400).json({ error: 'Score not yet unlocked. Need at least 10 settled bets.' });
-      return;
-    }
-
-    const scoreVal = parseFloat(String(score.score));
-    const betCount = score.settled_bet_count;
-
-    if (scoreVal < CAPPER_MIN_SCORE) {
-      res.status(400).json({
-        error: `Score too low. Need ${CAPPER_MIN_SCORE}+ to become a Verified Capper. Current: ${scoreVal.toFixed(1)}`,
-        required_score: CAPPER_MIN_SCORE,
-        current_score: scoreVal,
-      });
-      return;
-    }
-
-    if (betCount < CAPPER_MIN_BETS) {
-      res.status(400).json({
-        error: `Need ${CAPPER_MIN_BETS}+ settled bets. Current: ${betCount}`,
-        required_bets: CAPPER_MIN_BETS,
-        current_bets: betCount,
-      });
-      return;
-    }
-
-    const [user] = await db
-      .select({ username: users.username })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const scoreVal = score && score.is_unlocked ? parseFloat(String(score.score)) : null;
+    const betCount = score?.settled_bet_count || 0;
+    const tier = computeCapperTier(scoreVal, betCount);
 
     const [capper] = await db.insert(capperProfiles).values({
       user_id: userId,
-      display_name: user?.username || 'Verified Capper',
+      display_name: user?.username || 'Capper',
       price_cents: CAPPER_DEFAULT_PRICE_CENTS,
-      verified_score: String(scoreVal),
+      tier: tier as any,
+      creator_plan_type: 'standard',
+      revenue_share_pct: String(CREATOR_PLAN_TYPES.standard.fee_pct * 100 === 20 ? 80 : (1 - CREATOR_PLAN_TYPES.standard.fee_pct) * 100),
+      verified_score: String(scoreVal || 0),
+      verified_at: tier !== 'capper' ? new Date() : null,
     }).returning();
 
     res.status(201).json({ capper });
@@ -110,18 +104,73 @@ router.post('/apply', authMiddleware, async (req: Request, res: Response): Promi
   }
 });
 
-// GET /cappers — browse verified cappers
+// POST /cappers/refresh-tier — recalculate capper tier based on current score
+router.post('/refresh-tier', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+
+    const [capper] = await db
+      .select()
+      .from(capperProfiles)
+      .where(eq(capperProfiles.user_id, userId))
+      .limit(1);
+
+    if (!capper) {
+      res.status(404).json({ error: 'Not a capper' });
+      return;
+    }
+
+    const [score] = await db
+      .select()
+      .from(gammblerScores)
+      .where(
+        and(
+          eq(gammblerScores.user_id, userId),
+          eq(gammblerScores.sport, 'overall' as any)
+        )
+      )
+      .limit(1);
+
+    const scoreVal = score && score.is_unlocked ? parseFloat(String(score.score)) : null;
+    const betCount = score?.settled_bet_count || 0;
+    const newTier = computeCapperTier(scoreVal, betCount);
+
+    const updateData: Record<string, unknown> = { tier: newTier };
+    if (newTier !== 'capper' && !capper.verified_at) {
+      updateData.verified_at = new Date();
+      updateData.verified_score = String(scoreVal || 0);
+    }
+
+    const [updated] = await db.update(capperProfiles)
+      .set(updateData)
+      .where(eq(capperProfiles.user_id, userId))
+      .returning();
+
+    res.json({ capper: updated, previous_tier: capper.tier, new_tier: newTier });
+  } catch (err) {
+    console.error('Refresh tier error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /cappers — browse cappers
 router.get('/', optionalAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
     const offset = parseInt(req.query.offset as string) || 0;
     const sort = req.query.sort as string || 'score';
+    const tierFilter = req.query.tier as string | undefined;
 
     const orderBy = sort === 'subscribers'
       ? desc(capperProfiles.total_subscribers)
       : sort === 'tails'
         ? desc(capperProfiles.total_tails)
         : desc(capperProfiles.verified_score);
+
+    let conditions = eq(capperProfiles.status, 'active');
+    if (tierFilter && ['verified', 'elite'].includes(tierFilter)) {
+      conditions = and(conditions, eq(capperProfiles.tier, tierFilter as any))!;
+    }
 
     const results = await db
       .select({
@@ -131,12 +180,11 @@ router.get('/', optionalAuth, async (req: Request, res: Response): Promise<void>
       })
       .from(capperProfiles)
       .innerJoin(users, eq(capperProfiles.user_id, users.id))
-      .where(eq(capperProfiles.status, 'active'))
+      .where(conditions)
       .orderBy(orderBy)
       .limit(limit)
       .offset(offset);
 
-    // Get current scores for each capper
     const cappersWithScores = await Promise.all(
       results.map(async (row) => {
         const [score] = await db
@@ -204,7 +252,6 @@ router.get('/:userId', optionalAuth, async (req: Request, res: Response): Promis
       return;
     }
 
-    // Get current score
     const [score] = await db
       .select()
       .from(gammblerScores)
@@ -216,7 +263,6 @@ router.get('/:userId', optionalAuth, async (req: Request, res: Response): Promis
       )
       .limit(1);
 
-    // Get recent slips
     const recentSlips = await db
       .select()
       .from(betSlips)
@@ -229,7 +275,6 @@ router.get('/:userId', optionalAuth, async (req: Request, res: Response): Promis
       .orderBy(desc(betSlips.shared_at))
       .limit(10);
 
-    // Check subscription
     let isSubscribed = false;
     if (req.user) {
       const [sub] = await db
@@ -246,7 +291,6 @@ router.get('/:userId', optionalAuth, async (req: Request, res: Response): Promis
       isSubscribed = !!sub;
     }
 
-    // Calculate recent win rate from slips
     const settledSlips = recentSlips.filter(s => s.status !== 'live');
     const winCount = settledSlips.filter(s => s.status === 'won').length;
     const recentWinRate = settledSlips.length > 0 ? (winCount / settledSlips.length) * 100 : 0;
@@ -283,11 +327,11 @@ router.patch('/me', authMiddleware, async (req: Request, res: Response): Promise
       .limit(1);
 
     if (!capper) {
-      res.status(404).json({ error: 'Not a verified capper' });
+      res.status(404).json({ error: 'Not a capper' });
       return;
     }
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (body.display_name) updateData.display_name = body.display_name;
     if (body.bio !== undefined) updateData.bio = body.bio;
     if (body.price_cents !== undefined) updateData.price_cents = body.price_cents;
@@ -304,9 +348,9 @@ router.patch('/me', authMiddleware, async (req: Request, res: Response): Promise
       .returning();
 
     res.json({ capper: updated });
-  } catch (err: any) {
-    if (err.name === 'ZodError') {
-      res.status(400).json({ error: 'Invalid input', details: err.errors });
+  } catch (err: unknown) {
+    if ((err as { name?: string }).name === 'ZodError') {
+      res.status(400).json({ error: 'Invalid input', details: (err as { errors?: unknown }).errors });
       return;
     }
     console.error('Update capper error:', err);
@@ -325,7 +369,6 @@ router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Resp
       return;
     }
 
-    // Check capper exists
     const [capper] = await db
       .select()
       .from(capperProfiles)
@@ -342,7 +385,6 @@ router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Resp
       return;
     }
 
-    // Check existing sub
     const [existing] = await db
       .select()
       .from(capperSubscriptions)
@@ -359,7 +401,6 @@ router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Resp
       return;
     }
 
-    // For now, create subscription directly (Stripe integration handled separately)
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + 1);
 
@@ -438,7 +479,6 @@ router.post('/tail/:slipId', authMiddleware, async (req: Request, res: Response)
   try {
     const tailerUserId = req.user!.userId;
 
-    // Get the slip
     const [slip] = await db
       .select()
       .from(betSlips)
@@ -455,7 +495,6 @@ router.post('/tail/:slipId', authMiddleware, async (req: Request, res: Response)
       return;
     }
 
-    // Check slip owner is a verified capper
     const [capper] = await db
       .select()
       .from(capperProfiles)
@@ -468,11 +507,10 @@ router.post('/tail/:slipId', authMiddleware, async (req: Request, res: Response)
       .limit(1);
 
     if (!capper) {
-      res.status(400).json({ error: 'Slip owner is not a verified capper' });
+      res.status(400).json({ error: 'Slip owner is not a capper' });
       return;
     }
 
-    // Check subscriber status
     const [sub] = await db
       .select()
       .from(capperSubscriptions)
@@ -490,14 +528,12 @@ router.post('/tail/:slipId', authMiddleware, async (req: Request, res: Response)
       return;
     }
 
-    // Record tail event
     const [tailEvent] = await db.insert(tailEvents).values({
       slip_id: req.params.slipId,
       capper_user_id: slip.user_id,
       tailer_user_id: tailerUserId,
     }).returning();
 
-    // Update capper tail count
     await db.update(capperProfiles)
       .set({ total_tails: sql`${capperProfiles.total_tails} + 1` })
       .where(eq(capperProfiles.user_id, slip.user_id));
@@ -529,7 +565,7 @@ router.get('/me/subscribers', authMiddleware, async (req: Request, res: Response
       .limit(1);
 
     if (!capper) {
-      res.status(404).json({ error: 'Not a verified capper' });
+      res.status(404).json({ error: 'Not a capper' });
       return;
     }
 
@@ -549,6 +585,9 @@ router.get('/me/subscribers', authMiddleware, async (req: Request, res: Response
       )
       .orderBy(desc(capperSubscriptions.created_at));
 
+    const creatorKeepsPct = parseFloat(String(capper.revenue_share_pct));
+    const platformFeePct = 100 - creatorKeepsPct;
+
     res.json({
       subscribers: subs.map(s => ({
         ...s.subscription,
@@ -556,7 +595,9 @@ router.get('/me/subscribers', authMiddleware, async (req: Request, res: Response
       })),
       total: subs.length,
       monthly_revenue_cents: subs.reduce((sum, s) => sum + s.subscription.price_cents, 0),
-      platform_rake: CAPPER_PLATFORM_RAKE,
+      platform_rake: platformFeePct / 100,
+      creator_keeps_pct: creatorKeepsPct,
+      creator_plan_type: capper.creator_plan_type,
     });
   } catch (err) {
     console.error('Get subscribers error:', err);
@@ -574,12 +615,14 @@ router.get('/me/earnings', authMiddleware, async (req: Request, res: Response): 
       .limit(1);
 
     if (!capper) {
-      res.status(404).json({ error: 'Not a verified capper' });
+      res.status(404).json({ error: 'Not a capper' });
       return;
     }
 
+    const creatorKeepsPct = parseFloat(String(capper.revenue_share_pct));
+    const platformFeePct = 100 - creatorKeepsPct;
     const totalGross = capper.total_earnings_cents;
-    const platformTake = Math.floor(totalGross * CAPPER_PLATFORM_RAKE);
+    const platformTake = Math.floor(totalGross * (platformFeePct / 100));
     const netEarnings = totalGross - platformTake;
 
     res.json({
@@ -589,7 +632,10 @@ router.get('/me/earnings', authMiddleware, async (req: Request, res: Response): 
       net_earnings_cents: netEarnings,
       total_subscribers: capper.total_subscribers,
       total_tails: capper.total_tails,
-      platform_rake_pct: CAPPER_PLATFORM_RAKE * 100,
+      platform_fee_pct: platformFeePct,
+      creator_keeps_pct: creatorKeepsPct,
+      creator_plan_type: capper.creator_plan_type,
+      tier: capper.tier,
     });
   } catch (err) {
     console.error('Get earnings error:', err);
