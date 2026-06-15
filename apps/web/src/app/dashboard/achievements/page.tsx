@@ -2,14 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { badgesAPI } from '@/lib/api';
+import Image from 'next/image';
 
 interface Badge {
   badge_type: string;
   name: string;
   description: string;
   icon: string;
+  image?: string;
   earned: boolean;
   earned_at: string | null;
+}
+
+function BadgeImage({ badge, size = 80, earned = true }: { badge: Badge; size?: number; earned?: boolean }) {
+  const src = badge.image || `/badges/${badge.badge_type}.png`;
+  return (
+    <div className={`relative mx-auto mb-3 ${earned ? '' : 'grayscale opacity-50'}`} style={{ width: size, height: size }}>
+      <Image
+        src={src}
+        alt={badge.name}
+        width={size}
+        height={size}
+        className="object-contain drop-shadow-lg"
+        unoptimized
+      />
+    </div>
+  );
 }
 
 export default function AchievementsPage() {
@@ -52,8 +70,8 @@ export default function AchievementsPage() {
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {earned.map((badge) => (
-              <div key={badge.badge_type} className="bg-card border border-gold/40 rounded-lg p-5 text-center">
-                <div className="text-4xl mb-2">{badge.icon}</div>
+              <div key={badge.badge_type} className="bg-card border border-gold/40 rounded-lg p-5 text-center hover:border-gold/60 transition-colors group">
+                <BadgeImage badge={badge} size={80} earned />
                 <p className="text-sm font-bold text-white mb-1">{badge.name}</p>
                 <p className="text-xs text-muted-dark mb-2">{badge.description}</p>
                 {badge.earned_at && (
@@ -74,10 +92,10 @@ export default function AchievementsPage() {
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {unearned.map((badge) => (
-              <div key={badge.badge_type} className="bg-card border border-accent/10 rounded-lg p-5 text-center opacity-40">
-                <div className="text-4xl mb-2 grayscale">{badge.icon}</div>
-                <p className="text-sm font-bold text-white mb-1">{badge.name}</p>
-                <p className="text-xs text-muted-dark">{badge.description}</p>
+              <div key={badge.badge_type} className="bg-card border border-accent/10 rounded-lg p-5 text-center">
+                <BadgeImage badge={badge} size={80} earned={false} />
+                <p className="text-sm font-bold text-white/40 mb-1">{badge.name}</p>
+                <p className="text-xs text-muted-dark/60">{badge.description}</p>
               </div>
             ))}
           </div>

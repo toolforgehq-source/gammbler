@@ -5,6 +5,7 @@ import { profileAPI, badgesAPI, dfsAPI, scoresAPI } from '@/lib/api';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { useAuthStore } from '@/lib/store';
 import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import { shareableAPI } from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -47,6 +48,7 @@ interface BadgeInfo {
   name: string;
   description: string;
   icon: string;
+  image?: string;
   earned: boolean;
   earned_at: string | null;
 }
@@ -427,7 +429,15 @@ export default function ProfilePage() {
                 <p className="text-xs text-muted-dark mb-2">DFS Badges</p>
                 <div className="flex flex-wrap gap-2">
                   {dfsBadges.map((b) => (
-                    <span key={b.badge_type} className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-full text-xs text-accent capitalize">
+                    <span key={b.badge_type} className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 border border-accent/20 rounded-full text-xs text-accent capitalize">
+                      <Image
+                        src={`/badges/${b.badge_type}.png`}
+                        alt={b.badge_type.replace(/^dfs_/, '').replace(/_/g, ' ')}
+                        width={16}
+                        height={16}
+                        className="object-contain"
+                        unoptimized
+                      />
                       {b.badge_type.replace(/^dfs_/, '').replace(/_/g, ' ')}
                     </span>
                   ))}
@@ -456,7 +466,16 @@ export default function ProfilePage() {
                 badge.earned ? 'border-gold/40' : 'border-accent/10 opacity-30'
               }`}
             >
-              <div className="text-2xl mb-1">{badge.icon}</div>
+              <div className={`relative mx-auto mb-1 ${badge.earned ? '' : 'grayscale'}`} style={{ width: 48, height: 48 }}>
+                <Image
+                  src={badge.image || `/badges/${badge.badge_type}.png`}
+                  alt={badge.name}
+                  width={48}
+                  height={48}
+                  className="object-contain drop-shadow-md"
+                  unoptimized
+                />
+              </div>
               <p className="text-xs font-medium text-white truncate">{badge.name}</p>
               {badge.earned && badge.earned_at && (
                 <p className="text-xs text-muted-dark mt-1">
