@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   Trophy,
@@ -44,20 +44,13 @@ function useIntersectionObserver() {
   return ref;
 }
 
-const heroStats = [
-  { label: 'Betting Score', value: '84.7', sublabel: 'Elite', color: '#FFD700' },
-  { label: 'National Rank', value: '#1,847', sublabel: 'of 42,391', color: '#4caf50' },
-  { label: 'NFL Score', value: '91.2', sublabel: 'Legend', color: '#ff6f00' },
-  { label: 'H2H Record', value: '23-7', sublabel: '.767 Win %', color: '#4caf50' },
-  { label: 'League Standing', value: '#2', sublabel: 'of 12', color: '#FFD700' },
-];
 
-const socialProof = [
-  { value: '42,391', label: 'Verified Bettors' },
-  { value: '1.2M+', label: 'Bets Tracked' },
-  { value: '89,400+', label: 'H2H Challenges' },
-  { value: '6,200+', label: 'League Matchups' },
-];
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M+`;
+  if (n >= 1_000) return n.toLocaleString();
+  return String(n);
+}
 
 const leaderboardPreview = [
   { rank: 1, name: 'SharpShooter_MJ', score: 94.2, tier: 'Legend', color: '#ff6f00', sport: 'NFL' },
@@ -71,6 +64,30 @@ const leaderboardPreview = [
 
 export default function HomePage() {
   const observerRef = useIntersectionObserver();
+  const [stats, setStats] = useState({ users: 0, bets: 0, challenges: 0, leagues: 0 });
+
+  useEffect(() => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    fetch(`${API_URL}/stats/public`)
+      .then((r) => r.json())
+      .then((data) => setStats(data))
+      .catch(() => {});
+  }, []);
+
+  const heroStats = [
+    { label: 'Betting Score', value: '84.7', sublabel: 'Elite', color: '#FFD700' },
+    { label: 'National Rank', value: '#1,847', sublabel: `of ${formatNumber(stats.users)}`, color: '#4caf50' },
+    { label: 'NFL Score', value: '91.2', sublabel: 'Legend', color: '#ff6f00' },
+    { label: 'H2H Record', value: '23-7', sublabel: '.767 Win %', color: '#4caf50' },
+    { label: 'League Standing', value: '#2', sublabel: 'of 12', color: '#FFD700' },
+  ];
+
+  const socialProof = [
+    { value: formatNumber(stats.users), label: 'Verified Bettors' },
+    { value: formatNumber(stats.bets), label: 'Bets Tracked' },
+    { value: formatNumber(stats.challenges), label: 'H2H Challenges' },
+    { value: formatNumber(stats.leagues), label: 'League Matchups' },
+  ];
 
   return (
     <div ref={observerRef} className="min-h-screen overflow-hidden">

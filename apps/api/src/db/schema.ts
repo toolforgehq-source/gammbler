@@ -80,6 +80,10 @@ export const users = pgTable('users', {
   do_not_disturb_end: varchar('do_not_disturb_end', { length: 5 }),
   verified_score_pass: boolean('verified_score_pass').default(false).notNull(),
   verified_score_pass_purchased_at: timestamp('verified_score_pass_purchased_at', { withTimezone: true }),
+  email_verified: boolean('email_verified').default(false).notNull(),
+  email_verification_token: varchar('email_verification_token', { length: 64 }),
+  password_reset_token: varchar('password_reset_token', { length: 64 }),
+  password_reset_expires: timestamp('password_reset_expires', { withTimezone: true }),
 }, (table) => ({
   emailIdx: index('users_email_idx').on(table.email),
   usernameIdx: index('users_username_idx').on(table.username),

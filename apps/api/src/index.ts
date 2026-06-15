@@ -35,6 +35,7 @@ import creatorPostRoutes from './routes/creator-posts';
 import creatorLeaderboardRoutes from './routes/creator-leaderboards';
 import creatorBadgeRoutes from './routes/creator-badges';
 import creatorDiscoveryRoutes from './routes/creator-discovery';
+import statsRoutes from './routes/stats';
 
 const app = express();
 const server = createServer(app);
@@ -89,6 +90,7 @@ app.use('/api/creator-posts', creatorPostRoutes);
 app.use('/api/creator-leaderboards', creatorLeaderboardRoutes);
 app.use('/api/creator-badges', creatorBadgeRoutes);
 app.use('/api/creator-discovery', creatorDiscoveryRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
