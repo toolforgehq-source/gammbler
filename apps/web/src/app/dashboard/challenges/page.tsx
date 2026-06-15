@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { challengesAPI, shareableAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import {
@@ -81,16 +82,18 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default function ChallengesPage() {
+function ChallengesPageInner() {
+  const searchParams = useSearchParams();
+  const opponentParam = searchParams.get('opponent');
   const { user } = useAuthStore();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [stats, setStats] = useState<H2HStats>({ wins: 0, losses: 0, draws: 0, pending_received: 0 });
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'all' | 'pending' | 'active' | 'settled'>('all');
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(!!opponentParam);
 
   // Create form state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(opponentParam || '');
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
   const [sport, setSport] = useState('nfl');
@@ -133,6 +136,20 @@ export default function ChallengesPage() {
     }
     fetchChallenges();
   }, [tab, refreshKey]);
+
+  // Auto-select opponent from URL param
+  useEffect(() => {
+    if (opponentParam && !selectedUser) {
+      challengesAPI.searchUsers(opponentParam).then((res) => {
+        const users = res.data.users || [];
+        const match = users.find((u: SearchUser) => u.username.toLowerCase() === opponentParam.toLowerCase());
+        if (match) {
+          setSelectedUser(match);
+          setSearchQuery('');
+        }
+      }).catch(() => {});
+    }
+  }, [opponentParam]);
 
   // User search debounce
   useEffect(() => {
@@ -722,5 +739,13 @@ function ChallengeCard({
         </span>
       </div>
     </div>
+  );
+}
+
+export default function ChallengesPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>}>
+      <ChallengesPageInner />
+    </Suspense>
   );
 }

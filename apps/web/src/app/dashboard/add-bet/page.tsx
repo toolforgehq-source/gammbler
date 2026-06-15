@@ -210,7 +210,7 @@ export default function AddBetPage() {
               Pre-game verification ensures your Gammbler Score reflects real betting skill.
             </p>
             <p className="text-muted-dark mt-1">
-              Want automatic bet syncing? <span className="text-accent font-medium">Upgrade to Pro</span> for SharpSports auto-sync — every bet tracked automatically, no manual entry needed.
+              Want automatic bet syncing? Get a <span className="text-accent font-medium">Verified Score Pass ($4.99)</span> or <span className="text-accent font-medium">Upgrade to Pro</span> to connect your sportsbook — every bet tracked automatically.
             </p>
           </div>
         </div>

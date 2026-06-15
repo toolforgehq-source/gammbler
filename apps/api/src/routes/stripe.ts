@@ -71,6 +71,74 @@ router.post('/create-checkout', authMiddleware, async (req: Request, res: Respon
   }
 });
 
+// POST /stripe/create-verified-pass-checkout — one-time payment for Verified Score Pass
+router.post('/create-verified-pass-checkout', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) {
+      res.status(503).json({ error: 'Stripe not configured' });
+      return;
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.user!.userId))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (user.verified_score_pass) {
+      res.status(400).json({ error: 'You already have the Verified Score Pass' });
+      return;
+    }
+
+    // Create or retrieve Stripe customer
+    let customerId = user.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { user_id: user.id, username: user.username },
+      });
+      customerId = customer.id;
+      await db.update(users).set({ stripe_customer_id: customerId }).where(eq(users.id, user.id));
+    }
+
+    // Use price ID if configured, otherwise create ad-hoc price
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = env.STRIPE_VERIFIED_PASS_PRICE_ID
+      ? [{ price: env.STRIPE_VERIFIED_PASS_PRICE_ID, quantity: 1 }]
+      : [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Verified Score Pass',
+              description: 'Connect your sportsbook, get a verified betting score, and auto-sync future bets.',
+            },
+            unit_amount: env.VERIFIED_PASS_PRICE_CENTS,
+          },
+          quantity: 1,
+        }];
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: lineItems,
+      success_url: `${env.FRONTEND_URL}/dashboard/settings?verified_pass=success`,
+      cancel_url: `${env.FRONTEND_URL}/dashboard/settings?verified_pass=cancelled`,
+      metadata: { user_id: user.id, purchase_type: 'verified_score_pass' },
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Verified pass checkout error:', err);
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
+
 // POST /stripe/create-portal — create billing portal session
 router.post('/create-portal', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -172,6 +240,21 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
 
         if (pastDueUser) {
           sendPaymentFailedEmail(pastDueUser.email, pastDueUser.username).catch(() => {});
+        }
+        break;
+      }
+
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.purchase_type === 'verified_score_pass' && session.payment_status === 'paid') {
+          const sessionCustomerId = session.customer as string;
+          await db
+            .update(users)
+            .set({
+              verified_score_pass: true,
+              verified_score_pass_purchased_at: new Date(),
+            })
+            .where(eq(users.stripe_customer_id, sessionCustomerId));
         }
         break;
       }

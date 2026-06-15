@@ -6,6 +6,7 @@ import { eq, and, or, desc, sql, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { createFeedEvent } from '../services/feed';
 import { sendChallengeReceivedEmail, sendChallengeResultEmail } from '../services/email';
+import { notifyChallengeReceived, notifyChallengeAccepted, notifyChallengeSettled } from '../services/notifications';
 import { H2H_CHALLENGE_EXPIRY_HOURS, H2H_MAX_ACTIVE_CHALLENGES } from '@gammbler/shared';
 
 const router = Router();
@@ -325,15 +326,15 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
       sport: body.sport,
     }, body.sport);
 
-    // Send email notification (fire-and-forget)
-    sendChallengeReceivedEmail(
-      challengee.email,
-      challengee.username,
+    // Send notification (in-app + email + push, fire-and-forget)
+    notifyChallengeReceived(
+      challengee.id,
       challenger?.username || 'Someone',
       body.event_name,
       body.challenger_pick,
-      body.sport.toUpperCase()
-    ).catch((err) => console.error('Challenge email error:', err));
+      body.sport,
+      created.id,
+    ).catch((err) => console.error('Challenge notification error:', err));
 
     res.status(201).json({ challenge: created });
   } catch (err) {
@@ -391,6 +392,19 @@ router.patch('/:id/accept', authMiddleware, async (req: Request, res: Response):
       .set({ status: 'accepted', challengee_pick: pick })
       .where(eq(challenges.id, challenge.id))
       .returning();
+
+    // Notify challenger that challenge was accepted (fire-and-forget)
+    const [accepter] = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    notifyChallengeAccepted(
+      challenge.challenger_id,
+      accepter?.username || 'Someone',
+      challenge.event_name,
+      challenge.id,
+    ).catch((err) => console.error('Challenge accepted notification error:', err));
 
     res.json({ challenge: updated });
   } catch (err) {
@@ -550,24 +564,24 @@ router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response):
       console.error('H2H badge check error:', err)
     );
 
-    // Send result emails (fire-and-forget)
+    // Send result notifications (in-app + email + push, fire-and-forget)
     if (winner) {
-      sendChallengeResultEmail(
-        winner.email,
-        winner.username,
+      notifyChallengeSettled(
+        winner.id,
         true,
         loser?.username || 'opponent',
-        challenge.event_name
-      ).catch((err) => console.error('Challenge result email error:', err));
+        challenge.event_name,
+        challenge.id,
+      ).catch((err) => console.error('Challenge settled notification error:', err));
     }
     if (loser) {
-      sendChallengeResultEmail(
-        loser.email,
-        loser.username,
+      notifyChallengeSettled(
+        loser.id,
         false,
         winner?.username || 'opponent',
-        challenge.event_name
-      ).catch((err) => console.error('Challenge result email error:', err));
+        challenge.event_name,
+        challenge.id,
+      ).catch((err) => console.error('Challenge settled notification error:', err));
     }
 
     res.json({ challenge: updated });

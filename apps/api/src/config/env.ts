@@ -13,6 +13,8 @@ export const env = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
   STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID || '',
+  STRIPE_VERIFIED_PASS_PRICE_ID: process.env.STRIPE_VERIFIED_PASS_PRICE_ID || '',
+  VERIFIED_PASS_PRICE_CENTS: parseInt(process.env.VERIFIED_PASS_PRICE_CENTS || '499', 10),
   SHARPSPORTS_API_KEY: process.env.SHARPSPORTS_API_KEY || '',
   SHARPSPORTS_WEBHOOK_SECRET: process.env.SHARPSPORTS_WEBHOOK_SECRET || '',
   ODDS_API_KEY: process.env.ODDS_API_KEY || '',
@@ -21,4 +23,7 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   CORS_ORIGIN: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || '',
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || '',
+  VAPID_EMAIL: process.env.VAPID_EMAIL || 'mailto:noreply@gammbler.com',
 };

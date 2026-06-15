@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { leaderboardsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { Users, Globe, Share2, Lock } from 'lucide-react';
+import { Users, Globe, Share2, Lock, Swords } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 
 interface LeaderboardEntry {
@@ -19,6 +21,7 @@ interface LeaderboardEntry {
   roi: string | null;
   is_self: boolean;
   locked_label?: string;
+  is_verified?: boolean;
   capper_tier?: 'capper' | 'verified' | 'elite' | null;
 }
 
@@ -37,6 +40,7 @@ const SPORTS = [
 
 export default function LeaderboardsPage() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [sport, setSport] = useState('overall');
   const [tab, setTab] = useState<'friends' | 'national'>('friends');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -164,18 +168,17 @@ export default function LeaderboardsPage() {
           {/* Header */}
           <div className="grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-6 py-3 bg-secondary text-xs uppercase tracking-wider text-muted-dark border-b border-accent/20" style={{ fontFamily: 'var(--font-display)' }}>
             <div className="sm:col-span-1">Rank</div>
-            <div className="sm:col-span-4">Player</div>
+            <div className="sm:col-span-3">Player</div>
             <div className="text-right sm:col-span-2">Score</div>
             <div className="hidden sm:block sm:col-span-2 text-right">Record</div>
             <div className="hidden sm:block sm:col-span-2 text-right">ROI</div>
-            <div className="hidden sm:block sm:col-span-1"></div>
+            <div className="hidden sm:block sm:col-span-2 text-right"></div>
           </div>
 
           {/* Rows */}
           {leaderboard.map((entry, i) => (
-            <Link
+            <div
               key={`${entry.user_id}-${i}`}
-              href={`/dashboard/profile/${entry.username}`}
               className={`grid grid-cols-[2rem_1fr_3.5rem] sm:grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 items-center border-b border-accent/10 hover:bg-secondary/50 transition-colors ${
                 entry.is_self ? 'bg-accent/10' : ''
               }`}
@@ -189,7 +192,7 @@ export default function LeaderboardsPage() {
                   <span className="text-xs text-muted-dark">—</span>
                 )}
               </div>
-              <div className="sm:col-span-4 flex items-center gap-2 sm:gap-3 min-w-0">
+              <Link href={`/dashboard/profile/${entry.username}`} className="sm:col-span-3 flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-xs flex-shrink-0">
                   {entry.avatar_url ? (
                     <img src={entry.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
@@ -201,13 +204,14 @@ export default function LeaderboardsPage() {
                   {entry.username}
                   {entry.is_self && <span className="text-xs text-accent ml-1">(You)</span>}
                 </span>
+                {entry.is_verified && <VerifiedBadge size="sm" />}
                 {entry.capper_tier === 'elite' && (
                   <span className="hidden sm:inline px-1.5 py-0.5 bg-gold/20 text-gold text-[10px] font-bold rounded-full">ELITE</span>
                 )}
                 {entry.capper_tier === 'verified' && (
                   <span className="hidden sm:inline px-1.5 py-0.5 bg-accent/20 text-accent text-[10px] font-bold rounded-full">VERIFIED</span>
                 )}
-              </div>
+              </Link>
               <div className="text-right sm:col-span-2">
                 {entry.locked_label ? (
                   <span className="text-xs text-muted-dark">{entry.locked_label}</span>
@@ -229,8 +233,22 @@ export default function LeaderboardsPage() {
                   <span className="text-sm text-muted-dark">—</span>
                 )}
               </div>
-              <div className="hidden sm:block sm:col-span-1"></div>
-            </Link>
+              <div className="hidden sm:flex sm:col-span-2 justify-end">
+                {!entry.is_self && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/dashboard/challenges?opponent=${entry.username}`);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 border border-accent/30 text-accent rounded-md text-xs font-semibold hover:bg-accent/20 transition-colors"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  >
+                    <Swords size={12} />
+                    Challenge
+                  </button>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}

@@ -2,184 +2,21 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  BarChart3,
-  Trophy,
-  Users,
-  Shield,
   ArrowRight,
-  ChevronDown,
-  Check,
-  TrendingUp,
+  Trophy,
   Target,
-  Share2,
-  Crown,
-  Flame,
-  Medal,
-  Heart,
-  DollarSign,
   Swords,
-  Upload,
+  Users,
+  Crown,
+  Medal,
+  TrendingUp,
+  Flame,
+  Star,
+  Zap,
+  BarChart3,
 } from 'lucide-react';
-
-const leaderboardData = [
-  { rank: 1, name: 'SharpShooter_MJ', score: 94.2, tier: 'Legend', tierColor: '#ff6f00', record: '847-412', roi: '+18.4%', sport: 'NFL' },
-  { rank: 2, name: 'VegasVault', score: 91.8, tier: 'Legend', tierColor: '#ff6f00', record: '623-298', roi: '+16.1%', sport: 'NBA' },
-  { rank: 3, name: 'TheLineKing', score: 89.7, tier: 'Elite', tierColor: '#FFD700', record: '1,204-589', roi: '+14.8%', sport: 'NFL' },
-  { rank: 4, name: 'ParlayPete', score: 86.3, tier: 'Elite', tierColor: '#FFD700', record: '512-267', roi: '+12.3%', sport: 'MLB' },
-  { rank: 5, name: 'ChalkEater99', score: 84.1, tier: 'Elite', tierColor: '#FFD700', record: '935-491', roi: '+11.7%', sport: 'NBA' },
-  { rank: 6, name: 'EdgeHunterX', score: 81.9, tier: 'Elite', tierColor: '#FFD700', record: '388-213', roi: '+10.2%', sport: 'NHL' },
-  { rank: 7, name: 'SteamChaser', score: 79.4, tier: 'Elite', tierColor: '#FFD700', record: '741-403', roi: '+9.8%', sport: 'NFL' },
-];
-
-const friendLeaderboard = [
-  { rank: 1, name: 'You', score: 78.4, tier: 'Elite', tierColor: '#FFD700', record: '234-118', roi: '+9.2%', isYou: true },
-  { rank: 2, name: 'Mike_Bets', score: 72.1, tier: 'Sharp', tierColor: '#4caf50', record: '189-112', roi: '+7.1%' },
-  { rank: 3, name: 'DanTheMan', score: 68.4, tier: 'Sharp', tierColor: '#4caf50', record: '312-198', roi: '+5.4%' },
-  { rank: 4, name: 'JennyPicks', score: 61.2, tier: 'Sharp', tierColor: '#4caf50', record: '145-98', roi: '+3.8%' },
-  { rank: 5, name: 'CousinVinny', score: 44.7, tier: 'Developing', tierColor: '#42a5f5', record: '87-94', roi: '-2.1%' },
-];
-
-const sportScores = [
-  { sport: 'NFL', score: 82.1, tier: 'Elite', color: '#FFD700' },
-  { sport: 'NBA', score: 74.6, tier: 'Sharp', color: '#4caf50' },
-  { sport: 'MLB', score: 69.3, tier: 'Sharp', color: '#4caf50' },
-  { sport: 'NHL', score: 58.2, tier: 'Developing', color: '#42a5f5' },
-  { sport: 'NCAAF', score: 77.8, tier: 'Elite', color: '#FFD700' },
-  { sport: 'NCAAB', score: 63.5, tier: 'Sharp', color: '#4caf50' },
-  { sport: 'Soccer', score: 51.4, tier: 'Developing', color: '#42a5f5' },
-  { sport: 'MMA', score: 45.9, tier: 'Developing', color: '#42a5f5' },
-  { sport: 'Props', score: 71.2, tier: 'Sharp', color: '#4caf50' },
-  { sport: 'DFS', score: 66.8, tier: 'Sharp', color: '#4caf50' },
-];
-
-const scoreTiers = [
-  { name: 'Recreational', range: '0-40', color: '#9e9e9e' },
-  { name: 'Developing', range: '41-60', color: '#42a5f5' },
-  { name: 'Sharp', range: '61-75', color: '#4caf50' },
-  { name: 'Elite', range: '76-90', color: '#FFD700' },
-  { name: 'Legend', range: '91-100', color: '#ff6f00' },
-];
-
-const capperShowcase = [
-  { name: 'SharpShooter_MJ', score: 94.2, tier: 'Legend', tierColor: '#ff6f00', sport: 'NFL', record: '847-412', subscribers: 487, price: 29.99, monthlyEarnings: 10214 },
-  { name: 'VegasVault', score: 91.8, tier: 'Legend', tierColor: '#ff6f00', sport: 'NBA', record: '623-298', subscribers: 312, price: 19.99, monthlyEarnings: 4365 },
-  { name: 'TheLineKing', score: 89.7, tier: 'Elite', tierColor: '#FFD700', sport: 'NFL', record: '1,204-589', subscribers: 198, price: 14.99, monthlyEarnings: 2077 },
-];
-
-const features = [
-  {
-    icon: BarChart3,
-    title: 'Unified Dashboard',
-    description: 'Every bet from every sportsbook in one place. Win rate, ROI, P/L tracked automatically across all platforms.',
-    stat: '6+',
-    statLabel: 'Platforms synced',
-  },
-  {
-    icon: Target,
-    title: 'Gammbler Score',
-    description: 'A proprietary 0-100 rating that measures your true betting skill. Based on win rate, ROI, CLV, and consistency.',
-    stat: '0-100',
-    statLabel: 'Precision rating',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Score History',
-    description: 'Track your Gammbler Score over time with daily snapshots. See your growth trajectory and prove long-term consistency.',
-    stat: 'Daily',
-    statLabel: 'Score snapshots',
-  },
-  {
-    icon: Trophy,
-    title: 'Leaderboards',
-    description: 'Compete nationally and with friends across 10 sports. See where you actually rank among real bettors.',
-    stat: '20',
-    statLabel: 'Leaderboard categories',
-  },
-  {
-    icon: Share2,
-    title: 'Shareable Cards',
-    description: 'Generate branded score cards and H2H result cards to share on social media. Verified, tamper-proof stats.',
-    stat: '1-Tap',
-    statLabel: 'Share to social',
-  },
-  {
-    icon: Shield,
-    title: 'Bank-Level Security',
-    description: 'Encrypted sportsbook connections via SharpSports. We never see your passwords or financial data.',
-    stat: '256-bit',
-    statLabel: 'AES encryption',
-  },
-];
-
-const platforms = [
-  { name: 'DraftKings', color: '#61B252' },
-  { name: 'FanDuel', color: '#1493FF' },
-  { name: 'BetMGM', color: '#C4A44D' },
-  { name: 'Caesars', color: '#1B3C34' },
-  { name: 'ESPN Bet', color: '#CD1141' },
-  { name: 'PointsBet', color: '#ED1C24' },
-  { name: 'PrizePicks', color: '#6C4DFF' },
-  { name: 'Underdog', color: '#FF6B35' },
-];
-
-const freeFeatures = [
-  'Overall Gammbler Score',
-  'Score history tracking',
-  'Basic record (W-L)',
-  'National leaderboards (view)',
-  'Community feed (read only)',
-  '1 sportsbook connection',
-  'Manual bet entry',
-];
-
-const proFeatures = [
-  'All 10 sport-specific scores',
-  'Full analytics & ROI breakdown',
-  'Friend & national leaderboards',
-  'H2H challenges',
-  'Betting leagues',
-  'Unlimited sportsbook connections',
-  'Shareable score cards',
-  'Achievement badges',
-  'Weekly performance reports',
-];
-
-const faqs = [
-  {
-    q: 'How does Gammbler connect to my sportsbooks?',
-    a: 'We use SharpSports — a secure, encrypted connection to your sportsbook accounts. Gammbler never sees your sportsbook password. Your bets sync automatically in real-time.',
-  },
-  {
-    q: 'What exactly is the Gammbler Score?',
-    a: 'A proprietary 0-100 rating that measures your true betting skill. It factors in win rate (40%), ROI (40%), closing line value (10%), stake consistency (5%), volume (3%), and diversity (2%), with recency weighting so recent performance matters most.',
-  },
-  {
-    q: 'How do I make money as a Capper?',
-    a: 'Anyone can become a Capper — no minimum score required. Set your monthly subscription price ($1.99–$99.99), and subscribers pay to see your picks. You keep 80% of all subscriber revenue — paid out monthly. Earn Verified Capper status at 75+ score with 50+ picks, or Elite Capper at 85+ score with 100+ picks for premium visibility.',
-  },
-  {
-    q: 'What are H2H Challenges?',
-    a: 'Head-to-head challenges let you pick a game and challenge any user on the platform. You each pick a side, and the winner gets a badge and a shareable result card. Build a challenge record, earn streak badges, and prove you are better than anyone who talks trash.',
-  },
-  {
-    q: 'How do betting leagues work?',
-    a: 'Create a league, invite friends (up to 20 per league), and compete over an entire season. Your league rank is based on your weekly Gammbler Score average. Minimum 1 bet per week to stay ranked. Cash entry leagues available with a transparent 10% platform rake.',
-  },
-  {
-    q: 'What sports are supported?',
-    a: 'NFL, NBA, MLB, NHL, College Football, College Basketball, Soccer, MMA, PrizePicks props, and Daily Fantasy. Each sport has its own independent Gammbler Score, with 10 settled bets required to unlock each one.',
-  },
-  {
-    q: 'Is my financial data visible to others?',
-    a: 'Never. Dollar amounts are completely private. Only your win rate, ROI percentage, Gammbler Score, and tier are visible on leaderboards and profiles. You control what others see.',
-  },
-  {
-    q: 'What do I get for free vs Pro?',
-    a: 'Free users get their overall Gammbler Score, score history, basic record, national leaderboard access, community feed, one sportsbook connection, and manual bet entry. Pro unlocks all 10 sport scores, full analytics, friend leaderboards, H2H challenges, leagues, shareable cards, badges, and more — $8.99/mo.',
-  },
-];
 
 function useIntersectionObserver() {
   const ref = useRef<HTMLDivElement>(null);
@@ -207,15 +44,51 @@ function useIntersectionObserver() {
   return ref;
 }
 
-function RankIcon({ rank }: { rank: number }) {
-  if (rank === 1) return <Crown size={14} className="text-[#FFD700]" />;
-  if (rank === 2) return <Medal size={14} className="text-[#C0C0C0]" />;
-  if (rank === 3) return <Medal size={14} className="text-[#CD7F32]" />;
-  return <span className="text-xs text-[#6b6b6b] font-bold" style={{ fontFamily: 'var(--font-number)' }}>{rank}</span>;
+
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M+`;
+  if (n >= 1_000) return n.toLocaleString();
+  return String(n);
 }
+
+const leaderboardPreview = [
+  { rank: 1, name: 'SharpShooter_MJ', score: 94.2, tier: 'Legend', color: '#ff6f00', sport: 'NFL' },
+  { rank: 2, name: 'VegasVault', score: 91.8, tier: 'Legend', color: '#ff6f00', sport: 'NBA' },
+  { rank: 3, name: 'TheLineKing', score: 89.7, tier: 'Elite', color: '#FFD700', sport: 'NFL' },
+  { rank: 4, name: 'ParlayPete', score: 86.3, tier: 'Elite', color: '#FFD700', sport: 'MLB' },
+  { rank: 5, name: 'ChalkEater99', score: 84.1, tier: 'Elite', color: '#FFD700', sport: 'NBA' },
+  { rank: 6, name: 'EdgeHunterX', score: 81.9, tier: 'Elite', color: '#FFD700', sport: 'NHL' },
+  { rank: 7, name: 'You', score: '??', tier: '???', color: '#9e9e9e', sport: '—', isYou: true },
+];
 
 export default function HomePage() {
   const observerRef = useIntersectionObserver();
+  const [stats, setStats] = useState({ users: 0, bets: 0, challenges: 0, leagues: 0 });
+
+  useEffect(() => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    fetch(`${API_URL}/stats/public`)
+      .then((r) => r.json())
+      .then((data) => setStats(data))
+      .catch(() => {});
+  }, []);
+
+  const demoRank = Math.max(1, Math.ceil(stats.users * 0.15));
+  const heroStats = [
+    { label: 'Betting Score', value: '84.7', sublabel: 'Elite', color: '#FFD700' },
+    { label: 'National Rank', value: `#${demoRank.toLocaleString()}`, sublabel: `of ${formatNumber(stats.users)}`, color: '#4caf50' },
+    { label: 'NFL Score', value: '91.2', sublabel: 'Legend', color: '#ff6f00' },
+    { label: 'H2H Record', value: '23-7', sublabel: '.767 Win %', color: '#4caf50' },
+    { label: 'League Standing', value: '#2', sublabel: 'of 12', color: '#FFD700' },
+  ];
+
+  const socialProof = [
+    { value: formatNumber(stats.users), label: 'Verified Bettors' },
+    { value: formatNumber(stats.bets), label: 'Bets Tracked' },
+    { value: formatNumber(stats.challenges), label: 'H2H Challenges' },
+    { value: formatNumber(stats.leagues), label: 'League Matchups' },
+  ];
 
   return (
     <div ref={observerRef} className="min-h-screen overflow-hidden">
@@ -234,1146 +107,556 @@ export default function HomePage() {
               className="btn-glow text-white px-5 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              Join Free
+              Get My Score
             </Link>
           </div>
         </div>
       </nav>
 
       {/* ========== HERO ========== */}
-      <section className="relative pt-32 pb-16 md:pt-40 md:pb-24 px-6 dot-grid">
+      <section className="relative pt-32 pb-8 md:pt-40 md:pb-16 px-6 dot-grid">
         <div className="hero-orb w-[600px] h-[600px] -top-40 -left-40 bg-[#4caf50]/[0.04]" style={{ animation: 'pulse-glow 8s ease-in-out infinite' }} />
         <div className="hero-orb w-[500px] h-[500px] top-20 -right-40 bg-[#4caf50]/[0.03]" style={{ animation: 'pulse-glow 10s ease-in-out infinite 2s' }} />
-        <div className="hero-orb w-[300px] h-[300px] bottom-0 left-1/3 bg-[#4caf50]/[0.02]" style={{ animation: 'pulse-glow 6s ease-in-out infinite 4s' }} />
 
         <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/[0.08] bg-white/[0.02] mb-8">
-              <span className="w-2 h-2 rounded-full bg-[#4caf50] animate-pulse" />
-              <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-medium" style={{ fontFamily: 'var(--font-display)' }}>
-                The Sports Betting Identity Platform
-              </span>
-            </div>
-
+          <div className="text-center mb-12">
             <h1
-              className="animate-fade-up delay-100 text-5xl sm:text-7xl md:text-[5.5rem] lg:text-[6.5rem] font-black uppercase tracking-tight leading-[0.9] mb-8"
+              className="animate-fade-up text-4xl sm:text-6xl md:text-[5rem] lg:text-[6rem] font-black uppercase tracking-tight leading-[0.9] mb-6"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              Track. Compete.{' '}
-              <span className="text-gradient">Get Paid.</span>
+              How Good of a Sports Bettor{' '}
+              <span className="text-gradient">Are You?</span>
             </h1>
 
-            <p className="animate-fade-up delay-200 text-lg md:text-xl text-[#9e9e9e] max-w-2xl mx-auto mb-12 leading-relaxed">
-              Every sports bettor gets a verified score. Climb leaderboards, challenge friends head-to-head, join betting leagues, and earn money selling your picks.
+            <p className="animate-fade-up delay-100 text-lg md:text-xl text-[#9e9e9e] max-w-2xl mx-auto mb-10 leading-relaxed">
+              Get your Gammbler Score, see where you rank nationally, challenge friends, join betting leagues, and prove you&apos;re better than the competition.
             </p>
 
-            <div className="animate-fade-up delay-300 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="animate-fade-up delay-200 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/signup"
                 className="btn-glow text-white px-10 py-4 rounded-xl text-lg font-bold uppercase tracking-wider flex items-center gap-3 w-full sm:w-auto justify-center"
                 style={{ fontFamily: 'var(--font-display)' }}
               >
-                Get Your Score <ArrowRight size={20} />
+                Get My Score <ArrowRight size={20} />
               </Link>
               <Link
-                href="#leaderboards"
-                className="btn-outline text-white px-10 py-4 rounded-xl text-lg font-bold uppercase tracking-wider flex items-center gap-3 w-full sm:w-auto justify-center"
+                href="#rankings"
+                className="text-[#9e9e9e] hover:text-white border border-white/[0.1] hover:border-white/[0.2] px-8 py-4 rounded-xl text-lg font-bold uppercase tracking-wider flex items-center gap-3 w-full sm:w-auto justify-center transition-all duration-300"
                 style={{ fontFamily: 'var(--font-display)' }}
               >
-                View Leaderboards
+                See the Rankings
               </Link>
             </div>
           </div>
 
-          {/* Hero Leaderboard Preview */}
-          <div className="animate-fade-up delay-500 max-w-3xl mx-auto">
-            <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                <div className="flex items-center gap-2">
-                  <Trophy size={16} className="text-[#4caf50]" />
-                  <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                    National Leaderboard — Live
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#4caf50] animate-pulse" />
-                  <span className="text-[10px] text-[#4caf50] uppercase tracking-wider font-semibold">Live</span>
-                </div>
-              </div>
-              <div className="divide-y divide-white/[0.04]">
-                {leaderboardData.slice(0, 5).map((entry) => (
-                  <div
-                    key={entry.rank}
-                    className="flex items-center px-6 py-3.5 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <div className="w-8 flex items-center justify-center">
-                      <RankIcon rank={entry.rank} />
-                    </div>
-                    <div className="flex-1 ml-3">
-                      <span className="text-sm font-semibold text-white">{entry.name}</span>
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold" style={{ background: `${entry.tierColor}20`, color: entry.tierColor, fontFamily: 'var(--font-display)' }}>
-                        {entry.tier}
-                      </span>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-6 mr-6">
-                      <div className="text-right">
-                        <p className="text-xs text-[#6b6b6b] uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>Record</p>
-                        <p className="text-sm text-[#9e9e9e]" style={{ fontFamily: 'var(--font-number)' }}>{entry.record}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-[#6b6b6b] uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>ROI</p>
-                        <p className="text-sm text-[#66bb6a]" style={{ fontFamily: 'var(--font-number)' }}>{entry.roi}</p>
-                      </div>
-                    </div>
-                    <div className="text-right min-w-[60px]">
-                      <p className="text-xl font-bold text-gradient stat-glow" style={{ fontFamily: 'var(--font-number)' }}>{entry.score}</p>
-                    </div>
+          {/* Hero Score Dashboard Visual */}
+          <div className="animate-fade-up delay-300 max-w-3xl mx-auto">
+            <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8" style={{ backdropFilter: 'blur(10px)' }}>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {heroStats.map((stat, i) => (
+                  <div key={i} className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+                    <p className="text-[10px] uppercase tracking-widest text-[#6b6b6b] mb-1">{stat.label}</p>
+                    <p className="text-2xl md:text-3xl font-black" style={{ fontFamily: 'var(--font-number)', color: stat.color }}>{stat.value}</p>
+                    <p className="text-xs mt-1" style={{ color: stat.color }}>{stat.sublabel}</p>
                   </div>
                 ))}
               </div>
-              <div className="px-6 py-3 border-t border-white/[0.06] text-center">
-                <span className="text-xs text-[#6b6b6b]">Your rank is waiting &middot; </span>
-                <Link href="/signup" className="text-xs text-[#4caf50] font-semibold hover:underline">Join and find out →</Link>
-              </div>
+              <p className="text-center text-[11px] text-[#6b6b6b] mt-4 italic">What would YOUR dashboard look like?</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ========== SCORE SECTION ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Your Betting Identity
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              One Score to{' '}
-              <span className="text-gradient">Rule Them All</span>
-            </h2>
-            <p className="text-[#9e9e9e] max-w-2xl mx-auto">
-              Your Gammbler Score is a 0-100 rating that measures your true betting skill — across every sportsbook, every sport, tracked daily. Share it, compete with it, earn from it.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8 items-start">
-            {/* Overall Score Card */}
-            <div className="reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-              <div className="glass-card rounded-2xl p-8 text-center" style={{ cursor: 'default' }}>
-                <p className="text-xs text-[#9e9e9e] uppercase tracking-widest mb-4" style={{ fontFamily: 'var(--font-display)' }}>Overall Gammbler Score</p>
-                <div className="relative w-40 h-40 mx-auto mb-5">
-                  <svg className="w-40 h-40 -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(76,175,80,0.1)" strokeWidth="5" />
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="#4caf50" strokeWidth="5" strokeLinecap="round" className="score-ring" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-5xl font-bold text-gradient stat-glow" style={{ fontFamily: 'var(--font-number)' }}>78.4</span>
-                  </div>
-                </div>
-                <span
-                  className="inline-block px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4"
-                  style={{ fontFamily: 'var(--font-display)', background: 'rgba(255,215,0,0.15)', color: '#FFD700' }}
-                >
-                  Elite
-                </span>
-                <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-white/[0.06]">
-                  <div>
-                    <p className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>234-118</p>
-                    <p className="text-[10px] text-[#6b6b6b] uppercase tracking-wider">Record</p>
-                  </div>
-                  <div className="w-px h-8 bg-white/[0.06]" />
-                  <div>
-                    <p className="text-lg font-bold text-[#66bb6a]" style={{ fontFamily: 'var(--font-number)' }}>+9.2%</p>
-                    <p className="text-[10px] text-[#6b6b6b] uppercase tracking-wider">ROI</p>
-                  </div>
-                  <div className="w-px h-8 bg-white/[0.06]" />
-                  <div>
-                    <p className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>352</p>
-                    <p className="text-[10px] text-[#6b6b6b] uppercase tracking-wider">Total Bets</p>
-                  </div>
-                </div>
-                <div className="mt-5 flex items-center justify-center gap-2">
-                  <Share2 size={14} className="text-[#4caf50]" />
-                  <span className="text-xs text-[#4caf50] font-semibold">Share on social media</span>
-                </div>
-              </div>
-
-              {/* Score Tiers */}
-              <div className="mt-6">
-                <p className="text-xs text-[#6b6b6b] uppercase tracking-[0.2em] mb-3 text-center" style={{ fontFamily: 'var(--font-display)' }}>
-                  Score Tiers
-                </p>
-                <div className="flex gap-2">
-                  {scoreTiers.map((tier) => (
-                    <div key={tier.name} className="flex-1 glass-card rounded-lg p-2.5 text-center" style={{ cursor: 'default' }}>
-                      <div className="w-2.5 h-2.5 rounded-full mx-auto mb-1.5" style={{ background: tier.color, boxShadow: `0 0 10px ${tier.color}40` }} />
-                      <p className="text-[10px] font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>{tier.name}</p>
-                      <p className="text-[9px] text-[#6b6b6b]" style={{ fontFamily: 'var(--font-number)' }}>{tier.range}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      {/* ========== SOCIAL PROOF BANNER ========== */}
+      <section className="py-8 px-6 border-y border-white/[0.04] bg-white/[0.01]">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+          {socialProof.map((item, i) => (
+            <div key={i} className="text-center">
+              <p className="text-2xl md:text-3xl font-black text-white" style={{ fontFamily: 'var(--font-number)' }}>{item.value}</p>
+              <p className="text-xs text-[#6b6b6b] uppercase tracking-wider mt-1">{item.label}</p>
             </div>
-
-            {/* Sport-Specific Scores */}
-            <div className="reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0" style={{ transitionDelay: '150ms' }}>
-              <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
-                <div className="px-6 py-4 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2">
-                    <Target size={16} className="text-[#4caf50]" />
-                    <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                      Sport-Specific Scores
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-[#6b6b6b] mt-1">Every sport. Every score. To the decimal.</p>
-                </div>
-                <div className="divide-y divide-white/[0.04]">
-                  {sportScores.map((s) => (
-                    <div key={s.sport} className="flex items-center px-6 py-3 hover:bg-white/[0.02] transition-colors">
-                      <span className="text-sm font-bold text-white w-16" style={{ fontFamily: 'var(--font-display)' }}>{s.sport}</span>
-                      <div className="flex-1 mx-4">
-                        <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-1000"
-                            style={{ width: `${s.score}%`, background: `linear-gradient(90deg, ${s.color}80, ${s.color})` }}
-                          />
-                        </div>
-                      </div>
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mr-3"
-                        style={{ background: `${s.color}20`, color: s.color, fontFamily: 'var(--font-display)' }}
-                      >
-                        {s.tier}
-                      </span>
-                      <span className="text-lg font-bold text-white min-w-[48px] text-right" style={{ fontFamily: 'var(--font-number)' }}>{s.score}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-6 py-3 border-t border-white/[0.06] flex items-center justify-center gap-2">
-                  <TrendingUp size={12} className="text-[#4caf50]" />
-                  <span className="text-[10px] text-[#4caf50] font-semibold">Daily snapshots track your score over time</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* ========== CAPPER MARKETPLACE — MAKE MONEY ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#FFD700] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Earn From Your Edge
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Turn Your Picks Into{' '}
-              <span className="text-gradient-gold">Income</span>
-            </h2>
-            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
-              Anyone can become a Capper — no minimum score required. Set your price, build a subscriber base, and earn monthly income from your betting expertise — like Twitch for sports betting.
-            </p>
-          </div>
-
-          {/* Capper Earnings Showcase */}
-          <div className="grid md:grid-cols-3 gap-5 mb-12 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            {capperShowcase.map((capper, i) => (
-              <div key={capper.name} className="glass-card rounded-2xl p-6 relative overflow-hidden" style={{ cursor: 'default', transitionDelay: `${i * 100}ms` }}>
-                {i === 0 && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#FFD700] to-transparent" />}
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-sm font-bold text-white">{capper.name}</p>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: `${capper.tierColor}20`, color: capper.tierColor, fontFamily: 'var(--font-display)' }}>
-                      {capper.tier} • {capper.sport}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-gradient stat-glow" style={{ fontFamily: 'var(--font-number)' }}>{capper.score}</p>
-                  </div>
-                </div>
-                <div className="border-t border-white/[0.06] pt-4 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#6b6b6b]">Record</span>
-                    <span className="text-sm text-white font-medium" style={{ fontFamily: 'var(--font-number)' }}>{capper.record}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#6b6b6b]">Subscribers</span>
-                    <span className="text-sm text-white font-medium" style={{ fontFamily: 'var(--font-number)' }}>{capper.subscribers}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-[#6b6b6b]">Price</span>
-                    <span className="text-sm text-white font-medium" style={{ fontFamily: 'var(--font-number)' }}>${capper.price}/mo</span>
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
-                    <span className="text-xs text-[#FFD700] font-semibold">Monthly Earnings</span>
-                    <span className="text-lg font-bold text-[#FFD700]" style={{ fontFamily: 'var(--font-number)' }}>${capper.monthlyEarnings.toLocaleString()}</span>
-                  </div>
-                </div>
+      {/* ========== SECTION 1: EVERY BETTOR GETS A SCORE ========== */}
+      <section className="py-20 md:py-32 px-6">
+        <div className="max-w-5xl mx-auto reveal">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#4caf50]/20 bg-[#4caf50]/5 mb-6">
+                <Target size={14} className="text-[#4caf50]" />
+                <span className="text-xs text-[#4caf50] uppercase tracking-widest font-medium">Your Score</span>
               </div>
-            ))}
-          </div>
-
-          {/* Two-sided value prop */}
-          <div className="grid md:grid-cols-2 gap-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <div className="glass-card rounded-xl p-8">
-              <h3 className="text-xl font-bold text-[#FFD700] mb-5" style={{ fontFamily: 'var(--font-display)' }}>FOR CAPPERS</h3>
-              <ul className="space-y-3 text-sm text-[#e0e0e0]">
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Become a Capper instantly — no score requirement</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Earn Verified (75+ score) or Elite (85+ score) status</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Keep 80% of subscriber revenue</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Build your brand with live bet slips</li>
-                <li className="flex items-center gap-2"><span className="text-[#4caf50]">→</span> Track earnings and subscriber analytics</li>
-              </ul>
-              <div className="mt-6 pt-4 border-t border-white/[0.06]">
-                <p className="text-xs text-[#9e9e9e]">
-                  <span className="text-[#FFD700] font-semibold">Example:</span> 200 subscribers at $19.99/mo = <span className="text-[#FFD700] font-bold">$3,199/mo</span> in your pocket
-                </p>
-              </div>
-            </div>
-            <div className="glass-card rounded-xl p-8">
-              <h3 className="text-xl font-bold text-[#4caf50] mb-5" style={{ fontFamily: 'var(--font-display)' }}>FOR SUBSCRIBERS</h3>
-              <ul className="space-y-3 text-sm text-[#e0e0e0]">
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Browse verified cappers with proven records</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> See live bets the moment they are placed</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> One-tap &ldquo;Tail This&rdquo; to copy any bet</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Track capper performance over time</li>
-                <li className="flex items-center gap-2"><span className="text-[#FFD700]">→</span> Cancel anytime — no lock-in</li>
-              </ul>
-              <div className="mt-6 pt-4 border-t border-white/[0.06]">
-                <p className="text-xs text-[#9e9e9e]">
-                  <span className="text-[#4caf50] font-semibold">No fake records.</span> Every capper&apos;s score is verified and tamper-proof
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-10 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-sm font-bold uppercase tracking-wider hover:scale-[1.02] transition-all"
-              style={{ fontFamily: 'var(--font-display)', background: 'linear-gradient(135deg, #FFD700, #ff6f00)', color: '#000' }}
-            >
-              Start Earning <DollarSign size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== LEADERBOARDS ========== */}
-      <div className="section-divider" />
-      <section id="leaderboards" className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Compete
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              The Competition is{' '}
-              <span className="text-gradient">Already Here</span>
-            </h2>
-            <p className="text-[#9e9e9e] max-w-2xl mx-auto">
-              National rankings across every sport. Private friend leaderboards to settle debates forever. Are you actually better than your buddies — or just louder?
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* National Leaderboard */}
-            <div className="reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-              <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2">
-                    <Trophy size={16} className="text-[#FFD700]" />
-                    <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                      National — Overall
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#4caf50] animate-pulse" />
-                    <span className="text-[10px] text-[#4caf50] uppercase tracking-wider font-semibold">Live</span>
-                  </div>
-                </div>
-                <div className="divide-y divide-white/[0.04]">
-                  {leaderboardData.map((entry) => (
-                    <div key={entry.rank} className="flex items-center px-6 py-3 hover:bg-white/[0.02] transition-colors">
-                      <div className="w-7 flex items-center justify-center">
-                        <RankIcon rank={entry.rank} />
-                      </div>
-                      <div className="flex-1 ml-2.5">
-                        <span className="text-sm font-semibold text-white">{entry.name}</span>
-                      </div>
-                      <div className="hidden sm:block text-right mr-4">
-                        <span className="text-xs text-[#9e9e9e]" style={{ fontFamily: 'var(--font-number)' }}>{entry.record}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-lg font-bold text-gradient stat-glow" style={{ fontFamily: 'var(--font-number)' }}>{entry.score}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-6 py-3 border-t border-white/[0.06] text-center">
-                  <span className="text-xs text-[#6b6b6b]">Updated in real-time across all sports</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Friend Leaderboard */}
-            <div className="reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0" style={{ transitionDelay: '150ms' }}>
-              <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2">
-                    <Users size={16} className="text-[#4caf50]" />
-                    <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                      Friends — NFL
-                    </span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)', background: 'rgba(76,175,80,0.15)', color: '#4caf50' }}>
-                    Pro
-                  </span>
-                </div>
-                <div className="divide-y divide-white/[0.04]">
-                  {friendLeaderboard.map((entry) => (
-                    <div
-                      key={entry.rank}
-                      className="flex items-center px-6 py-3 hover:bg-white/[0.02] transition-colors"
-                      style={entry.isYou ? { background: 'rgba(76,175,80,0.05)', borderLeft: '2px solid #4caf50' } : {}}
-                    >
-                      <div className="w-7 flex items-center justify-center">
-                        <RankIcon rank={entry.rank} />
-                      </div>
-                      <div className="flex-1 ml-2.5">
-                        <span className={`text-sm font-semibold ${entry.isYou ? 'text-[#4caf50]' : 'text-white'}`}>
-                          {entry.name}
-                          {entry.isYou && <Flame size={12} className="inline ml-1.5 text-[#FFD700]" />}
-                        </span>
-                      </div>
-                      <div className="hidden sm:flex items-center gap-4 mr-4">
-                        <span className="text-xs text-[#9e9e9e]" style={{ fontFamily: 'var(--font-number)' }}>{entry.record}</span>
-                        <span className={`text-xs ${entry.roi.startsWith('+') ? 'text-[#66bb6a]' : 'text-[#ef5350]'}`} style={{ fontFamily: 'var(--font-number)' }}>{entry.roi}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-number)', color: entry.tierColor }}>{entry.score}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-6 py-3 border-t border-white/[0.06] text-center">
-                  <span className="text-xs text-[#6b6b6b]">Settle the debate — invite your friends</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== H2H CHALLENGES ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#ef5350] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Head-to-Head
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Challenge Anyone.{' '}
-              <span className="text-gradient">Prove It.</span>
-            </h2>
-            <p className="text-[#9e9e9e] text-lg max-w-2xl mx-auto">
-              Pick a game. Pick a side. Challenge any user on the platform. Winner gets a badge and a shareable result card. No more empty trash talk — put your score on the line.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8 items-center reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            {/* H2H Challenge Mockup */}
-            <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
-              <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Swords size={16} className="text-[#ef5350]" />
-                  <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                    H2H Challenge
-                  </span>
-                </div>
-                <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-[#66bb6a]/20 text-[#66bb6a]" style={{ fontFamily: 'var(--font-display)' }}>
-                  Settled
-                </span>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="text-center flex-1">
-                    <div className="w-14 h-14 rounded-full bg-[#4caf50]/20 flex items-center justify-center mx-auto mb-2">
-                      <Crown size={20} className="text-[#FFD700]" />
-                    </div>
-                    <p className="text-sm font-bold text-white">SharpShooter_MJ</p>
-                    <p className="text-[10px] text-[#FFD700] font-semibold">WINNER</p>
-                    <p className="text-xs text-[#9e9e9e] mt-1">Chiefs -3.5</p>
-                  </div>
-                  <div className="px-4">
-                    <span className="text-2xl font-black text-[#6b6b6b] uppercase" style={{ fontFamily: 'var(--font-display)' }}>VS</span>
-                  </div>
-                  <div className="text-center flex-1">
-                    <div className="w-14 h-14 rounded-full bg-white/[0.06] flex items-center justify-center mx-auto mb-2">
-                      <span className="text-lg font-bold text-[#6b6b6b]">VV</span>
-                    </div>
-                    <p className="text-sm font-bold text-[#9e9e9e]">VegasVault</p>
-                    <p className="text-[10px] text-[#6b6b6b]">&nbsp;</p>
-                    <p className="text-xs text-[#9e9e9e] mt-1">Eagles +3.5</p>
-                  </div>
-                </div>
-                <div className="border-t border-white/[0.06] pt-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#6b6b6b]">Game</span>
-                    <span className="text-white">NFL — Chiefs vs Eagles</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#6b6b6b]">Stakes</span>
-                    <span className="text-white">Loser changes avatar to winner&apos;s pick for a week</span>
-                  </div>
-                </div>
-              </div>
-              <div className="px-6 py-3 border-t border-white/[0.06] flex items-center justify-center gap-2">
-                <Share2 size={12} className="text-[#4caf50]" />
-                <span className="text-[10px] text-[#4caf50] font-semibold">Download & share result card</span>
-              </div>
-            </div>
-
-            {/* H2H Features */}
-            <div className="space-y-5">
-              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#ef5350]/20 flex items-center justify-center flex-shrink-0">
-                    <Swords size={20} className="text-[#ef5350]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>CHALLENGE ANYONE</h3>
-                    <p className="text-xs text-[#9e9e9e]">Search any user on the platform, pick a game, choose your side, and send the challenge. Add stakes and trash talk to make it personal.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center flex-shrink-0">
-                    <Trophy size={20} className="text-[#FFD700]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>EARN BADGES & STREAKS</h3>
-                    <p className="text-xs text-[#9e9e9e]">Win your first H2H to earn the First Blood badge. Stack 3 wins for a streak badge. Reach 10 wins for H2H Champion status on your profile.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#4caf50]/20 flex items-center justify-center flex-shrink-0">
-                    <Share2 size={20} className="text-[#4caf50]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>SHAREABLE RESULT CARDS</h3>
-                    <p className="text-xs text-[#9e9e9e]">Every settled challenge generates a branded result card. Download it and post to X, Instagram, or your group chat. Your wins travel with you.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-10 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-all"
-              style={{ fontFamily: 'var(--font-display)', background: 'linear-gradient(135deg, #ef5350, #c62828)' }}
-            >
-              Send a Challenge <Swords size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== BETTING LEAGUES ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Betting Leagues
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Start a League.{' '}
-              <span className="text-gradient">Settle It For Good.</span>
-            </h2>
-            <p className="text-[#9e9e9e] max-w-2xl mx-auto">
-              Create a league, invite your crew, and compete over an entire season. Weekly scores, standings, and bragging rights — like fantasy football, but for real betting.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            {/* League Standings Mockup */}
-            <div className="glass-card rounded-2xl overflow-hidden" style={{ cursor: 'default' }}>
-              <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
-                <div>
-                  <p className="text-white font-bold text-sm" style={{ fontFamily: 'var(--font-display)' }}>SUNDAY DEGEN LEAGUE</p>
-                  <p className="text-[10px] text-[#6b6b6b] mt-0.5">2025 NFL Season • Week 12 of 18</p>
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#4caf50]/20 text-[#4caf50]" style={{ fontFamily: 'var(--font-display)' }}>
-                  In Progress
-                </span>
-              </div>
-              <div className="divide-y divide-white/[0.04]">
-                {[
-                  { rank: 1, name: 'You', score: 81.2, weekScore: 87.4, bets: 8, streak: 4, isYou: true },
-                  { rank: 2, name: 'Mike_Bets', score: 76.8, weekScore: 72.1, bets: 6, streak: 2 },
-                  { rank: 3, name: 'DanTheMan', score: 74.1, weekScore: 68.9, bets: 5, streak: 0 },
-                  { rank: 4, name: 'JennyPicks', score: 69.4, weekScore: 74.3, bets: 4, streak: 1 },
-                  { rank: 5, name: 'CousinVinny', score: 52.3, weekScore: 41.2, bets: 2, streak: 0 },
-                ].map((member) => (
-                  <div key={member.rank} className={`px-6 py-3.5 flex items-center gap-4 ${member.isYou ? 'bg-[#4caf50]/[0.08]' : ''}`}>
-                    <span className={`w-6 text-center text-sm font-bold ${member.rank <= 3 ? 'text-[#FFD700]' : 'text-[#6b6b6b]'}`} style={{ fontFamily: 'var(--font-number)' }}>
-                      {member.rank}
-                    </span>
-                    <div className="flex-1">
-                      <span className={`text-sm font-medium ${member.isYou ? 'text-[#4caf50]' : 'text-white'}`}>
-                        {member.name}
-                        {member.isYou && <span className="text-[10px] text-[#4caf50] ml-1">(You)</span>}
-                      </span>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-[10px] text-[#6b6b6b]">{member.bets} bets this week</span>
-                        {member.streak > 0 && (
-                          <span className="text-[10px] text-[#ff6f00] flex items-center gap-0.5">
-                            <Flame size={9} />{member.streak}wk streak
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>
-                        {member.score}
-                      </span>
-                      <p className="text-[10px] text-[#6b6b6b]">This wk: <span className="text-[#81c784]">{member.weekScore}</span></p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="px-6 py-3 border-t border-white/[0.06] text-center">
-                <span className="text-xs text-[#6b6b6b]">Min 1 bet/week to stay ranked • Season avg determines winner</span>
-              </div>
-            </div>
-
-            {/* League Features */}
-            <div className="space-y-5">
-              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#4caf50]/20 flex items-center justify-center flex-shrink-0">
-                    <Trophy size={20} className="text-[#4caf50]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>SEASON-LONG COMPETITION</h3>
-                    <p className="text-xs text-[#9e9e9e]">Pick a sport, set your season dates, and compete week by week. The most consistent bettor wins — not the luckiest.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#FFD700]/20 flex items-center justify-center flex-shrink-0">
-                    <Medal size={20} className="text-[#FFD700]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>WEEKLY SCORES, NOT LUCK</h3>
-                    <p className="text-xs text-[#9e9e9e]">Your league score is the average of your weekly scores. Miss a week? That&apos;s a zero. No coasting on one hot week.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#42a5f5]/20 flex items-center justify-center flex-shrink-0">
-                    <Users size={20} className="text-[#42a5f5]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>INVITE YOUR CREW</h3>
-                    <p className="text-xs text-[#9e9e9e]">Share a code, they join instantly. Up to 20 members per league. Finally settle who&apos;s actually the best bettor in your friend group.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="glass-card rounded-xl p-5" style={{ cursor: 'default' }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#ff6f00]/20 flex items-center justify-center flex-shrink-0">
-                    <DollarSign size={20} className="text-[#ff6f00]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-bold text-sm mb-1" style={{ fontFamily: 'var(--font-display)' }}>FREE & CASH LEAGUES</h3>
-                    <p className="text-xs text-[#9e9e9e]">Free leagues for bragging rights. Cash entry leagues with real prizes and a transparent 10% platform rake. Skill-based, not luck-based.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-12 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-background font-bold text-sm uppercase tracking-wider hover:scale-[1.02] transition-all"
-              style={{ fontFamily: 'var(--font-display)', background: 'linear-gradient(135deg, #4caf50, #81c784)' }}
-            >
-              Start a League <ArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== SHAREABLE CARDS + SCORE HISTORY ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Flex Your Stats
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Share Your Score.{' '}
-              <span className="text-gradient">Prove Your Edge.</span>
-            </h2>
-            <p className="text-[#9e9e9e] max-w-2xl mx-auto">
-              Generate branded, verified score cards and H2H result cards. Track your score over time with daily snapshots. Drop your stats on Twitter/X, Instagram, or your group chat — no more fake screenshots.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-6 max-w-5xl mx-auto reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            {/* Score Card Mockup */}
-            <div className="lg:col-span-1">
-              <div className="glass-card rounded-2xl p-6 text-center relative overflow-hidden" style={{ cursor: 'default' }}>
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#4caf50] to-transparent" />
-                <Image src="/images/logo-main.png" alt="Gammbler" width={100} height={24} className="h-5 w-auto mx-auto mb-4 opacity-60" />
-                <div className="relative w-24 h-24 mx-auto mb-3">
-                  <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(76,175,80,0.1)" strokeWidth="6" />
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="#4caf50" strokeWidth="6" strokeLinecap="round" className="score-ring" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-3xl font-bold text-gradient stat-glow" style={{ fontFamily: 'var(--font-number)' }}>78.4</span>
-                  </div>
-                </div>
-                <p className="text-sm font-bold text-white mb-0.5">SharpShooter_MJ</p>
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3" style={{ background: 'rgba(255,215,0,0.15)', color: '#FFD700', fontFamily: 'var(--font-display)' }}>
-                  Elite
-                </span>
-                <div className="flex items-center justify-center gap-4 text-xs mb-3">
-                  <span className="text-[#9e9e9e]"><span className="text-white font-bold" style={{ fontFamily: 'var(--font-number)' }}>234-118</span> Record</span>
-                  <span className="text-[#66bb6a]"><span className="font-bold" style={{ fontFamily: 'var(--font-number)' }}>+9.2%</span> ROI</span>
-                </div>
-                <div className="border-t border-white/[0.06] pt-3 mt-1">
-                  <p className="text-[9px] text-[#6b6b6b] uppercase tracking-wider">Verified by Gammbler</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Social sharing + Score History */}
-            <div className="lg:col-span-2 flex flex-col gap-5">
-              {/* Twitter/X mockup */}
-              <div className="glass-card rounded-2xl p-6" style={{ cursor: 'default' }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center">
-                    <span className="text-sm font-bold text-white">MJ</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">SharpShooter_MJ</p>
-                    <p className="text-[10px] text-[#6b6b6b]">@sharpshooter_mj</p>
-                  </div>
-                  <div className="ml-auto">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#9e9e9e">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-sm text-[#e0e0e0] mb-3">
-                  78.4 Elite on Gammbler. 234-118 on the season. Where are you ranked? 
-                  <span className="text-[#4caf50]"> gammbler.com</span>
-                </p>
-                <div className="flex items-center gap-6 text-xs text-[#6b6b6b]">
-                  <span className="flex items-center gap-1"><Heart size={12} /> 847</span>
-                  <span className="flex items-center gap-1"><Share2 size={12} /> 234</span>
-                  <span>12.4K views</span>
-                </div>
-              </div>
-
-              {/* Score History teaser */}
-              <div className="glass-card rounded-2xl p-6" style={{ cursor: 'default' }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp size={16} className="text-[#4caf50]" />
-                  <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Score History</span>
-                </div>
-                <div className="flex items-end gap-1 h-16 mb-3">
-                  {[42, 48, 52, 55, 60, 58, 63, 67, 65, 70, 72, 74, 71, 75, 78].map((v, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-t-sm"
-                      style={{ height: `${v}%`, background: `linear-gradient(180deg, #4caf50, #4caf50${i === 14 ? '' : '60'})` }}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-[#9e9e9e]">
-                  Daily snapshots track your growth over time. <span className="text-[#4caf50] font-semibold">+36.4 points</span> in 3 months — proof of improvement that can&apos;t be faked.
-                </p>
-              </div>
-
-              <p className="text-xs text-[#6b6b6b] text-center">
-                Branded score cards &middot; H2H result cards &middot; Verified stats &middot; Tamper-proof &middot; One-tap share
+              <h2
+                className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-6"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Every Bettor Gets{' '}
+                <span className="text-gradient">a Score.</span>
+              </h2>
+              <p className="text-[#9e9e9e] text-lg leading-relaxed mb-4">
+                Not opinions. Not followers. Not hype.
               </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== FEATURES ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Everything You Need
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Built for{' '}
-              <span className="text-gradient">Serious Bettors</span>
-            </h2>
-            <p className="text-[#9e9e9e] max-w-xl mx-auto">
-              Sportsbook sync, analytics, score tracking, and more — all backing up the competitive experience.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <div
-                  key={f.title}
-                  className="glass-card rounded-2xl p-7 group reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0"
-                  style={{ transitionDelay: `${i * 100}ms` }}
-                >
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(76,175,80,0.1)' }}>
-                      <Icon size={22} className="text-[#4caf50]" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-gradient" style={{ fontFamily: 'var(--font-number)' }}>{f.stat}</p>
-                      <p className="text-[10px] text-[#6b6b6b] uppercase tracking-wider">{f.statLabel}</p>
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-bold uppercase tracking-wide mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                    {f.title}
-                  </h3>
-                  <p className="text-sm text-[#9e9e9e] leading-relaxed">{f.description}</p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Platforms */}
-          <div className="mt-16 text-center reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-6 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Connects to Your Sportsbooks
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {platforms.map((p) => (
-                <div key={p.name} className="platform-badge bg-[#111a13] px-5 py-3 rounded-xl flex items-center gap-2.5 cursor-default">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: p.color, boxShadow: `0 0 8px ${p.color}60` }} />
-                  <span className="text-sm font-medium text-white">{p.name}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-[#6b6b6b] mt-6">+ CSV import for any platform &middot; Manual entry always available</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== DFS SCORE ========== */}
-      <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Now Tracking DFS
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-              Your{' '}<span className="text-gradient">DFS Score</span>
-            </h2>
-            <p className="text-[#9e9e9e] max-w-xl mx-auto">
-              Play on DraftKings or FanDuel? Get a verified DFS Score that proves your edge. Completely separate from your Betting Score — two reputations, one platform.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            {/* DFS Score Card */}
-            <div className="glass-card rounded-2xl p-8">
-              <div className="flex items-start gap-6">
-                <div className="text-center">
-                  <p className="text-xs text-[#9e9e9e] uppercase tracking-widest mb-2">DFS Score</p>
-                  <div className="relative w-32 h-32">
-                    <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
-                      <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
-                      <circle cx="60" cy="60" r="52" fill="none" stroke="#4caf50" strokeWidth="8"
-                        strokeLinecap="round" strokeDasharray={`${(83.6 / 100) * 327} 327`} />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>83.6</span>
-                      <span className="text-xs font-semibold text-purple-400">Elite</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/[0.04] rounded-lg p-3">
-                      <p className="text-[10px] text-[#6b6b6b] uppercase">Contest ROI</p>
-                      <p className="text-lg font-bold text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>+14.2%</p>
-                    </div>
-                    <div className="bg-white/[0.04] rounded-lg p-3">
-                      <p className="text-[10px] text-[#6b6b6b] uppercase">Cash Rate</p>
-                      <p className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>58.3%</p>
-                    </div>
-                    <div className="bg-white/[0.04] rounded-lg p-3">
-                      <p className="text-[10px] text-[#6b6b6b] uppercase">Contests</p>
-                      <p className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>347</p>
-                    </div>
-                    <div className="bg-white/[0.04] rounded-lg p-3">
-                      <p className="text-[10px] text-[#6b6b6b] uppercase">Net Profit</p>
-                      <p className="text-lg font-bold text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>+$4,218</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sport-specific DFS scores */}
-              <div className="grid grid-cols-6 gap-2 mt-6">
-                {[
-                  { sport: 'NFL', score: 87.2, color: '#FFD700' },
-                  { sport: 'NBA', score: 79.1, color: '#4caf50' },
-                  { sport: 'MLB', score: 72.4, color: '#4caf50' },
-                  { sport: 'PGA', score: 65.8, color: '#4caf50' },
-                  { sport: 'NHL', score: 58.3, color: '#42a5f5' },
-                  { sport: 'NASCAR', score: 51.2, color: '#42a5f5' },
-                ].map((s) => (
-                  <div key={s.sport} className="bg-white/[0.04] rounded-lg p-2 text-center">
-                    <p className="text-[10px] text-[#6b6b6b] uppercase">{s.sport}</p>
-                    <p className="text-sm font-bold" style={{ color: s.color, fontFamily: 'var(--font-number)' }}>{s.score}</p>
-                  </div>
-                ))}
-              </div>
+              <p className="text-[#9e9e9e] leading-relaxed mb-8">
+                A real score based on actual betting performance. Track your progress, build credibility, and see how you stack up against bettors nationwide.
+              </p>
+              <Link
+                href="/signup"
+                className="btn-glow inline-flex items-center gap-3 text-white px-8 py-3.5 rounded-xl font-bold uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Get Your Score <ArrowRight size={18} />
+              </Link>
             </div>
 
-            {/* DFS Features */}
-            <div className="space-y-5">
-              <div className="glass-card rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#4caf50]/10 flex items-center justify-center">
-                    <Upload size={18} className="text-[#4caf50]" />
-                  </div>
+            {/* Score Visual */}
+            <div className="relative">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
+                <div className="w-40 h-40 mx-auto rounded-full border-4 border-[#FFD700] flex items-center justify-center mb-4 relative">
+                  <div className="absolute inset-0 rounded-full border-4 border-[#FFD700]/20 animate-ping" style={{ animationDuration: '3s' }} />
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>CSV Import</h3>
-                    <p className="text-xs text-[#6b6b6b]">One upload = instant DFS Score</p>
+                    <p className="text-5xl font-black text-[#FFD700]" style={{ fontFamily: 'var(--font-number)' }}>84.7</p>
+                    <p className="text-sm text-[#FFD700] font-bold uppercase">Elite</p>
                   </div>
                 </div>
-                <p className="text-sm text-[#9e9e9e]">
-                  Export your contest history from DraftKings or FanDuel and upload it. We parse hundreds of contests and calculate your DFS Score in seconds.
-                </p>
-              </div>
-
-              <div className="glass-card rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#4caf50]/10 flex items-center justify-center">
-                    <Trophy size={18} className="text-[#4caf50]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>Separate Leaderboards</h3>
-                    <p className="text-xs text-[#6b6b6b]">DFS has its own rankings</p>
-                  </div>
+                <p className="text-[#9e9e9e] text-sm">Based on win rate, ROI, consistency & volume</p>
+                <div className="mt-6 grid grid-cols-5 gap-2">
+                  {[
+                    { tier: 'Rec', range: '0-40', color: '#9e9e9e' },
+                    { tier: 'Dev', range: '41-60', color: '#42a5f5' },
+                    { tier: 'Sharp', range: '61-75', color: '#4caf50' },
+                    { tier: 'Elite', range: '76-90', color: '#FFD700' },
+                    { tier: 'Legend', range: '91+', color: '#ff6f00' },
+                  ].map((t, i) => (
+                    <div key={i} className="text-center">
+                      <div className="h-1.5 rounded-full mb-1" style={{ backgroundColor: t.color }} />
+                      <p className="text-[9px] font-bold" style={{ color: t.color }}>{t.tier}</p>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-sm text-[#9e9e9e]">
-                  National DFS leaderboard + sport-specific rankings (NFL DFS, NBA DFS, MLB DFS, and more). Your DFS reputation stays separate from betting.
-                </p>
-              </div>
-
-              <div className="glass-card rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#4caf50]/10 flex items-center justify-center">
-                    <Crown size={18} className="text-[#4caf50]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>DFS Cappers</h3>
-                    <p className="text-xs text-[#6b6b6b]">Sell your lineups with a verified score</p>
-                  </div>
-                </div>
-                <p className="text-sm text-[#9e9e9e]">
-                  Become a DFS Capper and sell your daily lineup builds. Earn Verified status at 75+ DFS Score. Subscribers get your core plays — backed by a verified track record.
-                </p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ========== PRICING ========== */}
       <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6" style={{ background: 'rgba(14, 22, 16, 0.3)' }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Pricing
-            </p>
-            <h2
-              className="text-3xl md:text-5xl font-bold uppercase tracking-tight leading-tight mb-4"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Free Forever.{' '}
-              <span className="text-gradient">Go Pro When Ready.</span>
-            </h2>
-            <p className="text-[#9e9e9e] max-w-xl mx-auto">
-              Get your score for free. Upgrade to compete, challenge, and earn.
-            </p>
-          </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            {/* Free */}
-            <div className="glass-card rounded-2xl p-8 md:p-10">
-              <div className="mb-8">
-                <h3 className="text-2xl font-bold uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-display)' }}>Free</h3>
-                <p className="text-[#6b6b6b] text-sm">Free forever. No strings attached.</p>
-              </div>
-              <div className="mb-8">
-                <span className="text-5xl font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>$0</span>
-                <span className="text-[#6b6b6b] text-sm ml-1">/month</span>
-              </div>
-              <ul className="space-y-3.5 mb-10">
-                {freeFeatures.map((item) => (
-                  <li key={item} className="flex items-center gap-3 text-sm text-[#9e9e9e]">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(76,175,80,0.1)' }}>
-                      <Check size={12} className="text-[#4caf50]" />
+      {/* ========== SECTION 2: SEE WHERE YOU RANK ========== */}
+      <section id="rankings" className="py-20 md:py-32 px-6">
+        <div className="max-w-5xl mx-auto reveal">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Leaderboard Visual */}
+            <div className="order-2 md:order-1">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2">
+                  <Trophy size={14} className="text-[#FFD700]" />
+                  <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-medium">National Rankings</span>
+                </div>
+                <div className="divide-y divide-white/[0.04]">
+                  {leaderboardPreview.map((user) => (
+                    <div key={user.rank} className={`flex items-center px-4 py-3 gap-3 ${user.isYou ? 'bg-[#4caf50]/5 border border-[#4caf50]/20 rounded-lg mx-2 my-2' : ''}`}>
+                      <span className="w-6 text-center">
+                        {user.rank === 1 && <Crown size={14} className="text-[#FFD700] mx-auto" />}
+                        {user.rank === 2 && <Medal size={14} className="text-[#C0C0C0] mx-auto" />}
+                        {user.rank === 3 && <Medal size={14} className="text-[#CD7F32] mx-auto" />}
+                        {user.rank > 3 && <span className="text-xs text-[#6b6b6b] font-bold">{user.rank}</span>}
+                      </span>
+                      <span className={`flex-1 text-sm font-medium ${user.isYou ? 'text-[#4caf50]' : 'text-white'}`}>
+                        {user.name}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded" style={{ color: user.color, backgroundColor: `${user.color}15` }}>
+                        {user.sport}
+                      </span>
+                      <span className="text-sm font-bold" style={{ fontFamily: 'var(--font-number)', color: user.color }}>
+                        {user.score}
+                      </span>
                     </div>
-                    {item}
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 md:order-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#FFD700]/20 bg-[#FFD700]/5 mb-6">
+                <Trophy size={14} className="text-[#FFD700]" />
+                <span className="text-xs text-[#FFD700] uppercase tracking-widest font-medium">Leaderboards</span>
+              </div>
+              <h2
+                className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-6"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                See Where{' '}
+                <span className="text-gradient">You Rank.</span>
+              </h2>
+              <p className="text-[#9e9e9e] text-lg leading-relaxed mb-4">
+                Compete against bettors across the country.
+              </p>
+              <p className="text-[#9e9e9e] leading-relaxed mb-4">
+                Climb national leaderboards. Dominate your favorite sports. Prove your edge.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {['National Rankings', 'Sport-Specific Rankings', 'Friends Leaderboard', 'DFS Rankings'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#9e9e9e]">
+                    <TrendingUp size={16} className="text-[#4caf50]" />
+                    <span>{item}</span>
                   </li>
                 ))}
               </ul>
               <Link
                 href="/signup"
-                className="btn-outline block w-full text-white font-bold py-4 rounded-xl uppercase tracking-wider text-center text-sm"
+                className="btn-glow inline-flex items-center gap-3 text-white px-8 py-3.5 rounded-xl font-bold uppercase tracking-wider"
                 style={{ fontFamily: 'var(--font-display)' }}
               >
-                Get Started Free
+                See My Rank <ArrowRight size={18} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="section-divider" />
+
+      {/* ========== SECTION 3: CHALLENGE FRIENDS ========== */}
+      <section className="py-20 md:py-32 px-6">
+        <div className="max-w-5xl mx-auto reveal">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#f44336]/20 bg-[#f44336]/5 mb-6">
+                <Swords size={14} className="text-[#f44336]" />
+                <span className="text-xs text-[#f44336] uppercase tracking-widest font-medium">H2H Challenges</span>
+              </div>
+              <h2
+                className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-6"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Challenge Friends.{' '}
+                <span className="text-gradient">Settle Debates.</span>
+              </h2>
+              <p className="text-[#9e9e9e] text-lg leading-relaxed mb-4">
+                Think you&apos;re the sharpest bettor in your group?
+              </p>
+              <p className="text-[#9e9e9e] leading-relaxed mb-4">
+                Prove it. Create head-to-head challenges, compete all season, and settle every argument with results.
+              </p>
+              <p className="text-white font-bold mb-8">
+                No more trash talk without receipts.
+              </p>
+              <Link
+                href="/signup"
+                className="btn-glow inline-flex items-center gap-3 text-white px-8 py-3.5 rounded-xl font-bold uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Challenge Someone <ArrowRight size={18} />
               </Link>
             </div>
 
-            {/* Pro */}
-            <div className="pricing-pro rounded-2xl p-8 md:p-10 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#4caf50]/[0.05] rounded-full blur-3xl" />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-2xl font-bold uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-display)' }}>Pro</h3>
-                    <p className="text-[#6b6b6b] text-sm">Unlock everything.</p>
+            {/* H2H Visual */}
+            <div>
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="text-center flex-1">
+                    <div className="w-14 h-14 rounded-full bg-[#4caf50]/10 border-2 border-[#4caf50] flex items-center justify-center mx-auto mb-2">
+                      <span className="text-lg font-black text-[#4caf50]">Y</span>
+                    </div>
+                    <p className="text-sm font-bold text-white">You</p>
+                    <p className="text-xs text-[#4caf50]">84.7 Elite</p>
                   </div>
-                  <span
-                    className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest"
-                    style={{ fontFamily: 'var(--font-display)', background: 'rgba(76,175,80,0.15)', color: '#4caf50' }}
-                  >
-                    Most Popular
-                  </span>
+                  <div className="text-center px-4">
+                    <Swords size={24} className="text-[#f44336] mx-auto mb-1" />
+                    <p className="text-xs text-[#6b6b6b] uppercase tracking-wider">VS</p>
+                  </div>
+                  <div className="text-center flex-1">
+                    <div className="w-14 h-14 rounded-full bg-[#f44336]/10 border-2 border-[#f44336] flex items-center justify-center mx-auto mb-2">
+                      <span className="text-lg font-black text-[#f44336]">M</span>
+                    </div>
+                    <p className="text-sm font-bold text-white">Mike_Bets</p>
+                    <p className="text-xs text-[#f44336]">72.1 Sharp</p>
+                  </div>
                 </div>
-                <div className="mb-8">
-                  <span className="text-5xl font-bold text-gradient stat-glow" style={{ fontFamily: 'var(--font-number)' }}>$8.99</span>
-                  <span className="text-[#6b6b6b] text-sm ml-1">/month</span>
+                <div className="text-center py-3 rounded-xl bg-[#4caf50]/5 border border-[#4caf50]/20">
+                  <p className="text-xs text-[#6b6b6b] uppercase tracking-wider mb-1">Your H2H Record</p>
+                  <p className="text-2xl font-black text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>23 - 7</p>
+                  <p className="text-xs text-[#4caf50]">.767 Win Rate</p>
                 </div>
-                <p className="text-xs text-[#4caf50] font-semibold mb-4">Everything in Free, plus:</p>
-                <ul className="space-y-3.5 mb-10">
-                  {proFeatures.map((item) => (
-                    <li key={item} className="flex items-center gap-3 text-sm text-[#9e9e9e]">
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(76,175,80,0.15)' }}>
-                        <Check size={12} className="text-[#4caf50]" />
-                      </div>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/signup"
-                  className="btn-glow block w-full text-white font-bold py-4 rounded-xl uppercase tracking-wider text-center text-sm"
-                  style={{ fontFamily: 'var(--font-display)' }}
-                >
-                  Upgrade to Pro
-                </Link>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ========== FAQ ========== */}
       <div className="section-divider" />
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-14 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            <p className="text-xs text-[#4caf50] uppercase tracking-[0.2em] mb-4 font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-              Questions
-            </p>
-            <h2
-              className="text-3xl md:text-4xl font-bold uppercase tracking-tight"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Frequently Asked
-            </h2>
-          </div>
-          <div className="space-y-3 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
-            {faqs.map((faq) => (
-              <details key={faq.q} className="glass-card rounded-xl group">
-                <summary className="flex items-center justify-between p-5 md:p-6 cursor-pointer text-sm font-medium text-white hover:text-[#4caf50] transition-colors">
-                  {faq.q}
-                  <ChevronDown size={18} className="text-[#6b6b6b] group-open:rotate-180 transition-transform duration-300 flex-shrink-0 ml-4" />
-                </summary>
-                <p className="px-5 md:px-6 pb-5 md:pb-6 text-sm text-[#9e9e9e] leading-relaxed">{faq.a}</p>
-              </details>
-            ))}
+
+      {/* ========== SECTION 4: LEAGUES ========== */}
+      <section className="py-20 md:py-32 px-6">
+        <div className="max-w-5xl mx-auto reveal">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* League Visual */}
+            <div className="order-2 md:order-1">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Flame size={14} className="text-[#ff6f00]" />
+                    <span className="text-xs text-[#9e9e9e] uppercase tracking-widest font-medium">NFL Season League</span>
+                  </div>
+                  <span className="text-xs text-[#6b6b6b]">Week 14</span>
+                </div>
+                <div className="divide-y divide-white/[0.04]">
+                  {[
+                    { rank: 1, name: 'SharpShooter_MJ', avg: '88.4', streak: 'W5' },
+                    { rank: 2, name: 'You', avg: '84.7', streak: 'W3', isYou: true },
+                    { rank: 3, name: 'DanTheMan', avg: '79.2', streak: 'L1' },
+                    { rank: 4, name: 'Mike_Bets', avg: '72.1', streak: 'W1' },
+                    { rank: 5, name: 'CousinVinny', avg: '61.3', streak: 'L4' },
+                  ].map((user) => (
+                    <div key={user.rank} className={`flex items-center px-4 py-3 gap-3 ${user.isYou ? 'bg-[#4caf50]/5' : ''}`}>
+                      <span className="w-6 text-center text-xs font-bold" style={{ color: user.rank <= 3 ? '#FFD700' : '#6b6b6b' }}>
+                        #{user.rank}
+                      </span>
+                      <span className={`flex-1 text-sm font-medium ${user.isYou ? 'text-[#4caf50]' : 'text-white'}`}>
+                        {user.name}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${user.streak.startsWith('W') ? 'text-[#4caf50] bg-[#4caf50]/10' : 'text-[#f44336] bg-[#f44336]/10'}`}>
+                        {user.streak}
+                      </span>
+                      <span className="text-sm font-bold text-white" style={{ fontFamily: 'var(--font-number)' }}>
+                        {user.avg}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-4 py-3 border-t border-white/[0.06] text-center">
+                  <p className="text-xs text-[#6b6b6b]">1 point behind #1 &middot; 4 weeks remaining</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 md:order-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#ff6f00]/20 bg-[#ff6f00]/5 mb-6">
+                <Flame size={14} className="text-[#ff6f00]" />
+                <span className="text-xs text-[#ff6f00] uppercase tracking-widest font-medium">Betting Leagues</span>
+              </div>
+              <h2
+                className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-6"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Fantasy Football{' '}
+                <span className="text-gradient">for Sports Bettors.</span>
+              </h2>
+              <p className="text-[#9e9e9e] text-lg leading-relaxed mb-4">
+                Join betting leagues. Compete all season long.
+              </p>
+              <p className="text-[#9e9e9e] leading-relaxed mb-4">
+                Track standings. Earn bragging rights. Become league champion.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {['Season-long competition', 'Weekly score tracking', 'Friend & public leagues', 'Cash entry leagues available'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#9e9e9e]">
+                    <Star size={16} className="text-[#ff6f00]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="btn-glow inline-flex items-center gap-3 text-white px-8 py-3.5 rounded-xl font-bold uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Join a League <ArrowRight size={18} />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ========== FINAL CTA ========== */}
       <div className="section-divider" />
-      <section className="py-24 md:py-32 px-6 relative dot-grid">
-        <div className="hero-orb w-[400px] h-[400px] top-0 left-1/2 -translate-x-1/2 bg-[#4caf50]/[0.04]" />
-        <div className="max-w-3xl mx-auto text-center relative z-10 reveal opacity-0 transition-all duration-700 translate-y-4 [&.is-visible]:opacity-100 [&.is-visible]:translate-y-0">
+
+      {/* ========== SECTION 5: BUILD YOUR REPUTATION ========== */}
+      <section className="py-20 md:py-32 px-6">
+        <div className="max-w-5xl mx-auto reveal">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#42a5f5]/20 bg-[#42a5f5]/5 mb-6">
+                <BarChart3 size={14} className="text-[#42a5f5]" />
+                <span className="text-xs text-[#42a5f5] uppercase tracking-widest font-medium">Reputation</span>
+              </div>
+              <h2
+                className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-6"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Build Your Betting{' '}
+                <span className="text-gradient">Reputation.</span>
+              </h2>
+              <p className="text-[#9e9e9e] text-lg leading-relaxed mb-4">
+                Your score follows you. Your rankings matter. Your performance becomes your reputation.
+              </p>
+              <p className="text-[#9e9e9e] leading-relaxed mb-8">
+                Gammbler gives every bettor an identity. Verified, trackable, and impossible to fake.
+              </p>
+              <Link
+                href="/signup"
+                className="btn-glow inline-flex items-center gap-3 text-white px-8 py-3.5 rounded-xl font-bold uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Build My Profile <ArrowRight size={18} />
+              </Link>
+            </div>
+
+            {/* Reputation Visual */}
+            <div>
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#4caf50] to-[#2e7d32] flex items-center justify-center">
+                    <span className="text-xl font-black text-white">S</span>
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-lg">SharpShooter_MJ</p>
+                    <p className="text-xs text-[#9e9e9e]">Member since 2024</p>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <p className="text-2xl font-black text-[#ff6f00]" style={{ fontFamily: 'var(--font-number)' }}>94.2</p>
+                    <p className="text-xs text-[#ff6f00] font-bold">Legend</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                    <p className="text-lg font-black text-white" style={{ fontFamily: 'var(--font-number)' }}>847-412</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">Record</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                    <p className="text-lg font-black text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>+18.4%</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">ROI</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                    <p className="text-lg font-black text-[#FFD700]" style={{ fontFamily: 'var(--font-number)' }}>#1</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">Rank</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {['NFL Legend', 'Win Streak 15', '1K Bets Club', 'League Champ'].map((badge, i) => (
+                    <span key={i} className="text-[10px] px-2 py-1 rounded-full border border-[#FFD700]/20 text-[#FFD700] bg-[#FFD700]/5">
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="section-divider" />
+
+      {/* ========== SECTION 6: CREATOR ECONOMY ========== */}
+      <section className="py-20 md:py-32 px-6">
+        <div className="max-w-5xl mx-auto reveal">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Creator Visual */}
+            <div className="order-2 md:order-1">
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#9c27b0] to-[#6a1b9a] flex items-center justify-center">
+                    <span className="text-lg font-black text-white">V</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-bold">VegasVault</p>
+                    <p className="text-xs text-[#9e9e9e]">NBA Specialist &middot; 91.8 Legend</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                    <p className="text-lg font-black text-white" style={{ fontFamily: 'var(--font-number)' }}>2,847</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">Followers</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                    <p className="text-lg font-black text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>312</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">Subscribers</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/[0.03]">
+                    <p className="text-lg font-black text-[#FFD700]" style={{ fontFamily: 'var(--font-number)' }}>$4,365</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">Monthly</p>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.05]">
+                  <p className="text-xs text-[#6b6b6b] mb-1">Latest post</p>
+                  <p className="text-sm text-white">NBA Sunday card looking fire. 3 plays locked in for subscribers. Last week hit 4/5. Let&apos;s keep it rolling 🔥</p>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-[#6b6b6b]">
+                    <span>❤️ 247</span>
+                    <span>💬 43</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 md:order-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#9c27b0]/20 bg-[#9c27b0]/5 mb-6">
+                <Users size={14} className="text-[#9c27b0]" />
+                <span className="text-xs text-[#9c27b0] uppercase tracking-widest font-medium">Creator Economy</span>
+              </div>
+              <h2
+                className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-[0.95] mb-6"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Turn Your Betting Knowledge{' '}
+                <span className="text-gradient">Into a Following.</span>
+              </h2>
+              <p className="text-[#9e9e9e] text-lg leading-relaxed mb-4">
+                The best bettors build credibility. The best creators build audiences.
+              </p>
+              <p className="text-[#9e9e9e] leading-relaxed mb-4">
+                Create content. Gain followers. Earn subscribers. Build your betting brand.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {['Post picks & analysis', 'Subscriber-only content', 'Keep 80% of revenue', 'Grow your audience'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[#9e9e9e]">
+                    <Zap size={16} className="text-[#9c27b0]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className="btn-glow inline-flex items-center gap-3 text-white px-8 py-3.5 rounded-xl font-bold uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                Start Creating <ArrowRight size={18} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="section-divider" />
+
+      {/* ========== FINAL CTA ========== */}
+      <section className="py-24 md:py-36 px-6 text-center relative">
+        <div className="hero-orb w-[400px] h-[400px] top-0 left-1/2 -translate-x-1/2 bg-[#4caf50]/[0.03]" style={{ animation: 'pulse-glow 6s ease-in-out infinite' }} />
+        <div className="max-w-3xl mx-auto relative z-10 reveal">
           <h2
             className="text-4xl md:text-6xl font-black uppercase tracking-tight leading-[0.95] mb-6"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Track. Compete. Earn.{' '}
-            <span className="text-gradient">Get Started Free.</span>
+            Stop Guessing.{' '}
+            <span className="text-gradient">Find Out How Good You Really Are.</span>
           </h2>
-          <p className="text-lg text-[#9e9e9e] mb-10 max-w-xl mx-auto">
-            Your Gammbler Score is waiting. Get it in 60 seconds, challenge your friends, and start building your verified betting reputation.
+          <p className="text-lg text-[#9e9e9e] mb-4 max-w-xl mx-auto">
+            Get your score. See your ranking. Challenge your friends. Join leagues. Build your reputation.
+          </p>
+          <p className="text-sm text-[#6b6b6b] mb-10">
+            Free forever &middot; Verified Score Pass $4.99 one-time &middot; Pro $8.99/mo
           </p>
           <Link
             href="/signup"
             className="btn-glow inline-flex items-center gap-3 text-white px-12 py-5 rounded-xl text-lg font-bold uppercase tracking-wider"
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            Get Your Score <ArrowRight size={20} />
+            Get My Score <ArrowRight size={20} />
           </Link>
-          <p className="text-xs text-[#6b6b6b] mt-6">Free forever &middot; Pro starts at $8.99/mo &middot; Earn as a Capper</p>
+          <p className="text-xs text-[#6b6b6b] mt-8 italic">
+            Every sports bettor thinks they&apos;re good. Now you can prove it.
+          </p>
         </div>
       </section>
 

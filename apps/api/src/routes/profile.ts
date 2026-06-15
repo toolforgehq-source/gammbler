@@ -6,6 +6,8 @@ import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
 import { sendNewFollowerEmail } from '../services/email';
+import { checkAndAwardCreatorBadges } from '../services/creator-badges';
+import { notifyNewFollower } from '../services/notifications';
 
 const router = Router();
 
@@ -29,6 +31,9 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
         avatar_url: users.avatar_url,
         created_at: users.created_at,
         is_profile_public: users.is_profile_public,
+        verified_score_pass: users.verified_score_pass,
+        subscription_status: users.subscription_status,
+        trial_ends_at: users.trial_ends_at,
       })
       .from(users)
       .where(eq(users.username, req.params.username))
@@ -122,6 +127,7 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       following: followingCount?.count || 0,
       is_following: isFollowing,
       is_self: req.user?.userId === user.id,
+      is_verified: user.verified_score_pass || user.subscription_status === 'active',
       capper_tier: capperProfile?.status === 'active' ? capperProfile.tier : null,
     };
 
@@ -207,8 +213,11 @@ router.post('/follow/:userId', authMiddleware, async (req: Request, res: Respons
       .where(eq(users.id, req.user!.userId))
       .limit(1);
     if (followedUser && followerUser) {
-      sendNewFollowerEmail(followedUser.email, followedUser.username, followerUser.username).catch(() => {});
+      notifyNewFollower(req.params.userId, followerUser.username).catch(() => {});
     }
+
+    // Check creator badges for the followed user (fire & forget)
+    checkAndAwardCreatorBadges(req.params.userId).catch(() => {});
 
     res.json({ success: true });
   } catch (err) {

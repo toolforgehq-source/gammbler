@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { scoresAPI, betsAPI, insightsAPI, shareableAPI } from '@/lib/api';
+import { scoresAPI, betsAPI, insightsAPI, shareableAPI, authAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { TrendingUp, TrendingDown, BarChart3, ChevronRight, Lock, Download } from 'lucide-react';
 import Link from 'next/link';
 import UpgradeBanner from '@/components/ui/UpgradeBanner';
+import OnboardingCard from '@/components/ui/OnboardingCard';
 
 interface Score {
   sport: string;
@@ -159,8 +160,22 @@ export default function DashboardPage() {
     );
   }
 
+  const handleResendVerification = () => {
+    authAPI.resendVerification().catch(() => {});
+  };
+
   return (
     <div className="space-y-8 max-w-7xl">
+      {/* Onboarding Card for new users */}
+      {!overallScore?.is_unlocked && (
+        <OnboardingCard
+          settledBetCount={overallScore?.settled_bet_count || 0}
+          betsNeeded={10}
+          emailVerified={(user as any)?.email_verified}
+          onResendVerification={handleResendVerification}
+        />
+      )}
+
       {/* Overall Score Card */}
       <div className="bg-card border border-accent/20 rounded-lg p-4 sm:p-8">
         <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-4">

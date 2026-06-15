@@ -628,6 +628,110 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(10);
     `);
 
+    // ── Creator Profile Expansion ───────────────────────────────
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS banner_url TEXT;
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS profile_photo_url TEXT;
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS favorite_sports JSONB DEFAULT '[]';
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS favorite_teams JSONB DEFAULT '[]';
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS betting_style VARCHAR(100);
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS total_followers INTEGER NOT NULL DEFAULT 0;
+    `);
+
+    // ── Creator Posts ───────────────────────────────────────────
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_posts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        image_url TEXT,
+        is_subscriber_only BOOLEAN NOT NULL DEFAULT false,
+        like_count INTEGER NOT NULL DEFAULT 0,
+        comment_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS creator_posts_user_idx ON creator_posts(user_id);
+      CREATE INDEX IF NOT EXISTS creator_posts_created_at_idx ON creator_posts(created_at);
+      CREATE INDEX IF NOT EXISTS creator_posts_sub_only_idx ON creator_posts(is_subscriber_only);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_post_likes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES creator_posts(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(user_id, post_id)
+      );
+      CREATE INDEX IF NOT EXISTS creator_post_likes_post_idx ON creator_post_likes(post_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_post_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES creator_posts(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS creator_post_comments_post_idx ON creator_post_comments(post_id);
+      CREATE INDEX IF NOT EXISTS creator_post_comments_user_idx ON creator_post_comments(user_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS creator_badges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        badge_id VARCHAR(50) NOT NULL,
+        earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS creator_badges_user_badge_unique ON creator_badges(user_id, badge_id);
+      CREATE INDEX IF NOT EXISTS creator_badges_user_idx ON creator_badges(user_id);
+    `);
+
+    // Verified Score Pass columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_score_pass BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_score_pass_purchased_at TIMESTAMPTZ;
+    `);
+
+    // Email verification + Password reset columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(64);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(64);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
+    `);
+
+    // Notification system enhancements
+    await client.query(`
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}';
+
+      -- Add new notification types to enum
+      DO $$ BEGIN
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'challenge_received';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'challenge_accepted';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'challenge_settled';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'creator_post';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'league_invite';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'rank_milestone';
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+
+      -- Push subscriptions table for browser push notifications
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS push_subscriptions_endpoint_idx ON push_subscriptions(endpoint);
+    `);
+
     // ── Capper system overhaul: tier, creator plan, revenue share ──
     await client.query(`
       DO $$ BEGIN CREATE TYPE capper_tier AS ENUM ('capper','verified','elite'); EXCEPTION WHEN duplicate_object THEN null; END $$

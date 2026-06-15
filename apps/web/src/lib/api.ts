@@ -42,6 +42,14 @@ export const authAPI = {
   me: () => api.get('/auth/me'),
   checkUsername: (username: string) =>
     api.post('/auth/check-username', { username }),
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }),
+  resetPassword: (token: string, password: string) =>
+    api.post('/auth/reset-password', { token, password }),
+  verifyEmail: (token: string) =>
+    api.get(`/auth/verify-email?token=${token}`),
+  resendVerification: () =>
+    api.post('/auth/resend-verification'),
 };
 
 // Bets
@@ -80,6 +88,25 @@ export const leaderboardsAPI = {
     api.get(`/leaderboards/${sport}/national`, { params }),
 };
 
+// Creator Leaderboards
+export const creatorLeaderboardsAPI = {
+  get: (category: string, params?: Record<string, string>) =>
+    api.get('/creator-leaderboards', { params: { category, ...params } }),
+};
+
+// Creator Badges
+export const creatorBadgesAPI = {
+  getDefinitions: () => api.get('/creator-badges/definitions'),
+  getForUser: (userId: string) => api.get(`/creator-badges/${userId}`),
+  check: () => api.post('/creator-badges/check'),
+};
+
+// Creator Discovery
+export const creatorDiscoveryAPI = {
+  get: (section: string, params?: Record<string, string>) =>
+    api.get('/creator-discovery', { params: { section, ...params } }),
+};
+
 // Feed
 export const feedAPI = {
   get: (params?: Record<string, string>) => api.get('/feed', { params }),
@@ -101,14 +128,21 @@ export const profileAPI = {
 // Notifications
 export const notificationsAPI = {
   list: (params?: Record<string, string>) => api.get('/notifications', { params }),
+  unreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.post('/notifications/read-all'),
+  vapidKey: () => api.get('/notifications/vapid-key'),
+  pushSubscribe: (subscription: PushSubscription) => api.post('/notifications/push-subscribe', subscription.toJSON()),
+  pushUnsubscribe: (endpoint: string) => api.delete('/notifications/push-subscribe', { data: { endpoint } }),
+  getPreferences: () => api.get('/notifications/preferences'),
+  updatePreferences: (prefs: Record<string, boolean>) => api.patch('/notifications/preferences', prefs),
 };
 
 // Stripe
 export const stripeAPI = {
   createCheckout: () => api.post('/stripe/create-checkout'),
   createPortal: () => api.post('/stripe/create-portal'),
+  createVerifiedPassCheckout: () => api.post('/stripe/create-verified-pass-checkout'),
 };
 
 // Connections
@@ -167,13 +201,25 @@ export const cappersAPI = {
   get: (userId: string) => api.get(`/cappers/${userId}`),
   apply: () => api.post('/cappers/apply'),
   refreshTier: () => api.post('/cappers/refresh-tier'),
-  updateProfile: (data: { display_name?: string; bio?: string; price_cents?: number }) =>
+  updateProfile: (data: Record<string, unknown>) =>
     api.patch('/cappers/me', data),
   subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
   unsubscribe: (userId: string) => api.delete(`/cappers/${userId}/subscribe`),
   tail: (slipId: string) => api.post(`/cappers/tail/${slipId}`),
   mySubscribers: () => api.get('/cappers/me/subscribers'),
   myEarnings: () => api.get('/cappers/me/earnings'),
+};
+
+// Creator Posts
+export const creatorPostsAPI = {
+  list: (params?: Record<string, string>) => api.get('/creator-posts', { params }),
+  create: (data: { content: string; image_url?: string; is_subscriber_only?: boolean }) =>
+    api.post('/creator-posts', data),
+  like: (postId: string) => api.post(`/creator-posts/${postId}/like`),
+  unlike: (postId: string) => api.delete(`/creator-posts/${postId}/like`),
+  getComments: (postId: string) => api.get(`/creator-posts/${postId}/comments`),
+  addComment: (postId: string, text: string) => api.post(`/creator-posts/${postId}/comments`, { text }),
+  delete: (postId: string) => api.delete(`/creator-posts/${postId}`),
 };
 
 // Shareable Cards

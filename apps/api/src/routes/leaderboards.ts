@@ -38,6 +38,8 @@ router.get('/:sport/friends', authMiddleware, requirePro, async (req: Request, r
         settled_bet_count: gammblerScores.settled_bet_count,
         win_rate: gammblerScores.win_rate,
         roi: gammblerScores.roi,
+        verified_score_pass: users.verified_score_pass,
+        subscription_status: users.subscription_status,
       })
       .from(gammblerScores)
       .innerJoin(users, eq(users.id, gammblerScores.user_id))
@@ -58,11 +60,13 @@ router.get('/:sport/friends', authMiddleware, requirePro, async (req: Request, r
         rank: i + 1,
         ...s,
         is_self: s.user_id === userId,
+        is_verified: s.verified_score_pass || s.subscription_status === 'active',
       })),
       ...locked.map((s) => ({
         rank: null,
         ...s,
         is_self: s.user_id === userId,
+        is_verified: s.verified_score_pass || s.subscription_status === 'active',
         locked_label: `Locked — ${s.settled_bet_count}/10 bets needed`,
       })),
     ];
@@ -94,6 +98,8 @@ router.get('/:sport/national', authMiddleware, async (req: Request, res: Respons
         settled_bet_count: gammblerScores.settled_bet_count,
         win_rate: gammblerScores.win_rate,
         roi: gammblerScores.roi,
+        verified_score_pass: users.verified_score_pass,
+        subscription_status: users.subscription_status,
       })
       .from(gammblerScores)
       .innerJoin(users, eq(users.id, gammblerScores.user_id))
@@ -120,6 +126,7 @@ router.get('/:sport/national', authMiddleware, async (req: Request, res: Respons
       rank: offset + i + 1,
       ...s,
       is_self: s.user_id === userId,
+      is_verified: s.verified_score_pass || s.subscription_status === 'active',
       capper_tier: tierMap.get(s.user_id) || null,
     }));
 

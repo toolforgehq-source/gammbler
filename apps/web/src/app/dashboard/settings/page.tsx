@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { profileAPI, connectionsAPI, stripeAPI } from '@/lib/api';
-import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield } from 'lucide-react';
+import { profileAPI, connectionsAPI, stripeAPI, authAPI, notificationsAPI } from '@/lib/api';
+import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Bell } from 'lucide-react';
+import VerifiedScorePassModal from '@/components/ui/VerifiedScorePassModal';
 
 const PLATFORMS = [
   { key: 'draftkings', name: 'DraftKings', logo: '🟢' },
@@ -24,13 +26,34 @@ interface Connection {
 
 export default function SettingsPage() {
   const { user, updateUser, logout } = useAuthStore();
+  const router = useRouter();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPassModal, setShowPassModal] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
+
+  const isPro = user?.tier === 'pro' || user?.subscription_status === 'active' || user?.subscription_status === 'trialing';
+  const hasVerifiedPass = user?.verified_score_pass || false;
+  const canConnectSportsbook = isPro || hasVerifiedPass;
 
   useEffect(() => {
     connectionsAPI.list().then((res) => setConnections(res.data.connections || [])).catch(() => {});
-  }, []);
+    notificationsAPI.getPreferences().then((res) => setNotifPrefs(res.data.preferences || {})).catch(() => {});
+
+    // Check for verified_pass success redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('verified_pass') === 'success') {
+      // Refresh user data to get updated verified_score_pass
+      authAPI.me().then((res) => {
+        if (res.data.user) {
+          updateUser(res.data.user);
+        }
+      }).catch(() => {});
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard/settings');
+    }
+  }, [updateUser]);
 
   const toggleProfile = async () => {
     setSaving(true);
@@ -47,6 +70,10 @@ export default function SettingsPage() {
   };
 
   const connectPlatform = async (platform: string) => {
+    if (!canConnectSportsbook) {
+      setShowPassModal(true);
+      return;
+    }
     try {
       const res = await connectionsAPI.initiate(platform);
       window.open(res.data.url, '_blank');
@@ -115,6 +142,22 @@ export default function SettingsPage() {
             }`}>
               {user?.subscription_status || 'trialing'}
             </span>
+          </div>
+          <div className="flex justify-between items-center py-2">
+            <span className="text-muted-dark">Verified Score Pass</span>
+            {hasVerifiedPass || isPro ? (
+              <span className="inline-flex items-center gap-1 text-accent text-sm font-semibold">
+                <ShieldCheck size={14} />
+                {isPro ? 'Included with Pro' : 'Active'}
+              </span>
+            ) : (
+              <button
+                onClick={() => setShowPassModal(true)}
+                className="text-xs bg-accent/20 text-accent px-3 py-1 rounded hover:bg-accent/30 transition-colors font-semibold"
+              >
+                Get Verified — $4.99
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -203,6 +246,78 @@ export default function SettingsPage() {
         </button>
       </section>
 
+      {/* Notification Preferences */}
+      <section className="bg-card border border-accent/20 rounded-lg p-6">
+        <h2 className="text-lg uppercase tracking-wider font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+          <Bell size={18} className="inline mr-2" />Notifications
+        </h2>
+        <p className="text-xs text-muted-dark mb-4">Control which notifications you receive via email and browser push.</p>
+        <div className="space-y-4">
+          {[
+            { key: 'challenges', label: 'Challenges', desc: 'H2H challenges received, accepted, and settled' },
+            { key: 'social', label: 'Social', desc: 'New followers' },
+            { key: 'score', label: 'Score & Rank', desc: 'Score milestones and rank changes' },
+            { key: 'creators', label: 'Creators', desc: 'New posts from creators you follow' },
+            { key: 'achievements', label: 'Achievements', desc: 'Badges earned' },
+            { key: 'leagues', label: 'Leagues', desc: 'League invites and updates' },
+          ].map(({ key, label, desc }) => (
+            <div key={key} className="border-b border-accent/10 pb-3 last:border-0 last:pb-0">
+              <div className="flex justify-between items-center mb-1">
+                <div>
+                  <p className="text-sm text-white font-medium">{label}</p>
+                  <p className="text-xs text-muted-dark">{desc}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const newVal = !(notifPrefs[`${key}_enabled`] !== false);
+                    const updated = { ...notifPrefs, [`${key}_enabled`]: newVal };
+                    setNotifPrefs(updated);
+                    await notificationsAPI.updatePreferences({ [`${key}_enabled`]: newVal }).catch(() => {});
+                  }}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    notifPrefs[`${key}_enabled`] !== false ? 'bg-accent' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
+                    notifPrefs[`${key}_enabled`] !== false ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+              {notifPrefs[`${key}_enabled`] !== false && (
+                <div className="flex gap-4 mt-2 ml-1">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs[`${key}_email`] !== false}
+                      onChange={async (e) => {
+                        const updated = { ...notifPrefs, [`${key}_email`]: e.target.checked };
+                        setNotifPrefs(updated);
+                        await notificationsAPI.updatePreferences({ [`${key}_email`]: e.target.checked }).catch(() => {});
+                      }}
+                      className="rounded border-accent/30 bg-secondary text-accent focus:ring-accent"
+                    />
+                    <span className="text-xs text-muted-dark">Email</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs[`${key}_push`] !== false}
+                      onChange={async (e) => {
+                        const updated = { ...notifPrefs, [`${key}_push`]: e.target.checked };
+                        setNotifPrefs(updated);
+                        await notificationsAPI.updatePreferences({ [`${key}_push`]: e.target.checked }).catch(() => {});
+                      }}
+                      className="rounded border-accent/30 bg-secondary text-accent focus:ring-accent"
+                    />
+                    <span className="text-xs text-muted-dark">Push</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Sign Out */}
       <button
         onClick={logout}
@@ -210,6 +325,12 @@ export default function SettingsPage() {
       >
         <LogOut size={16} /> Sign Out
       </button>
+
+      <VerifiedScorePassModal
+        isOpen={showPassModal}
+        onClose={() => setShowPassModal(false)}
+        onCsvUpload={() => router.push('/dashboard/add-bet')}
+      />
     </div>
   );
 }
