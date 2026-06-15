@@ -160,6 +160,7 @@ export const insightsAPI = {
 export const badgesAPI = {
   get: () => api.get('/badges'),
   getAll: () => api.get('/badges/all'),
+  getAllCategories: () => api.get('/badges/all-categories'),
 };
 
 // Bet Slips (Live Bet Slip Sharing)
