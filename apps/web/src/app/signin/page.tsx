@@ -84,6 +84,12 @@ export default function SignInPage() {
             />
           </div>
 
+          <div className="text-right">
+            <Link href="/forgot-password" className="text-xs text-muted-dark hover:text-accent transition-colors">
+              Forgot password?
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={loading}

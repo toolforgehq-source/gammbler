@@ -696,6 +696,14 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_score_pass_purchased_at TIMESTAMPTZ;
     `);
 
+    // Email verification + Password reset columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(64);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(64);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

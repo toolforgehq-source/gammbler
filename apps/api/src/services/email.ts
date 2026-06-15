@@ -438,3 +438,32 @@ export async function sendChallengeResultEmail(
 
   return send(to, `H2H ${resultText} vs @${opponentUsername}`, html);
 }
+
+export async function sendPasswordResetEmail(to: string, username: string, resetToken: string): Promise<boolean> {
+  const resetUrl = `${BRAND.url}/reset-password?token=${resetToken}`;
+  const html = wrapHtml(`
+    <h1>Reset Your Password</h1>
+    <p>Hey ${username}, we received a request to reset your password.</p>
+    <p style="text-align:center">
+      <a href="${resetUrl}" class="btn">Reset Password &rarr;</a>
+    </p>
+    <p class="muted">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+    <p class="muted" style="font-size:12px">Or copy this link: ${resetUrl}</p>
+  `, 'Reset your Gammbler password.');
+
+  return send(to, 'Reset Your Password — Gammbler', html);
+}
+
+export async function sendEmailVerificationEmail(to: string, username: string, verificationToken: string): Promise<boolean> {
+  const verifyUrl = `${BRAND.url}/verify-email?token=${verificationToken}`;
+  const html = wrapHtml(`
+    <h1>Verify Your Email</h1>
+    <p>Hey ${username}, please verify your email address to secure your account.</p>
+    <p style="text-align:center">
+      <a href="${verifyUrl}" class="btn">Verify Email &rarr;</a>
+    </p>
+    <p class="muted">If you didn't create a Gammbler account, you can safely ignore this email.</p>
+  `, 'Verify your Gammbler email address.');
+
+  return send(to, 'Verify Your Email — Gammbler', html);
+}

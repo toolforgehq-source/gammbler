@@ -8,7 +8,8 @@ import { generateToken, authMiddleware } from '../middleware/auth';
 import { getUserTier } from '../middleware/subscription';
 import { TRIAL_DAYS } from '@gammbler/shared';
 import { v4 as uuidv4 } from 'uuid';
-import { sendWelcomeEmail } from '../services/email';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail } from '../services/email';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -80,6 +81,7 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
     }
 
     const referralCode = uuidv4().slice(0, 8).toUpperCase();
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
 
     const [user] = await db
       .insert(users)
@@ -92,13 +94,15 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
         tos_accepted_at: new Date(),
         referral_code: referralCode,
         referred_by: referredBy,
+        email_verification_token: emailVerificationToken,
       })
       .returning();
 
     const token = generateToken({ userId: user.id, email: user.email });
 
-    // Send welcome email (fire & forget)
+    // Send welcome + verification emails (fire & forget)
     sendWelcomeEmail(user.email, user.username, referralCode).catch(() => {});
+    sendEmailVerificationEmail(user.email, user.username, emailVerificationToken).catch(() => {});
 
     res.status(201).json({
       token,
@@ -180,6 +184,7 @@ router.get('/me', authMiddleware, async (req: Request, res: Response): Promise<v
         referral_code: users.referral_code,
         notification_preferences: users.notification_preferences,
         verified_score_pass: users.verified_score_pass,
+        email_verified: users.email_verified,
       })
       .from(users)
       .where(eq(users.id, req.user!.userId))
@@ -208,6 +213,137 @@ router.post('/check-username', async (req: Request, res: Response): Promise<void
 
   const existing = await db.select().from(users).where(eq(users.username, username)).limit(1);
   res.json({ available: existing.length === 0 });
+});
+
+// POST /auth/forgot-password
+router.post('/forgot-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+      return;
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await db.update(users).set({
+      password_reset_token: resetToken,
+      password_reset_expires: resetExpires,
+    }).where(eq(users.id, user.id));
+
+    sendPasswordResetEmail(user.email, user.username, resetToken).catch(() => {});
+
+    res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /auth/reset-password
+router.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      res.status(400).json({ error: 'Token and password are required' });
+      return;
+    }
+
+    if (password.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters' });
+      return;
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.password_reset_token, token))
+      .limit(1);
+
+    if (!user || !user.password_reset_expires || user.password_reset_expires < new Date()) {
+      res.status(400).json({ error: 'Invalid or expired reset token' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    await db.update(users).set({
+      password_hash: passwordHash,
+      password_reset_token: null,
+      password_reset_expires: null,
+    }).where(eq(users.id, user.id));
+
+    res.json({ message: 'Password reset successfully. You can now sign in.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /auth/verify-email?token=xxx
+router.get('/verify-email', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.query;
+    if (!token || typeof token !== 'string') {
+      res.status(400).json({ error: 'Verification token is required' });
+      return;
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email_verification_token, token))
+      .limit(1);
+
+    if (!user) {
+      res.status(400).json({ error: 'Invalid verification token' });
+      return;
+    }
+
+    await db.update(users).set({
+      email_verified: true,
+      email_verification_token: null,
+    }).where(eq(users.id, user.id));
+
+    res.json({ message: 'Email verified successfully!' });
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /auth/resend-verification
+router.post('/resend-verification', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [user] = await db.select().from(users).where(eq(users.id, req.user!.userId)).limit(1);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (user.email_verified) {
+      res.json({ message: 'Email already verified' });
+      return;
+    }
+
+    const newToken = crypto.randomBytes(32).toString('hex');
+    await db.update(users).set({ email_verification_token: newToken }).where(eq(users.id, user.id));
+
+    sendEmailVerificationEmail(user.email, user.username, newToken).catch(() => {});
+    res.json({ message: 'Verification email sent' });
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 export default router;
