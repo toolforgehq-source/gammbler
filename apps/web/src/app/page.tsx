@@ -74,9 +74,10 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  const demoRank = Math.max(1, Math.ceil(stats.users * 0.15));
   const heroStats = [
     { label: 'Betting Score', value: '84.7', sublabel: 'Elite', color: '#FFD700' },
-    { label: 'National Rank', value: '#1,847', sublabel: `of ${formatNumber(stats.users)}`, color: '#4caf50' },
+    { label: 'National Rank', value: `#${demoRank.toLocaleString()}`, sublabel: `of ${formatNumber(stats.users)}`, color: '#4caf50' },
     { label: 'NFL Score', value: '91.2', sublabel: 'Legend', color: '#ff6f00' },
     { label: 'H2H Record', value: '23-7', sublabel: '.767 Win %', color: '#4caf50' },
     { label: 'League Standing', value: '#2', sublabel: 'of 12', color: '#FFD700' },
