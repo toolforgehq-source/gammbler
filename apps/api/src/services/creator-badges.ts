@@ -10,38 +10,39 @@ export interface CreatorBadgeDef {
   description: string;
   category: 'follower' | 'subscriber' | 'content' | 'recognition' | 'elite';
   icon: string;
+  image: string;
 }
 
 export const CREATOR_BADGE_DEFS: CreatorBadgeDef[] = [
   // Follower milestones
-  { id: 'first_follower', name: 'First Follower', description: 'Gained your first follower', category: 'follower', icon: 'UserPlus' },
-  { id: '100_followers', name: '100 Followers', description: 'Reached 100 followers', category: 'follower', icon: 'Users' },
-  { id: '500_followers', name: '500 Followers', description: 'Reached 500 followers', category: 'follower', icon: 'Users' },
-  { id: '1000_followers', name: '1K Followers', description: 'Reached 1,000 followers', category: 'follower', icon: 'Users' },
-  { id: '5000_followers', name: '5K Followers', description: 'Reached 5,000 followers', category: 'follower', icon: 'Users' },
+  { id: 'first_follower', name: 'First Follower', description: 'Gained your first follower', category: 'follower', icon: 'UserPlus', image: '/badges/first_follower.png' },
+  { id: '100_followers', name: '100 Followers', description: 'Reached 100 followers', category: 'follower', icon: 'Users', image: '/badges/100_followers.png' },
+  { id: '500_followers', name: '500 Followers', description: 'Reached 500 followers', category: 'follower', icon: 'Users', image: '/badges/500_followers.png' },
+  { id: '1000_followers', name: '1K Followers', description: 'Reached 1,000 followers', category: 'follower', icon: 'Users', image: '/badges/1000_followers.png' },
+  { id: '5000_followers', name: '5K Followers', description: 'Reached 5,000 followers', category: 'follower', icon: 'Users', image: '/badges/5000_followers.png' },
 
   // Subscriber milestones
-  { id: 'first_subscriber', name: 'First Subscriber', description: 'Gained your first paid subscriber', category: 'subscriber', icon: 'Star' },
-  { id: '10_subscribers', name: '10 Subscribers', description: 'Reached 10 subscribers', category: 'subscriber', icon: 'Star' },
-  { id: '50_subscribers', name: '50 Subscribers', description: 'Reached 50 subscribers', category: 'subscriber', icon: 'Star' },
-  { id: '100_subscribers', name: '100 Subscribers', description: 'Reached 100 subscribers', category: 'subscriber', icon: 'Crown' },
-  { id: '500_subscribers', name: '500 Subscribers', description: 'Reached 500 subscribers', category: 'subscriber', icon: 'Crown' },
+  { id: 'first_subscriber', name: 'First Subscriber', description: 'Gained your first paid subscriber', category: 'subscriber', icon: 'Star', image: '/badges/first_subscriber.png' },
+  { id: '10_subscribers', name: '10 Subscribers', description: 'Reached 10 subscribers', category: 'subscriber', icon: 'Star', image: '/badges/10_subscribers.png' },
+  { id: '50_subscribers', name: '50 Subscribers', description: 'Reached 50 subscribers', category: 'subscriber', icon: 'Star', image: '/badges/50_subscribers.png' },
+  { id: '100_subscribers', name: '100 Subscribers', description: 'Reached 100 subscribers', category: 'subscriber', icon: 'Crown', image: '/badges/100_subscribers.png' },
+  { id: '500_subscribers', name: '500 Subscribers', description: 'Reached 500 subscribers', category: 'subscriber', icon: 'Crown', image: '/badges/500_subscribers.png' },
 
   // Content milestones
-  { id: 'first_post', name: 'First Post', description: 'Published your first creator post', category: 'content', icon: 'PenTool' },
-  { id: '25_posts', name: '25 Posts', description: 'Published 25 creator posts', category: 'content', icon: 'PenTool' },
-  { id: '100_posts', name: '100 Posts', description: 'Published 100 creator posts', category: 'content', icon: 'PenTool' },
-  { id: '500_posts', name: '500 Posts', description: 'Published 500 creator posts', category: 'content', icon: 'BookOpen' },
+  { id: 'first_post', name: 'First Post', description: 'Published your first creator post', category: 'content', icon: 'PenTool', image: '/badges/first_post.png' },
+  { id: '25_posts', name: '25 Posts', description: 'Published 25 creator posts', category: 'content', icon: 'PenTool', image: '/badges/25_posts.png' },
+  { id: '100_posts', name: '100 Posts', description: 'Published 100 creator posts', category: 'content', icon: 'PenTool', image: '/badges/100_posts.png' },
+  { id: '500_posts', name: '500 Posts', description: 'Published 500 creator posts', category: 'content', icon: 'BookOpen', image: '/badges/500_posts.png' },
 
   // Recognition badges
-  { id: 'rising_creator', name: 'Rising Creator', description: 'Fast follower and subscriber growth', category: 'recognition', icon: 'TrendingUp' },
-  { id: 'community_favorite', name: 'Community Favorite', description: 'High engagement rate relative to audience', category: 'recognition', icon: 'Heart' },
-  { id: 'community_builder', name: 'Community Builder', description: 'Consistent posting with strong engagement', category: 'recognition', icon: 'Award' },
-  { id: 'league_commissioner', name: 'League Commissioner', description: 'Created and manages leagues', category: 'recognition', icon: 'Shield' },
+  { id: 'rising_creator', name: 'Rising Creator', description: 'Fast follower and subscriber growth', category: 'recognition', icon: 'TrendingUp', image: '/badges/rising_creator.png' },
+  { id: 'community_favorite', name: 'Community Favorite', description: 'High engagement rate relative to audience', category: 'recognition', icon: 'Heart', image: '/badges/community_favorite.png' },
+  { id: 'community_builder', name: 'Community Builder', description: 'Consistent posting with strong engagement', category: 'recognition', icon: 'Award', image: '/badges/community_builder.png' },
+  { id: 'league_commissioner', name: 'League Commissioner', description: 'Created and manages leagues', category: 'recognition', icon: 'Shield', image: '/badges/league_commissioner.png' },
 
   // Elite creator badges
-  { id: 'top_10_creator', name: 'Top 10 Creator', description: 'Ranked in the top 10 creators by subscribers', category: 'elite', icon: 'Trophy' },
-  { id: 'top_creator', name: 'Top Creator', description: 'The #1 creator on Gammbler by subscribers', category: 'elite', icon: 'Crown' },
+  { id: 'top_10_creator', name: 'Top 10 Creator', description: 'Ranked in the top 10 creators by subscribers', category: 'elite', icon: 'Trophy', image: '/badges/top_10_creator.png' },
+  { id: 'top_creator', name: 'Top Creator', description: 'The #1 creator on Gammbler by subscribers', category: 'elite', icon: 'Crown', image: '/badges/top_creator.png' },
 ];
 
 const BADGE_MAP = new Map(CREATOR_BADGE_DEFS.map((b) => [b.id, b]));

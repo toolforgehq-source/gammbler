@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { feedAPI } from '@/lib/api';
 import { Flame, TrendingUp, Zap, Award, BarChart3, Link2, Trophy, Target, Swords, Heart, MessageCircle, Send } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface FeedItem {
   id: string;
@@ -255,7 +256,18 @@ export default function FeedPage() {
                     {item.username}
                   </Link>{' '}
                   {item.display_text.replace(item.username, '').trim()}{' '}
-                  <span>{emoji}</span>
+                  {item.event_type === 'badge_earned' && item.event_data?.badge_type ? (
+                    <Image
+                      src={`/badges/${item.event_data.badge_type as string}.png`}
+                      alt={(item.event_data.badge_name as string) || 'Badge'}
+                      width={20}
+                      height={20}
+                      className="inline-block object-contain align-text-bottom"
+                      unoptimized
+                    />
+                  ) : (
+                    <span>{emoji}</span>
+                  )}
                 </p>
                 <p className="text-xs text-muted-dark mt-1">{timeAgo(item.created_at)}</p>
               </div>

@@ -6,6 +6,7 @@ import { profileAPI, scoresAPI } from '@/lib/api';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { useAuthStore } from '@/lib/store';
 import { Calendar, TrendingUp, Users, UserPlus, UserMinus, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   LineChart,
@@ -348,6 +349,16 @@ export default function PublicProfilePage() {
                 key={badge.badge_type}
                 className="bg-card border border-gold/40 rounded-lg p-3 text-center"
               >
+                <div className="relative mx-auto mb-1" style={{ width: 48, height: 48 }}>
+                  <Image
+                    src={`/badges/${badge.badge_type}.png`}
+                    alt={badge.badge_type.replace(/_/g, ' ')}
+                    width={48}
+                    height={48}
+                    className="object-contain drop-shadow-md"
+                    unoptimized
+                  />
+                </div>
                 <p className="text-xs font-medium text-white truncate capitalize">
                   {badge.badge_type.replace(/_/g, ' ')}
                 </p>

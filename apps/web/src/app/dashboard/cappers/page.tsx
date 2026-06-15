@@ -8,6 +8,7 @@ import {
   UserPlus, UserMinus, Award, Settings,
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface CapperUser {
   username: string;
@@ -232,7 +233,7 @@ export default function CappersPage() {
                         {capper.display_name}
                       </h3>
                       <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full flex items-center gap-1">
-                        <Award size={10} /> VERIFIED
+                        <Image src="/badges/capper_verified.png" alt="Verified Capper" width={14} height={14} className="object-contain" unoptimized /> VERIFIED
                       </span>
                     </div>
                     <p className="text-muted-dark text-sm truncate">@{capper.user.username}</p>

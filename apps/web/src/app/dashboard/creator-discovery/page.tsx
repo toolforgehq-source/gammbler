@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { creatorDiscoveryAPI } from '@/lib/api';
 import { Users, TrendingUp, Sparkles, Star, Crown, UserPlus, Heart, Award, Trophy, Shield, PenTool, BookOpen } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 
 interface Creator {
@@ -217,18 +218,22 @@ export default function CreatorDiscoveryPage() {
                     {/* Badges */}
                     {creator.creator_badges && creator.creator_badges.length > 0 && (
                       <div className="flex gap-1 mt-2 flex-wrap">
-                        {creator.creator_badges.slice(0, 5).map((badgeId) => {
-                          const BadgeIcon = BADGE_ICONS[badgeId] || Award;
-                          return (
+                        {creator.creator_badges.slice(0, 5).map((badgeId) => (
                             <span
                               key={badgeId}
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px]"
                               title={badgeId.replace(/_/g, ' ')}
                             >
-                              <BadgeIcon size={10} />
+                              <Image
+                                src={`/badges/${badgeId}.png`}
+                                alt={badgeId.replace(/_/g, ' ')}
+                                width={14}
+                                height={14}
+                                className="object-contain"
+                                unoptimized
+                              />
                             </span>
-                          );
-                        })}
+                        ))}
                         {creator.creator_badges.length > 5 && (
                           <span className="text-[10px] text-muted">+{creator.creator_badges.length - 5}</span>
                         )}
