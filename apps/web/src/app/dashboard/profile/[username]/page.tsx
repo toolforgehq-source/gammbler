@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/store';
 import { Calendar, TrendingUp, Users, UserPlus, UserMinus, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import FollowListModal from '@/components/ui/FollowListModal';
 import {
   LineChart,
   Line,
@@ -62,6 +63,7 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
   const [verification, setVerification] = useState<{
     verification_pct: number;
     verification_level: string;
@@ -226,10 +228,13 @@ export default function PublicProfilePage() {
                 </span>
                 <span className="text-muted-dark ml-1">ROI</span>
               </div>
-              <div className="flex items-center gap-1 text-muted-dark">
+              <button onClick={() => setFollowListType('followers')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
                 <Users size={14} />
                 <span className="font-bold text-white">{profile.followers}</span> followers
-              </div>
+              </button>
+              <button onClick={() => setFollowListType('following')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
+                <span className="font-bold text-white">{profile.following}</span> following
+              </button>
             </div>
           </div>
         </div>
@@ -381,6 +386,15 @@ export default function PublicProfilePage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Follow List Modal */}
+      {followListType && (
+        <FollowListModal
+          username={profile.username}
+          type={followListType}
+          onClose={() => setFollowListType(null)}
+        />
       )}
     </div>
   );

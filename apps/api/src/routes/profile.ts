@@ -7,6 +7,19 @@ import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
 import { sendNewFollowerEmail } from '../services/email';
 import { checkAndAwardCreatorBadges } from '../services/creator-badges';
+import multer from 'multer';
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
+    }
+  },
+});
 
 const router = Router();
 
@@ -18,6 +31,32 @@ const updateProfileSchema = z.object({
   notification_preferences: z.record(z.boolean()).optional(),
   do_not_disturb_start: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   do_not_disturb_end: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+});
+
+// GET /profile/search?q=term — global user search (MUST be before /:username)
+router.get('/search', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const q = (req.query.q as string || '').trim();
+    if (q.length < 2) {
+      res.json({ users: [] });
+      return;
+    }
+
+    const results = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        avatar_url: users.avatar_url,
+      })
+      .from(users)
+      .where(sql`${users.username} ILIKE ${`%${q}%`}`)
+      .limit(10);
+
+    res.json({ users: results });
+  } catch (err) {
+    console.error('Search users error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // GET /profile/:username — get public profile
@@ -263,6 +302,114 @@ router.delete('/follow/:userId', authMiddleware, async (req: Request, res: Respo
   } catch (err) {
     console.error('Unfollow error:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /profile/:username/followers — list users who follow this user
+router.get('/:username/followers', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, req.params.username))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const followers = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        avatar_url: users.avatar_url,
+        followed_at: follows.created_at,
+      })
+      .from(follows)
+      .innerJoin(users, eq(follows.follower_id, users.id))
+      .where(eq(follows.following_id, user.id))
+      .orderBy(desc(follows.created_at))
+      .limit(100);
+
+    res.json({ followers });
+  } catch (err) {
+    console.error('Get followers error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /profile/:username/following — list users this user follows
+router.get('/:username/following', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, req.params.username))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const following = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        avatar_url: users.avatar_url,
+        followed_at: follows.created_at,
+      })
+      .from(follows)
+      .innerJoin(users, eq(follows.following_id, users.id))
+      .where(eq(follows.follower_id, user.id))
+      .orderBy(desc(follows.created_at))
+      .limit(100);
+
+    res.json({ following });
+  } catch (err) {
+    console.error('Get following error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /profile/avatar — upload profile photo
+router.post('/avatar', authMiddleware, avatarUpload.single('avatar'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+
+    // Store as base64 data URL (simple, no external storage needed)
+    const base64 = req.file.buffer.toString('base64');
+    const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+
+    const [updated] = await db
+      .update(users)
+      .set({ avatar_url: dataUrl })
+      .where(eq(users.id, req.user!.userId))
+      .returning({ avatar_url: users.avatar_url });
+
+    res.json({ avatar_url: updated.avatar_url });
+  } catch (err) {
+    console.error('Avatar upload error:', err);
+    res.status(500).json({ error: 'Failed to upload avatar' });
+  }
+});
+
+// DELETE /profile/avatar — remove profile photo
+router.delete('/avatar', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    await db
+      .update(users)
+      .set({ avatar_url: null })
+      .where(eq(users.id, req.user!.userId));
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Remove avatar error:', err);
+    res.status(500).json({ error: 'Failed to remove avatar' });
   }
 });
 

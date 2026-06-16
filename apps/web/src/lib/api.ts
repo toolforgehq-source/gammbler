@@ -125,6 +125,15 @@ export const profileAPI = {
   follow: (userId: string) => api.post(`/profile/follow/${userId}`),
   unfollow: (userId: string) => api.delete(`/profile/follow/${userId}`),
   scoreHistory: (username: string) => api.get(`/profile/${username}/score-history`),
+  search: (q: string) => api.get('/profile/search', { params: { q } }),
+  followers: (username: string) => api.get(`/profile/${username}/followers`),
+  following: (username: string) => api.get(`/profile/${username}/following`),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append('avatar', file);
+    return api.post('/profile/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  removeAvatar: () => api.delete('/profile/avatar'),
 };
 
 // Notifications
