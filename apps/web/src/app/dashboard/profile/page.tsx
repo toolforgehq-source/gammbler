@@ -65,6 +65,8 @@ export default function ProfilePage() {
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [allBadges, setAllBadges] = useState<BadgeInfo[]>([]);
+  const [totalBadgeCount, setTotalBadgeCount] = useState(0);
+  const [totalEarnedCount, setTotalEarnedCount] = useState(0);
   const [scoreHistory, setScoreHistory] = useState<Record<string, Array<{ date: string; score: number }>>>({});
   const [dfsScores, setDfsScores] = useState<Array<{ sport: string; score: string; is_unlocked: boolean; total_contests: number; roi: string; cash_rate: string }>>([]);
   const [dfsBadges, setDfsBadges] = useState<Array<{ badge_type: string; earned_at: string }>>([]);
@@ -81,16 +83,19 @@ export default function ProfilePage() {
     async function fetchProfile() {
       if (!user) return;
       try {
-        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes, rankRes] = await Promise.all([
+        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes, rankRes, categoriesRes] = await Promise.all([
           profileAPI.get(user.username),
           badgesAPI.getAll(),
           profileAPI.scoreHistory(user.username),
           dfsAPI.getScores().catch(() => ({ data: { scores: [] } })),
           dfsAPI.getBadges().catch(() => ({ data: { badges: [] } })),
           scoresAPI.getMyRank().catch(() => ({ data: { rank: null, total_ranked: 0 } })),
+          badgesAPI.getAllCategories().catch(() => ({ data: { total: 0, earned: 0 } })),
         ]);
         setProfile(profileRes.data.profile);
         setAllBadges(badgesRes.data.badges || []);
+        setTotalBadgeCount(categoriesRes.data.total || 0);
+        setTotalEarnedCount(categoriesRes.data.earned || 0);
         setScoreHistory(historyRes.data.history || {});
         setDfsScores(dfsScoresRes.data.scores || []);
         setDfsBadges(dfsBadgesRes.data.badges || []);
@@ -452,7 +457,7 @@ export default function ProfilePage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm uppercase tracking-wider text-muted-dark font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Badges ({earnedBadges.length}/{allBadges.length})
+            Badges ({totalEarnedCount || earnedBadges.length}/{totalBadgeCount || allBadges.length})
           </h3>
           <Link href="/dashboard/achievements" className="text-xs text-accent hover:text-accent-light">
             View All
