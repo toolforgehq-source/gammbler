@@ -305,10 +305,10 @@ function FeedCard({
             )}
 
             {/* Image attachment */}
-            {eventData?.image_url && (
+            {typeof eventData?.image_url === 'string' && eventData.image_url && (
               <div className="mt-3 rounded-xl overflow-hidden border border-white/10">
                 <img
-                  src={eventData.image_url as string}
+                  src={eventData.image_url}
                   alt="Post attachment"
                   className="w-full max-h-96 object-cover"
                 />
