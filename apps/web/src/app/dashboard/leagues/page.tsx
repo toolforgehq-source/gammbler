@@ -303,6 +303,43 @@ export default function LeaguesPage() {
             ))
           )}
         </div>
+
+        {/* League Rules & How It Works */}
+        <div className="bg-card border border-accent/20 rounded-lg p-6 mt-6">
+          <h2 className="text-sm uppercase tracking-wider text-muted-dark font-semibold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+            League Rules & How It Works
+          </h2>
+          <div className="space-y-4 text-sm text-muted">
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+              <div>
+                <p className="text-white font-medium">Place Your Bets</p>
+                <p className="text-muted-dark">Log at least {league.min_bets_per_week} bet{league.min_bets_per_week > 1 ? 's' : ''} per week to stay active in the league. Bets must be on {SPORT_LABELS[league.sport]} games.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+              <div>
+                <p className="text-white font-medium">Score Calculation</p>
+                <p className="text-muted-dark">Your league score is your Gammbler Score for {SPORT_LABELS[league.sport]} bets placed during the season. Win rate, ROI, and consistency all factor in.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center flex-shrink-0">3</span>
+              <div>
+                <p className="text-white font-medium">Stay Active</p>
+                <p className="text-muted-dark">Inactive weeks (less than {league.min_bets_per_week} bet{league.min_bets_per_week > 1 ? 's' : ''}) don&apos;t count toward your total. Your &quot;Active Weeks&quot; stat shows how consistent you are.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center flex-shrink-0">4</span>
+              <div>
+                <p className="text-white font-medium">Win the Season</p>
+                <p className="text-muted-dark">Highest score at season end wins. Season runs from {new Date(league.season_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to {new Date(league.season_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

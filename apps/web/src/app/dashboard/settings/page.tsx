@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { profileAPI, connectionsAPI, stripeAPI, authAPI } from '@/lib/api';
-import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Trash2 } from 'lucide-react';
+import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Trash2, Camera, X as XIcon } from 'lucide-react';
 import VerifiedScorePassModal from '@/components/ui/VerifiedScorePassModal';
 
 const PLATFORMS = [
@@ -33,6 +33,9 @@ export default function SettingsPage() {
   const [showPassModal, setShowPassModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isPro = user?.tier === 'pro' || user?.subscription_status === 'active' || user?.subscription_status === 'trialing';
   const hasVerifiedPass = user?.verified_score_pass || false;
@@ -100,6 +103,42 @@ export default function SettingsPage() {
     }
   };
 
+  const currentAvatarUrl = user?.avatar_url || null;
+  useEffect(() => {
+    setAvatarUrl(currentAvatarUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAvatarUrl]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be under 2MB');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const res = await profileAPI.uploadAvatar(file);
+      setAvatarUrl(res.data.avatar_url);
+      updateUser({ avatar_url: res.data.avatar_url });
+    } catch {
+      alert('Failed to upload photo');
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      await profileAPI.removeAvatar();
+      setAvatarUrl(null);
+      updateUser({ avatar_url: null });
+    } catch {
+      alert('Failed to remove photo');
+    }
+  };
+
   const manageBilling = async () => {
     try {
       const res = await stripeAPI.createPortal();
@@ -132,6 +171,51 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
+      {/* Profile Photo */}
+      <section className="bg-card border border-accent/20 rounded-lg p-6">
+        <h2 className="text-lg uppercase tracking-wider font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+          Profile Photo
+        </h2>
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-2xl overflow-hidden" style={{ fontFamily: 'var(--font-display)' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                user?.username?.charAt(0).toUpperCase() || '?'
+              )}
+            </div>
+            {avatarUrl && (
+              <button
+                onClick={handleRemoveAvatar}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-loss rounded-full flex items-center justify-center"
+                title="Remove photo"
+              >
+                <XIcon size={12} className="text-white" />
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="flex items-center gap-2 px-4 py-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition-colors text-sm font-semibold disabled:opacity-50"
+            >
+              <Camera size={16} />
+              {uploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+            </button>
+            <p className="text-xs text-muted-dark">JPEG, PNG, or WebP · Max 2MB</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Account */}
       <section className="bg-card border border-accent/20 rounded-lg p-6">
         <h2 className="text-lg uppercase tracking-wider font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>

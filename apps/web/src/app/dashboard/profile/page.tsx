@@ -8,6 +8,7 @@ import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2, ShieldCheck 
 import Image from 'next/image';
 import { shareableAPI } from '@/lib/api';
 import Link from 'next/link';
+import FollowListModal from '@/components/ui/FollowListModal';
 import {
   LineChart,
   Line,
@@ -77,6 +78,7 @@ export default function ProfilePage() {
     verification_pct: number;
     verification_level: string;
   } | null>(null);
+  const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
   const cardSport = 'overall';
 
   useEffect(() => {
@@ -238,10 +240,13 @@ export default function ProfilePage() {
                   <span className="text-muted-dark ml-1">P/L</span>
                 </div>
               )}
-              <div className="flex items-center gap-1 text-muted-dark">
+              <button onClick={() => setFollowListType('followers')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
                 <Users size={14} />
                 <span className="font-bold text-white">{profile.followers}</span> followers
-              </div>
+              </button>
+              <button onClick={() => setFollowListType('following')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
+                <span className="font-bold text-white">{profile.following}</span> following
+              </button>
             </div>
           </div>
         </div>
@@ -491,6 +496,15 @@ export default function ProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* Follow List Modal */}
+      {followListType && profile && (
+        <FollowListModal
+          username={profile.username}
+          type={followListType}
+          onClose={() => setFollowListType(null)}
+        />
+      )}
     </div>
   );
 }
