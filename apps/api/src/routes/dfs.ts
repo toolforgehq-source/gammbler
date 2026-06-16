@@ -22,6 +22,8 @@ const addContestSchema = z.object({
   sport: z.enum(['nfl', 'nba', 'mlb', 'nhl', 'pga', 'nascar', 'soccer', 'mma', 'cfb', 'cbb']),
   contest_type: z.enum(['cash', 'gpp', 'h2h', 'fifty_fifty', 'multiplier', 'satellite', 'other']),
   contest_name: z.string().optional(),
+  contest_id: z.string().optional(),
+  contest_url: z.string().url().optional().or(z.literal('')),
   entry_fee: z.number().min(0),
   payout: z.number().min(0),
   finish_position: z.number().int().min(1).optional(),
@@ -29,6 +31,33 @@ const addContestSchema = z.object({
   points_scored: z.number().optional(),
   contest_date: z.string(),
 });
+
+// Known contest ID patterns per platform for basic validation
+function validateContestId(platform: string, contestId: string): boolean {
+  if (!contestId) return true; // optional field
+  const patterns: Record<string, RegExp> = {
+    draftkings: /^\d{6,}$/, // DK uses numeric IDs
+    fanduel: /^\d{5,}$/, // FD uses numeric IDs
+    yahoo: /^[a-zA-Z0-9-]+$/, // Yahoo uses alphanumeric
+    underdog: /^[a-zA-Z0-9-]+$/,
+    prizepicks: /^[a-zA-Z0-9-]+$/,
+    other: /^.{3,}$/, // At least 3 chars
+  };
+  const pattern = patterns[platform] || patterns.other;
+  return pattern.test(contestId);
+}
+
+function determineVerificationStatus(data: {
+  contest_id?: string;
+  contest_url?: string;
+  has_screenshot?: boolean;
+}): 'unverified' | 'pending_review' | 'verified' {
+  // Auto-verify if contest ID + URL provided
+  if (data.contest_id && data.contest_url) return 'verified';
+  // Pending review if screenshot or contest_id provided
+  if (data.contest_id || data.has_screenshot) return 'pending_review';
+  return 'unverified';
+}
 
 router.post('/contests', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -40,18 +69,32 @@ router.post('/contests', authMiddleware, async (req: Request, res: Response): Pr
 
     const data = parsed.data;
 
+    // Validate contest ID format if provided
+    if (data.contest_id && !validateContestId(data.platform, data.contest_id)) {
+      res.status(400).json({ error: `Invalid contest ID format for ${data.platform}. Please double-check the ID from your ${data.platform} account.` });
+      return;
+    }
+
+    const verificationStatus = determineVerificationStatus({
+      contest_id: data.contest_id,
+      contest_url: data.contest_url || undefined,
+    });
+
     const [contest] = await db.insert(dfsContests).values({
       user_id: req.user!.userId,
       platform: data.platform,
       sport: data.sport,
       contest_type: data.contest_type,
       contest_name: data.contest_name || null,
+      contest_id: data.contest_id || null,
+      contest_url: data.contest_url || null,
       entry_fee_cents: Math.round(data.entry_fee * 100),
       payout_cents: Math.round(data.payout * 100),
       finish_position: data.finish_position || null,
       total_entries: data.total_entries || null,
       points_scored: data.points_scored ? String(data.points_scored) : null,
       is_manual: true,
+      verification_status: verificationStatus,
       contest_date: new Date(data.contest_date),
     }).returning();
 
@@ -59,7 +102,7 @@ router.post('/contests', authMiddleware, async (req: Request, res: Response): Pr
     await calculateDfsScore(req.user!.userId);
     const newBadges = await checkAndAwardDfsBadges(req.user!.userId);
 
-    res.status(201).json({ contest, newBadges });
+    res.status(201).json({ contest, newBadges, verification_status: verificationStatus });
   } catch (err) {
     console.error('Add DFS contest error:', err);
     res.status(500).json({ error: 'Internal server error' });
