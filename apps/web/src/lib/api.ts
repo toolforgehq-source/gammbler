@@ -67,6 +67,7 @@ export const betsAPI = {
   },
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
   upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
+  gamesWithOdds: (sport: string) => api.get('/bets/games-with-odds', { params: { sport } }),
   parseScreenshot: (file: File) => {
     const form = new FormData();
     form.append('screenshot', file);
@@ -112,8 +113,12 @@ export const creatorDiscoveryAPI = {
 // Feed
 export const feedAPI = {
   get: (params?: Record<string, string>) => api.get('/feed', { params }),
+  getFollowing: (params?: Record<string, string>) => api.get('/feed/following', { params }),
+  createPost: (content: string, image_url?: string) => api.post('/feed/post', { content, image_url }),
   like: (eventId: string) => api.post(`/feed/${eventId}/like`),
   unlike: (eventId: string) => api.delete(`/feed/${eventId}/like`),
+  repost: (eventId: string) => api.post(`/feed/${eventId}/repost`),
+  unrepost: (eventId: string) => api.delete(`/feed/${eventId}/repost`),
   getComments: (eventId: string) => api.get(`/feed/${eventId}/comments`),
   addComment: (eventId: string, text: string) => api.post(`/feed/${eventId}/comments`, { text }),
 };
@@ -265,6 +270,8 @@ export const dfsAPI = {
     sport: string;
     contest_type: string;
     contest_name?: string;
+    contest_id?: string;
+    contest_url?: string;
     entry_fee: number;
     payout: number;
     finish_position?: number;

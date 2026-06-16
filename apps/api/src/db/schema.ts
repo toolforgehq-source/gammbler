@@ -49,7 +49,7 @@ export const badgeTypeEnum = pgEnum('badge_type', [
 export const feedEventTypeEnum = pgEnum('feed_event_type', [
   'parlay_hit', 'rank_up', 'win_streak', 'badge_earned',
   'score_high', 'sportsbook_connected', 'weekly_leader',
-  'h2h_challenge', 'h2h_result',
+  'h2h_challenge', 'h2h_result', 'user_post', 'repost',
 ]);
 
 export const notificationTypeEnum = pgEnum('notification_type', [
@@ -595,6 +595,10 @@ export const dfsBadgeTypeEnum = pgEnum('dfs_badge_type', [
   'dfs_gpp_winner', 'dfs_grinder', 'dfs_diversified',
 ]);
 
+export const dfsVerificationStatusEnum = pgEnum('dfs_verification_status', [
+  'unverified', 'pending_review', 'verified', 'rejected',
+]);
+
 export const dfsContests = pgTable('dfs_contests', {
   id: uuid('id').defaultRandom().primaryKey(),
   user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -611,6 +615,9 @@ export const dfsContests = pgTable('dfs_contests', {
   points_scored: numeric('points_scored', { precision: 10, scale: 2 }),
   is_manual: boolean('is_manual').default(false).notNull(),
   is_csv_import: boolean('is_csv_import').default(false).notNull(),
+  verification_status: dfsVerificationStatusEnum('verification_status').default('unverified').notNull(),
+  screenshot_url: text('screenshot_url'),
+  contest_url: text('contest_url'),
   contest_date: timestamp('contest_date', { withTimezone: true }).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({

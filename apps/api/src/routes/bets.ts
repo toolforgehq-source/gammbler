@@ -277,6 +277,31 @@ router.get('/upcoming-events', authMiddleware, async (req: Request, res: Respons
   }
 });
 
+// GET /bets/games-with-odds — get games with full odds for the "Pick a Game" flow
+router.get('/games-with-odds', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const sport = req.query.sport as string;
+    if (!sport) {
+      res.status(400).json({ error: 'Sport parameter required' });
+      return;
+    }
+
+    const { getLiveOdds, mapSportToOddsApiKey } = await import('../services/odds-api');
+    const sportKey = mapSportToOddsApiKey(sport);
+    const events = await getLiveOdds(sportKey);
+
+    // Sort by commence time (soonest first), filter out started games at end
+    const sorted = events.sort((a, b) => 
+      new Date(a.commence_time).getTime() - new Date(b.commence_time).getTime()
+    );
+
+    res.json({ games: sorted });
+  } catch (err) {
+    console.error('Games with odds error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /bets/csv-import — import bets from CSV
 router.post('/csv-import', authMiddleware, requirePro, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {

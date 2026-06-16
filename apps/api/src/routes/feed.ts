@@ -106,13 +106,52 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       }
     }
 
+    // Get repost counts for these events
+    let repostCounts: Record<string, number> = {};
+    let userReposts: Set<string> = new Set();
+    if (eventIds.length > 0) {
+      for (const eid of eventIds) {
+        const [rc] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(feedEvents)
+          .where(
+            and(
+              eq(feedEvents.event_type, 'repost'),
+              sql`${feedEvents.event_data}->>'original_event_id' = ${eid}`
+            )
+          );
+        if (rc && rc.count > 0) repostCounts[eid] = rc.count;
+      }
+
+      // Check which events the user has reposted
+      const userRepostRows = await db
+        .select({ event_data: feedEvents.event_data })
+        .from(feedEvents)
+        .where(
+          and(
+            eq(feedEvents.user_id, userId),
+            eq(feedEvents.event_type, 'repost')
+          )
+        );
+      for (const r of userRepostRows) {
+        const data = r.event_data as Record<string, any>;
+        if (data?.original_event_id && eventIds.includes(data.original_event_id)) {
+          userReposts.add(data.original_event_id);
+        }
+      }
+    }
+
     // Format feed items with human-readable text
     const feed = events.map((e) => ({
       ...e,
-      display_text: formatFeedEvent(e.username, e.event_type, e.event_data as Record<string, any>, e.sport),
+      display_text: e.event_type === 'user_post'
+        ? (e.event_data as Record<string, any>)?.content || ''
+        : formatFeedEvent(e.username, e.event_type, e.event_data as Record<string, any>, e.sport),
       like_count: likeCounts[e.id] || 0,
       is_liked: userLikes.has(e.id),
       comment_count: commentCounts[e.id] || 0,
+      repost_count: repostCounts[e.id] || 0,
+      is_reposted: userReposts.has(e.id),
     }));
 
     res.json({ feed, limit, offset });
@@ -185,6 +224,259 @@ router.get('/:eventId/comments', authMiddleware, async (req: Request, res: Respo
     res.json({ comments });
   } catch (err) {
     console.error('Get comments error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /feed/post — create a user-generated post (any user can post)
+const createPostSchema = z.object({
+  content: z.string().min(1).max(2000),
+  image_url: z.string().url().optional(),
+});
+
+router.post('/post', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const parsed = createPostSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Post must be 1-2000 characters' });
+      return;
+    }
+
+    const [user] = await db
+      .select({ username: users.username, avatar_url: users.avatar_url })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      res.status(401).json({ error: 'User not found' });
+      return;
+    }
+
+    // Insert as a feed event of type 'user_post'
+    const [event] = await db.insert(feedEvents).values({
+      user_id: userId,
+      event_type: 'user_post',
+      event_data: {
+        content: parsed.data.content,
+        image_url: parsed.data.image_url || null,
+      },
+      sport: null,
+    }).returning();
+
+    res.status(201).json({
+      post: {
+        id: event.id,
+        user_id: event.user_id,
+        username: user.username,
+        avatar_url: user.avatar_url,
+        event_type: 'user_post',
+        event_data: event.event_data,
+        sport: null,
+        created_at: event.created_at,
+        display_text: parsed.data.content,
+        like_count: 0,
+        is_liked: false,
+        comment_count: 0,
+        repost_count: 0,
+        is_reposted: false,
+      },
+    });
+  } catch (err) {
+    console.error('Create post error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /feed/:eventId/repost — repost a feed event
+router.post('/:eventId/repost', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const eventId = req.params.eventId;
+
+    // Check if already reposted
+    const [existing] = await db
+      .select()
+      .from(feedEvents)
+      .where(
+        and(
+          eq(feedEvents.user_id, userId),
+          eq(feedEvents.event_type, 'repost'),
+          sql`${feedEvents.event_data}->>'original_event_id' = ${eventId}`
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      res.status(400).json({ error: 'Already reposted' });
+      return;
+    }
+
+    // Get the original event
+    const [original] = await db
+      .select({
+        id: feedEvents.id,
+        user_id: feedEvents.user_id,
+        event_type: feedEvents.event_type,
+        event_data: feedEvents.event_data,
+        sport: feedEvents.sport,
+        username: users.username,
+      })
+      .from(feedEvents)
+      .innerJoin(users, eq(users.id, feedEvents.user_id))
+      .where(eq(feedEvents.id, eventId))
+      .limit(1);
+
+    if (!original) {
+      res.status(404).json({ error: 'Post not found' });
+      return;
+    }
+
+    // Create a repost event
+    await db.insert(feedEvents).values({
+      user_id: userId,
+      event_type: 'repost',
+      event_data: {
+        original_event_id: eventId,
+        original_user_id: original.user_id,
+        original_username: original.username,
+        original_event_type: original.event_type,
+        original_event_data: original.event_data,
+        original_sport: original.sport,
+      },
+      sport: original.sport,
+    });
+
+    // Count total reposts for this event
+    const [repostCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(feedEvents)
+      .where(
+        and(
+          eq(feedEvents.event_type, 'repost'),
+          sql`${feedEvents.event_data}->>'original_event_id' = ${eventId}`
+        )
+      );
+
+    res.json({ reposted: true, repost_count: repostCount?.count || 0 });
+  } catch (err) {
+    console.error('Repost error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /feed/:eventId/repost — undo repost
+router.delete('/:eventId/repost', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const eventId = req.params.eventId;
+
+    await db.delete(feedEvents).where(
+      and(
+        eq(feedEvents.user_id, userId),
+        eq(feedEvents.event_type, 'repost'),
+        sql`${feedEvents.event_data}->>'original_event_id' = ${eventId}`
+      )
+    );
+
+    const [repostCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(feedEvents)
+      .where(
+        and(
+          eq(feedEvents.event_type, 'repost'),
+          sql`${feedEvents.event_data}->>'original_event_id' = ${eventId}`
+        )
+      );
+
+    res.json({ reposted: false, repost_count: repostCount?.count || 0 });
+  } catch (err) {
+    console.error('Undo repost error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /feed/following — get feed from only followed users
+router.get('/following', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    const limit = Math.min(parseInt(req.query.limit as string) || 30, 50);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const following = await db
+      .select({ following_id: follows.following_id })
+      .from(follows)
+      .where(eq(follows.follower_id, userId));
+    const followedIds = following.map((f) => f.following_id);
+
+    if (followedIds.length === 0) {
+      res.json({ feed: [], limit, offset });
+      return;
+    }
+
+    // Include user's own posts
+    const allIds = [...followedIds, userId];
+
+    const events = await db
+      .select({
+        id: feedEvents.id,
+        user_id: feedEvents.user_id,
+        username: users.username,
+        avatar_url: users.avatar_url,
+        event_type: feedEvents.event_type,
+        event_data: feedEvents.event_data,
+        sport: feedEvents.sport,
+        created_at: feedEvents.created_at,
+      })
+      .from(feedEvents)
+      .innerJoin(users, eq(users.id, feedEvents.user_id))
+      .where(inArray(feedEvents.user_id, allIds))
+      .orderBy(desc(feedEvents.created_at))
+      .limit(limit)
+      .offset(offset);
+
+    const eventIds = events.map((e) => e.id);
+
+    let likeCounts: Record<string, number> = {};
+    let userLikes: Set<string> = new Set();
+    let commentCounts: Record<string, number> = {};
+
+    if (eventIds.length > 0) {
+      const likeRows = await db
+        .select({ event_id: feedLikes.event_id, count: sql<number>`count(*)::int` })
+        .from(feedLikes)
+        .where(inArray(feedLikes.event_id, eventIds))
+        .groupBy(feedLikes.event_id);
+      for (const r of likeRows) likeCounts[r.event_id] = r.count;
+
+      const myLikes = await db
+        .select({ event_id: feedLikes.event_id })
+        .from(feedLikes)
+        .where(and(inArray(feedLikes.event_id, eventIds), eq(feedLikes.user_id, userId)));
+      for (const r of myLikes) userLikes.add(r.event_id);
+
+      const commentRows = await db
+        .select({ event_id: feedComments.event_id, count: sql<number>`count(*)::int` })
+        .from(feedComments)
+        .where(inArray(feedComments.event_id, eventIds))
+        .groupBy(feedComments.event_id);
+      for (const r of commentRows) commentCounts[r.event_id] = r.count;
+    }
+
+    const feed = events.map((e) => ({
+      ...e,
+      display_text: e.event_type === 'user_post'
+        ? (e.event_data as Record<string, any>)?.content || ''
+        : formatFeedEvent(e.username, e.event_type, e.event_data as Record<string, any>, e.sport),
+      like_count: likeCounts[e.id] || 0,
+      is_liked: userLikes.has(e.id),
+      comment_count: commentCounts[e.id] || 0,
+    }));
+
+    res.json({ feed, limit, offset });
+  } catch (err) {
+    console.error('Following feed error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

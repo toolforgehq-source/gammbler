@@ -119,6 +119,8 @@ export default function DFSPage() {
     sport: 'nfl',
     contest_type: 'cash',
     contest_name: '',
+    contest_id: '',
+    contest_url: '',
     entry_fee: '',
     payout: '',
     finish_position: '',
@@ -187,6 +189,8 @@ export default function DFSPage() {
         sport: form.sport,
         contest_type: form.contest_type,
         contest_name: form.contest_name || undefined,
+        contest_id: form.contest_id || undefined,
+        contest_url: form.contest_url || undefined,
         entry_fee: parseFloat(form.entry_fee) || 0,
         payout: parseFloat(form.payout) || 0,
         finish_position: form.finish_position ? parseInt(form.finish_position) : undefined,
@@ -196,7 +200,7 @@ export default function DFSPage() {
       });
       setForm({
         platform: 'draftkings', sport: 'nfl', contest_type: 'cash',
-        contest_name: '', entry_fee: '', payout: '', finish_position: '',
+        contest_name: '', contest_id: '', contest_url: '', entry_fee: '', payout: '', finish_position: '',
         total_entries: '', points_scored: '', contest_date: new Date().toISOString().slice(0, 10),
       });
       setActiveTab('dashboard');
@@ -431,7 +435,10 @@ export default function DFSPage() {
       {/* Add Contest Tab */}
       {activeTab === 'add' && (
         <div className="bg-card rounded-2xl p-6 border border-accent/20">
-          <h2 className="text-lg font-bold mb-4">Add DFS Contest</h2>
+          <h2 className="text-lg font-bold mb-2">Add DFS Contest</h2>
+          <p className="text-sm text-muted-dark mb-4">
+            Verified entries earn higher score weighting. Provide a Contest ID and/or link for instant verification.
+          </p>
           <form onSubmit={handleAddContest} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -463,6 +470,40 @@ export default function DFSPage() {
                 <input type="text" value={form.contest_name} onChange={(e) => setForm({ ...form, contest_name: e.target.value })}
                   className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-sm" placeholder="e.g. NFL $5 Double Up" />
               </div>
+            </div>
+
+            {/* Verification Section */}
+            <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Target size={16} className="text-accent" />
+                <span className="text-xs font-semibold text-accent uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
+                  VERIFICATION (Recommended)
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-muted mb-1">
+                    Contest ID
+                    <span className="text-accent ml-1">(from {PLATFORMS.find(p => p.value === form.platform)?.label || 'platform'})</span>
+                  </label>
+                  <input type="text" value={form.contest_id} onChange={(e) => setForm({ ...form, contest_id: e.target.value })}
+                    className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-sm"
+                    placeholder={form.platform === 'draftkings' ? 'e.g. 123456789' : form.platform === 'fanduel' ? 'e.g. 98765' : 'Contest ID'} />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Contest URL (optional)</label>
+                  <input type="url" value={form.contest_url} onChange={(e) => setForm({ ...form, contest_url: e.target.value })}
+                    className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-sm"
+                    placeholder="https://www.draftkings.com/contest/..." />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-dark">
+                {form.contest_id && form.contest_url
+                  ? '✓ Auto-verified: Contest ID + URL provided'
+                  : form.contest_id
+                    ? '○ Pending review: Contest ID provided'
+                    : 'No verification data — entry will be marked as unverified'}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
