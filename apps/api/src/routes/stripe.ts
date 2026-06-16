@@ -161,7 +161,7 @@ router.post('/create-portal', authMiddleware, async (req: Request, res: Response
 
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripe_customer_id,
-      return_url: `${env.FRONTEND_URL}/settings`,
+      return_url: `${env.FRONTEND_URL}/dashboard/settings`,
     });
 
     res.json({ url: session.url });

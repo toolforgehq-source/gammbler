@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { profileAPI, connectionsAPI, stripeAPI, authAPI } from '@/lib/api';
-import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck } from 'lucide-react';
+import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Trash2 } from 'lucide-react';
 import VerifiedScorePassModal from '@/components/ui/VerifiedScorePassModal';
 
 const PLATFORMS = [
@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPassModal, setShowPassModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isPro = user?.tier === 'pro' || user?.subscription_status === 'active' || user?.subscription_status === 'trialing';
   const hasVerifiedPass = user?.verified_score_pass || false;
@@ -101,15 +103,28 @@ export default function SettingsPage() {
   const manageBilling = async () => {
     try {
       const res = await stripeAPI.createPortal();
-      window.open(res.data.url, '_blank');
+      window.location.href = res.data.url;
     } catch {
       // might need to create checkout instead
       try {
         const res = await stripeAPI.createCheckout();
-        window.open(res.data.url, '_blank');
+        window.location.href = res.data.url;
       } catch {
         alert('Billing not configured');
       }
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await authAPI.deleteAccount();
+      logout();
+    } catch {
+      alert('Failed to delete account. Please try again.');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -244,13 +259,50 @@ export default function SettingsPage() {
         </button>
       </section>
 
-      {/* Sign Out */}
-      <button
-        onClick={logout}
-        className="flex items-center gap-2 text-sm text-loss hover:text-red-400 transition-colors"
-      >
-        <LogOut size={16} /> Sign Out
-      </button>
+      {/* Sign Out & Delete */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 text-sm text-loss hover:text-red-400 transition-colors"
+        >
+          <LogOut size={16} /> Sign Out
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="flex items-center gap-2 text-sm text-muted-dark hover:text-loss transition-colors"
+        >
+          <Trash2 size={16} /> Delete Account
+        </button>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-card border border-accent/20 rounded-lg p-6 max-w-sm w-full space-y-4">
+            <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>
+              Delete Account
+            </h3>
+            <p className="text-sm text-muted-dark">
+              This action is permanent and cannot be undone. All your data, bets, scores, and badges will be permanently deleted.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 text-sm border border-accent/20 rounded-lg text-white hover:bg-accent/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 text-sm bg-loss text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete Forever'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <VerifiedScorePassModal
         isOpen={showPassModal}

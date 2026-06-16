@@ -50,6 +50,8 @@ export const authAPI = {
     api.get(`/auth/verify-email?token=${token}`),
   resendVerification: () =>
     api.post('/auth/resend-verification'),
+  deleteAccount: () =>
+    api.delete('/auth/account'),
 };
 
 // Bets

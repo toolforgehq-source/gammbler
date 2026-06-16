@@ -346,4 +346,16 @@ router.post('/resend-verification', authMiddleware, async (req: Request, res: Re
   }
 });
 
+// DELETE /auth/account — permanently delete own account
+router.delete('/account', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.userId;
+    await db.delete(users).where(eq(users.id, userId));
+    res.json({ message: 'Account deleted successfully' });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

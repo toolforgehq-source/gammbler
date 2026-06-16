@@ -42,6 +42,7 @@ interface Profile {
   is_self: boolean;
   total_profit_loss?: number;
   is_verified?: boolean;
+  national_rank?: { rank: number | null; total_ranked: number };
 }
 
 function getScoreColor(score: number): string {
@@ -197,6 +198,17 @@ export default function PublicProfilePage() {
                 }`}>
                   {verification.verification_pct}% Verified
                 </span>
+              </div>
+            )}
+
+            {/* National Rank */}
+            {profile.national_rank?.rank && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-bold text-accent" style={{ fontFamily: 'var(--font-number)' }}>
+                  #{profile.national_rank.rank}
+                </span>
+                <span className="text-xs text-muted-dark">National Rank</span>
+                <span className="text-xs text-muted-dark">/ {profile.national_rank.total_ranked} ranked</span>
               </div>
             )}
 

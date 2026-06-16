@@ -100,6 +100,35 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
     const totalPL = settled.reduce((s, b) => s + parseFloat(String(b.profit_loss || '0')), 0);
     const roi = totalStake > 0 ? Math.round((totalPL / totalStake) * 10000) / 100 : 0;
 
+    // Calculate national rank for this user
+    const overallScore = scores.find((s) => s.sport === 'overall');
+    let nationalRank: { rank: number | null; total_ranked: number } = { rank: null, total_ranked: 0 };
+    if (overallScore && overallScore.is_unlocked) {
+      const [countAbove] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(gammblerScores)
+        .where(
+          and(
+            eq(gammblerScores.sport, 'overall' as any),
+            eq(gammblerScores.is_unlocked, true),
+            sql`${gammblerScores.score} > ${overallScore.score}`
+          )
+        );
+      const [totalRanked] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(gammblerScores)
+        .where(
+          and(
+            eq(gammblerScores.sport, 'overall' as any),
+            eq(gammblerScores.is_unlocked, true)
+          )
+        );
+      nationalRank = {
+        rank: (countAbove?.count || 0) + 1,
+        total_ranked: totalRanked?.count || 0,
+      };
+    }
+
     const publicProfile: Record<string, unknown> = {
       id: user.id,
       username: user.username,
@@ -120,6 +149,7 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       is_following: isFollowing,
       is_self: req.user?.userId === user.id,
       is_verified: user.verified_score_pass || user.subscription_status === 'active',
+      national_rank: nationalRank,
     };
 
     // Add private fields if viewing own profile
