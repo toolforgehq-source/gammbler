@@ -165,6 +165,7 @@ function SignUpForm() {
               value={dateOfBirth}
               onChange={(e) => setDateOfBirth(e.target.value)}
               className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white placeholder-muted-dark focus:outline-none focus:border-accent transition-colors"
+              style={{ colorScheme: 'dark' }}
               required
               max={new Date().toISOString().split('T')[0]}
             />

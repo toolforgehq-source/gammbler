@@ -39,6 +39,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     localStorage.removeItem('gammbler_token');
     localStorage.removeItem('gammbler_user');
     set({ user: null, token: null, isAuthenticated: false });
+    window.location.href = '/signin';
   },
 
   updateUser: (updates) => {
