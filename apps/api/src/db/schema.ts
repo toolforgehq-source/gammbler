@@ -56,6 +56,8 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'trial_ending_10', 'trial_ending_13', 'trial_ended',
   'weekly_report', 'badge_earned', 'leaderboard_passed',
   'score_change', 'bet_settled', 'new_follower',
+  'challenge_received', 'challenge_accepted', 'challenge_settled',
+  'creator_post', 'league_invite', 'rank_milestone',
 ]);
 
 export const trustStatusEnum = pgEnum('trust_status', [
@@ -209,11 +211,24 @@ export const notifications = pgTable('notifications', {
   type: notificationTypeEnum('type').notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   body: text('body').notNull(),
+  data: jsonb('data').default('{}'),
   read: boolean('read').default(false).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('notifications_user_idx').on(table.user_id),
   readIdx: index('notifications_read_idx').on(table.user_id, table.read),
+}));
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('push_subscriptions_user_idx').on(table.user_id),
+  endpointIdx: uniqueIndex('push_subscriptions_endpoint_idx').on(table.endpoint),
 }));
 
 export const sportsbookConnections = pgTable('sportsbook_connections', {
@@ -386,6 +401,10 @@ export const capperStatusEnum = pgEnum('capper_status', [
   'pending', 'active', 'suspended',
 ]);
 
+export const capperTierEnum = pgEnum('capper_tier', [
+  'capper', 'verified', 'elite',
+]);
+
 export const capperSubStatusEnum = pgEnum('capper_sub_status', [
   'active', 'cancelled', 'expired',
 ]);
@@ -403,16 +422,20 @@ export const capperProfiles = pgTable('capper_profiles', {
   favorite_teams: jsonb('favorite_teams').default('[]'),
   betting_style: varchar('betting_style', { length: 100 }),
   social_links: jsonb('social_links').default('{}'),
+  tier: capperTierEnum('tier').default('capper').notNull(),
+  creator_plan_type: varchar('creator_plan_type', { length: 50 }).default('standard').notNull(),
+  revenue_share_pct: numeric('revenue_share_pct', { precision: 5, scale: 2 }).default('80.00').notNull(),
   total_subscribers: integer('total_subscribers').default(0).notNull(),
   total_followers: integer('total_followers').default(0).notNull(),
   total_tails: integer('total_tails').default(0).notNull(),
   total_earnings_cents: integer('total_earnings_cents').default(0).notNull(),
-  verified_at: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
+  verified_at: timestamp('verified_at', { withTimezone: true }),
   verified_score: numeric('verified_score', { precision: 5, scale: 1 }).default('0').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('capper_profiles_user_idx').on(table.user_id),
   statusIdx: index('capper_profiles_status_idx').on(table.status),
+  tierIdx: index('capper_profiles_tier_idx').on(table.tier),
 }));
 
 export const capperSubscriptions = pgTable('capper_subscriptions', {

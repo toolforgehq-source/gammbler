@@ -22,6 +22,7 @@ interface LeaderboardEntry {
   is_self: boolean;
   locked_label?: string;
   is_verified?: boolean;
+  capper_tier?: 'capper' | 'verified' | 'elite' | null;
 }
 
 const SPORTS = [
@@ -204,6 +205,12 @@ export default function LeaderboardsPage() {
                   {entry.is_self && <span className="text-xs text-accent ml-1">(You)</span>}
                 </span>
                 {entry.is_verified && <VerifiedBadge size="sm" />}
+                {entry.capper_tier === 'elite' && (
+                  <span className="hidden sm:inline px-1.5 py-0.5 bg-gold/20 text-gold text-[10px] font-bold rounded-full">ELITE</span>
+                )}
+                {entry.capper_tier === 'verified' && (
+                  <span className="hidden sm:inline px-1.5 py-0.5 bg-accent/20 text-accent text-[10px] font-bold rounded-full">VERIFIED</span>
+                )}
               </Link>
               <div className="text-right sm:col-span-2">
                 {entry.locked_label ? (

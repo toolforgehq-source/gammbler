@@ -29,6 +29,11 @@ interface Slip {
   shares_count: number;
   shared_at: string;
   settled_at: string | null;
+  user?: { username: string; avatar_url: string | null };
+  reactions?: Record<string, number>;
+  user_reaction?: string | null;
+  is_verified_capper?: boolean;
+  capper_tier?: 'capper' | 'verified' | 'elite' | null;
 }
 
 interface BetRecord {

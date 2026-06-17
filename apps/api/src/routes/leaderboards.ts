@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { gammblerScores, follows, users } from '../db/schema';
+import { gammblerScores, follows, users, capperProfiles } from '../db/schema';
 import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { requirePro, attachTier } from '../middleware/subscription';
@@ -113,11 +113,21 @@ router.get('/:sport/national', authMiddleware, async (req: Request, res: Respons
       .limit(limit)
       .offset(offset);
 
+    // Get capper tiers for all users in the result set
+    const userIds = scores.map(s => s.user_id);
+    const capperTiers = userIds.length > 0 ? await db
+      .select({ user_id: capperProfiles.user_id, tier: capperProfiles.tier })
+      .from(capperProfiles)
+      .where(and(inArray(capperProfiles.user_id, userIds), eq(capperProfiles.status, 'active')))
+    : [];
+    const tierMap = new Map(capperTiers.map(c => [c.user_id, c.tier]));
+
     const leaderboard = scores.map((s, i) => ({
       rank: offset + i + 1,
       ...s,
       is_self: s.user_id === userId,
       is_verified: s.verified_score_pass || s.subscription_status === 'active',
+      capper_tier: tierMap.get(s.user_id) || null,
     }));
 
     // Get user's own position if not in top 100

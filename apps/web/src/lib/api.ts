@@ -145,8 +145,14 @@ export const profileAPI = {
 // Notifications
 export const notificationsAPI = {
   list: (params?: Record<string, string>) => api.get('/notifications', { params }),
+  unreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.post('/notifications/read-all'),
+  vapidKey: () => api.get('/notifications/vapid-key'),
+  pushSubscribe: (subscription: PushSubscription) => api.post('/notifications/push-subscribe', subscription.toJSON()),
+  pushUnsubscribe: (endpoint: string) => api.delete('/notifications/push-subscribe', { data: { endpoint } }),
+  getPreferences: () => api.get('/notifications/preferences'),
+  updatePreferences: (prefs: Record<string, boolean>) => api.patch('/notifications/preferences', prefs),
 };
 
 // Stripe
@@ -212,6 +218,7 @@ export const cappersAPI = {
   list: (params?: Record<string, string>) => api.get('/cappers', { params }),
   get: (userId: string) => api.get(`/cappers/${userId}`),
   apply: () => api.post('/cappers/apply'),
+  refreshTier: () => api.post('/cappers/refresh-tier'),
   updateProfile: (data: Record<string, unknown>) =>
     api.patch('/cappers/me', data),
   subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
