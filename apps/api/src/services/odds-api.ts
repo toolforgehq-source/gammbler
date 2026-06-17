@@ -330,3 +330,99 @@ export async function validateBetAgainstOdds(
     return { validated: false, reason: 'validation_error' };
   }
 }
+
+// ── Game Scores (for H2H auto-settlement) ─────────────────
+
+interface GameScore {
+  id: string;
+  sport_key: string;
+  sport_title: string;
+  commence_time: string;
+  completed: boolean;
+  home_team: string;
+  away_team: string;
+  scores: Array<{ name: string; score: string }> | null;
+  last_update: string | null;
+}
+
+export async function getGameScores(sportKey: string, daysFrom: number = 3): Promise<GameScore[]> {
+  if (!env.ODDS_API_KEY) return [];
+
+  const oddsKey = mapSportToOddsApiKey(sportKey);
+
+  try {
+    const response = await axios.get(
+      `${ODDS_API_BASE}/sports/${oddsKey}/scores`,
+      {
+        params: {
+          apiKey: env.ODDS_API_KEY,
+          daysFrom,
+        },
+        timeout: 15000,
+      }
+    );
+
+    return response.data;
+  } catch (err) {
+    console.error(`[Scores API] Error fetching ${oddsKey}:`, err);
+    return [];
+  }
+}
+
+export async function getGameScoreByEventId(
+  sportKey: string,
+  eventId: string,
+  daysFrom: number = 3,
+): Promise<GameScore | null> {
+  const scores = await getGameScores(sportKey, daysFrom);
+  return scores.find((s) => s.id === eventId) || null;
+}
+
+// ── Market Resolution Logic ───────────────────────────────
+
+export type MarketResult = 'challenger' | 'challengee' | 'push';
+
+export function resolveMarket(
+  market: string,
+  challengerPick: string,
+  homeTeam: string,
+  awayTeam: string,
+  homeScore: number,
+  awayScore: number,
+  line?: number,
+): MarketResult {
+  if (market === 'h2h') {
+    const challengerIsHome = normalizeTeam(challengerPick) === normalizeTeam(homeTeam);
+    const cScore = challengerIsHome ? homeScore : awayScore;
+    const oScore = challengerIsHome ? awayScore : homeScore;
+    if (cScore > oScore) return 'challenger';
+    if (cScore < oScore) return 'challengee';
+    return 'push';
+  }
+
+  if (market === 'spreads') {
+    const challengerIsHome = normalizeTeam(challengerPick).includes(normalizeTeam(homeTeam))
+      || normalizeTeam(homeTeam).includes(normalizeTeam(challengerPick));
+    const cScore = challengerIsHome ? homeScore : awayScore;
+    const oScore = challengerIsHome ? awayScore : homeScore;
+    const adjusted = cScore + (line || 0);
+    if (adjusted > oScore) return 'challenger';
+    if (adjusted < oScore) return 'challengee';
+    return 'push';
+  }
+
+  if (market === 'totals') {
+    const totalScore = homeScore + awayScore;
+    const isOver = challengerPick.toLowerCase().includes('over');
+    if (totalScore === (line || 0)) return 'push';
+    if (isOver && totalScore > (line || 0)) return 'challenger';
+    if (!isOver && totalScore < (line || 0)) return 'challenger';
+    return 'challengee';
+  }
+
+  return 'push';
+}
+
+function normalizeTeam(name: string): string {
+  return name.toLowerCase().trim();
+}

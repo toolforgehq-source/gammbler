@@ -254,6 +254,7 @@ export const challengesAPI = {
   list: (params?: Record<string, string>) => api.get('/challenges', { params }),
   get: (id: string) => api.get(`/challenges/${id}`),
   stats: () => api.get('/challenges/stats'),
+  games: (sport: string) => api.get('/challenges/games', { params: { sport } }),
   create: (data: {
     challengee_username: string;
     sport: string;
@@ -262,8 +263,16 @@ export const challengesAPI = {
     challenger_pick: string;
     message?: string;
     stake_display?: string;
+    is_verified?: boolean;
+    odds_api_event_id?: string;
+    market?: string;
+    challenger_line?: number;
+    challenger_odds?: number;
+    challengee_odds?: number;
+    home_team?: string;
+    away_team?: string;
   }) => api.post('/challenges', data),
-  accept: (id: string, pick: string) => api.patch(`/challenges/${id}/accept`, { pick }),
+  accept: (id: string, pick?: string) => api.patch(`/challenges/${id}/accept`, { pick }),
   decline: (id: string) => api.patch(`/challenges/${id}/decline`),
   cancel: (id: string) => api.patch(`/challenges/${id}/cancel`),
   settle: (id: string, winner_id: string) => api.patch(`/challenges/${id}/settle`, { winner_id }),
