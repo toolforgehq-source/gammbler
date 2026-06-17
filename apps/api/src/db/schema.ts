@@ -49,7 +49,7 @@ export const badgeTypeEnum = pgEnum('badge_type', [
 export const feedEventTypeEnum = pgEnum('feed_event_type', [
   'parlay_hit', 'rank_up', 'win_streak', 'badge_earned',
   'score_high', 'sportsbook_connected', 'weekly_leader',
-  'h2h_challenge', 'h2h_result',
+  'h2h_challenge', 'h2h_result', 'user_post', 'repost',
 ]);
 
 export const notificationTypeEnum = pgEnum('notification_type', [
@@ -58,6 +58,10 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'score_change', 'bet_settled', 'new_follower',
   'challenge_received', 'challenge_accepted', 'challenge_settled',
   'creator_post', 'league_invite', 'rank_milestone',
+]);
+
+export const trustStatusEnum = pgEnum('trust_status', [
+  'synced_verified', 'manually_validated', 'manual_unverified',
 ]);
 
 // ── Tables ───────────────────────────────────────────────────
@@ -114,6 +118,8 @@ export const bets = pgTable('bets', {
   event_start_time: timestamp('event_start_time', { withTimezone: true }),
   is_pregame_verified: boolean('is_pregame_verified').default(false).notNull(),
   odds_api_event_id: varchar('odds_api_event_id', { length: 255 }),
+  trust_status: trustStatusEnum('trust_status').default('manual_unverified').notNull(),
+  validation_reason: varchar('validation_reason', { length: 100 }),
 }, (table) => ({
   userIdIdx: index('bets_user_id_idx').on(table.user_id),
   sportIdx: index('bets_sport_idx').on(table.sport),
@@ -618,6 +624,10 @@ export const dfsBadgeTypeEnum = pgEnum('dfs_badge_type', [
   'dfs_gpp_winner', 'dfs_grinder', 'dfs_diversified',
 ]);
 
+export const dfsVerificationStatusEnum = pgEnum('dfs_verification_status', [
+  'unverified', 'pending_review', 'verified', 'rejected',
+]);
+
 export const dfsContests = pgTable('dfs_contests', {
   id: uuid('id').defaultRandom().primaryKey(),
   user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -634,6 +644,9 @@ export const dfsContests = pgTable('dfs_contests', {
   points_scored: numeric('points_scored', { precision: 10, scale: 2 }),
   is_manual: boolean('is_manual').default(false).notNull(),
   is_csv_import: boolean('is_csv_import').default(false).notNull(),
+  verification_status: dfsVerificationStatusEnum('verification_status').default('unverified').notNull(),
+  screenshot_url: text('screenshot_url'),
+  contest_url: text('contest_url'),
   contest_date: timestamp('contest_date', { withTimezone: true }).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({

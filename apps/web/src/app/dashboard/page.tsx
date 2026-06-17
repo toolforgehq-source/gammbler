@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { scoresAPI, betsAPI, insightsAPI, shareableAPI, authAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { TrendingUp, TrendingDown, BarChart3, ChevronRight, Lock, Download } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, ChevronRight, Lock, Download, Share2, Copy, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import UpgradeBanner from '@/components/ui/UpgradeBanner';
 import OnboardingCard from '@/components/ui/OnboardingCard';
@@ -89,6 +89,8 @@ export default function DashboardPage() {
   const [generatingCard, setGeneratingCard] = useState(false);
   const [cardError, setCardError] = useState('');
   const [nationalRank, setNationalRank] = useState<{ rank: number | null; total_ranked: number } | null>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -232,22 +234,75 @@ export default function DashboardPage() {
               </span>
             </div>
             {overallScore?.is_unlocked && (
-              <button
-                onClick={handleGenerateCard}
-                disabled={generatingCard || (cardStatus !== null && !cardStatus.unlimited && cardStatus.cards_remaining === 0)}
-                className="flex items-center gap-2 px-4 py-2 bg-accent/20 text-accent rounded-lg text-xs font-semibold hover:bg-accent/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                <Download size={14} />
-                {generatingCard ? 'GENERATING...' : 'SHARE SCORE'}
-              </button>
-            )}
-            {cardStatus && !cardStatus.unlimited && (
-              <p className="text-xs text-muted-dark">
-                {cardStatus.cards_remaining === 0
-                  ? 'Monthly card used — upgrade for unlimited'
-                  : `${cardStatus.cards_remaining} free card this month`}
-              </p>
+              <div className="relative">
+                <button
+                  onClick={() => setShowShareDialog(!showShareDialog)}
+                  className="flex items-center gap-2 px-4 py-2 bg-accent/20 text-accent rounded-lg text-xs font-semibold hover:bg-accent/30 transition-colors"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  <Share2 size={14} />
+                  SHARE SCORE
+                </button>
+
+                {/* Share Dialog */}
+                {showShareDialog && (
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-card border border-accent/20 rounded-lg shadow-xl z-50 p-4 space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-white">Share Your Score</span>
+                      <button onClick={() => setShowShareDialog(false)} className="text-muted hover:text-white">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    {/* Download Card */}
+                    <button
+                      onClick={() => { handleGenerateCard(); setShowShareDialog(false); }}
+                      disabled={generatingCard || (cardStatus !== null && !cardStatus.unlimited && cardStatus.cards_remaining === 0)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent/10 transition-colors text-left disabled:opacity-40"
+                    >
+                      <Download size={16} className="text-accent" />
+                      <div>
+                        <p className="text-sm text-white font-medium">{generatingCard ? 'Generating...' : 'Download Card'}</p>
+                        <p className="text-xs text-muted-dark">Save as PNG image</p>
+                      </div>
+                    </button>
+                    {/* Copy Profile Link */}
+                    <button
+                      onClick={() => {
+                        const profileUrl = `${window.location.origin}/dashboard/profile/${user?.username}`;
+                        navigator.clipboard.writeText(profileUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent/10 transition-colors text-left"
+                    >
+                      {copied ? <Check size={16} className="text-win" /> : <Copy size={16} className="text-accent" />}
+                      <div>
+                        <p className="text-sm text-white font-medium">{copied ? 'Copied!' : 'Copy Profile Link'}</p>
+                        <p className="text-xs text-muted-dark">Share your profile URL</p>
+                      </div>
+                    </button>
+                    {/* Share on X/Twitter */}
+                    <button
+                      onClick={() => {
+                        const text = `My Gammbler Score is ${scoreVal.toFixed(0)} (${getTierName(scoreVal)})! Check out my profile:`;
+                        const url = `${window.location.origin}/dashboard/profile/${user?.username}`;
+                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+                        setShowShareDialog(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent/10 transition-colors text-left"
+                    >
+                      <span className="text-base w-4 text-center">𝕏</span>
+                      <div>
+                        <p className="text-sm text-white font-medium">Share on X</p>
+                        <p className="text-xs text-muted-dark">Post to your timeline</p>
+                      </div>
+                    </button>
+                    {cardStatus && !cardStatus.unlimited && cardStatus.cards_remaining === 0 && (
+                      <p className="text-xs text-muted-dark text-center pt-1">Monthly card used — upgrade for unlimited</p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {cardError && <p className="text-xs text-loss">{cardError}</p>}
           </div>

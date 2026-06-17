@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { profileAPI, connectionsAPI, stripeAPI, authAPI, notificationsAPI } from '@/lib/api';
-import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Bell } from 'lucide-react';
+import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Trash2, Camera, X as XIcon, Bell } from 'lucide-react';
 import VerifiedScorePassModal from '@/components/ui/VerifiedScorePassModal';
 
 const PLATFORMS = [
@@ -31,6 +31,11 @@ export default function SettingsPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPassModal, setShowPassModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
 
   const isPro = user?.tier === 'pro' || user?.subscription_status === 'active' || user?.subscription_status === 'trialing';
@@ -100,18 +105,67 @@ export default function SettingsPage() {
     }
   };
 
+  const currentAvatarUrl = user?.avatar_url || null;
+  useEffect(() => {
+    setAvatarUrl(currentAvatarUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAvatarUrl]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be under 2MB');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const res = await profileAPI.uploadAvatar(file);
+      setAvatarUrl(res.data.avatar_url);
+      updateUser({ avatar_url: res.data.avatar_url });
+    } catch {
+      alert('Failed to upload photo');
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      await profileAPI.removeAvatar();
+      setAvatarUrl(null);
+      updateUser({ avatar_url: null });
+    } catch {
+      alert('Failed to remove photo');
+    }
+  };
+
   const manageBilling = async () => {
     try {
       const res = await stripeAPI.createPortal();
-      window.open(res.data.url, '_blank');
+      window.location.href = res.data.url;
     } catch {
       // might need to create checkout instead
       try {
         const res = await stripeAPI.createCheckout();
-        window.open(res.data.url, '_blank');
+        window.location.href = res.data.url;
       } catch {
         alert('Billing not configured');
       }
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await authAPI.deleteAccount();
+      logout();
+    } catch {
+      alert('Failed to delete account. Please try again.');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -119,6 +173,51 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
+      {/* Profile Photo */}
+      <section className="bg-card border border-accent/20 rounded-lg p-6">
+        <h2 className="text-lg uppercase tracking-wider font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+          Profile Photo
+        </h2>
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-2xl overflow-hidden" style={{ fontFamily: 'var(--font-display)' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                user?.username?.charAt(0).toUpperCase() || '?'
+              )}
+            </div>
+            {avatarUrl && (
+              <button
+                onClick={handleRemoveAvatar}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-loss rounded-full flex items-center justify-center"
+                title="Remove photo"
+              >
+                <XIcon size={12} className="text-white" />
+              </button>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="flex items-center gap-2 px-4 py-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition-colors text-sm font-semibold disabled:opacity-50"
+            >
+              <Camera size={16} />
+              {uploadingAvatar ? 'Uploading...' : 'Upload Photo'}
+            </button>
+            <p className="text-xs text-muted-dark">JPEG, PNG, or WebP · Max 2MB</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Account */}
       <section className="bg-card border border-accent/20 rounded-lg p-6">
         <h2 className="text-lg uppercase tracking-wider font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
@@ -318,13 +417,49 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Sign Out */}
-      <button
-        onClick={logout}
-        className="flex items-center gap-2 text-sm text-loss hover:text-red-400 transition-colors"
-      >
-        <LogOut size={16} /> Sign Out
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 text-sm text-loss hover:text-red-400 transition-colors"
+        >
+          <LogOut size={16} /> Sign Out
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="flex items-center gap-2 text-sm text-muted-dark hover:text-loss transition-colors"
+        >
+          <Trash2 size={16} /> Delete Account
+        </button>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-card border border-accent/20 rounded-lg p-6 max-w-sm w-full space-y-4">
+            <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>
+              Delete Account
+            </h3>
+            <p className="text-sm text-muted-dark">
+              This action is permanent and cannot be undone. All your data, bets, scores, and badges will be permanently deleted.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 text-sm border border-accent/20 rounded-lg text-white hover:bg-accent/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 text-sm bg-loss text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete Forever'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <VerifiedScorePassModal
         isOpen={showPassModal}

@@ -119,14 +119,15 @@ export async function calculateGammblerScore(
   userId: string,
   sport: Sport
 ): Promise<{ score: number; components: Record<string, number>; settledCount: number }> {
-  // Fetch all settled bets for this user
+  // Fetch all settled bets for this user — exclude manual_unverified from verified scoring
   const allSettledBets = await db
     .select()
     .from(bets)
     .where(
       and(
         eq(bets.user_id, userId),
-        inArray(bets.result, ['win', 'loss', 'push'])
+        inArray(bets.result, ['win', 'loss', 'push']),
+        ne(bets.trust_status, 'manual_unverified')
       )
     );
 

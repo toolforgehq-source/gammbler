@@ -50,6 +50,8 @@ export const authAPI = {
     api.get(`/auth/verify-email?token=${token}`),
   resendVerification: () =>
     api.post('/auth/resend-verification'),
+  deleteAccount: () =>
+    api.delete('/auth/account'),
 };
 
 // Bets
@@ -65,6 +67,8 @@ export const betsAPI = {
   },
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
   upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
+  gamesWithOdds: (sport: string) => api.get('/bets/games-with-odds', { params: { sport } }),
+  activeSports: () => api.get('/bets/active-sports'),
   parseScreenshot: (file: File) => {
     const form = new FormData();
     form.append('screenshot', file);
@@ -110,8 +114,12 @@ export const creatorDiscoveryAPI = {
 // Feed
 export const feedAPI = {
   get: (params?: Record<string, string>) => api.get('/feed', { params }),
+  getFollowing: (params?: Record<string, string>) => api.get('/feed/following', { params }),
+  createPost: (content: string, image_url?: string) => api.post('/feed/post', { content, image_url }),
   like: (eventId: string) => api.post(`/feed/${eventId}/like`),
   unlike: (eventId: string) => api.delete(`/feed/${eventId}/like`),
+  repost: (eventId: string) => api.post(`/feed/${eventId}/repost`),
+  unrepost: (eventId: string) => api.delete(`/feed/${eventId}/repost`),
   getComments: (eventId: string) => api.get(`/feed/${eventId}/comments`),
   addComment: (eventId: string, text: string) => api.post(`/feed/${eventId}/comments`, { text }),
 };
@@ -123,6 +131,15 @@ export const profileAPI = {
   follow: (userId: string) => api.post(`/profile/follow/${userId}`),
   unfollow: (userId: string) => api.delete(`/profile/follow/${userId}`),
   scoreHistory: (username: string) => api.get(`/profile/${username}/score-history`),
+  search: (q: string) => api.get('/profile/search', { params: { q } }),
+  followers: (username: string) => api.get(`/profile/${username}/followers`),
+  following: (username: string) => api.get(`/profile/${username}/following`),
+  uploadAvatar: (file: File) => {
+    const form = new FormData();
+    form.append('avatar', file);
+    return api.post('/profile/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  removeAvatar: () => api.delete('/profile/avatar'),
 };
 
 // Notifications
@@ -166,6 +183,7 @@ export const insightsAPI = {
 export const badgesAPI = {
   get: () => api.get('/badges'),
   getAll: () => api.get('/badges/all'),
+  getAllCategories: () => api.get('/badges/all-categories'),
 };
 
 // Bet Slips (Live Bet Slip Sharing)
@@ -260,6 +278,8 @@ export const dfsAPI = {
     sport: string;
     contest_type: string;
     contest_name?: string;
+    contest_id?: string;
+    contest_url?: string;
     entry_fee: number;
     payout: number;
     finish_position?: number;

@@ -1,18 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { slipsAPI, cappersAPI } from '@/lib/api';
+import { slipsAPI, betsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import {
   Share2, Flame, Skull, DollarSign, Frown, Trophy,
-  Plus, Eye, ExternalLink, Clock, CheckCircle, XCircle,
+  Plus, Clock, CheckCircle, XCircle, Download, Link2,
+  TrendingUp, TrendingDown, Filter, BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
-
-interface SlipUser {
-  username: string;
-  avatar_url: string | null;
-}
 
 interface Slip {
   id: string;
@@ -33,31 +29,45 @@ interface Slip {
   shares_count: number;
   shared_at: string;
   settled_at: string | null;
-  user: SlipUser;
-  reactions: Record<string, number>;
-  user_reaction: string | null;
-  is_verified_capper: boolean;
-  capper_tier: 'capper' | 'verified' | 'elite' | null;
+  user?: { username: string; avatar_url: string | null };
+  reactions?: Record<string, number>;
+  user_reaction?: string | null;
+  is_verified_capper?: boolean;
+  capper_tier?: 'capper' | 'verified' | 'elite' | null;
 }
 
-const REACTION_MAP: Record<string, { icon: typeof Flame; label: string }> = {
-  fire: { icon: Flame, label: 'Fire' },
-  skull: { icon: Skull, label: 'Dead' },
-  money: { icon: DollarSign, label: 'Money' },
-  clown: { icon: Frown, label: 'Clown' },
-  goat: { icon: Trophy, label: 'GOAT' },
-};
+interface BetRecord {
+  id: string;
+  sport: string;
+  bet_type: string;
+  selection: string;
+  odds: string;
+  stake: string;
+  platform: string;
+  result: string;
+  profit_loss: string | null;
+  event_name: string | null;
+  parlay_legs: number | null;
+  created_at: string;
+  settled_at: string | null;
+  is_pregame_verified: boolean;
+  trust_status?: 'synced_verified' | 'manually_validated' | 'manual_unverified';
+}
 
-const STATUS_CONFIG: Record<string, { color: string; icon: typeof Clock; label: string }> = {
-  live: { color: 'text-accent', icon: Clock, label: 'LIVE' },
-  won: { color: 'text-win', icon: CheckCircle, label: 'WON' },
-  lost: { color: 'text-loss', icon: XCircle, label: 'LOST' },
-  pushed: { color: 'text-gold', icon: CheckCircle, label: 'PUSH' },
-  void: { color: 'text-muted-dark', icon: XCircle, label: 'VOID' },
+const STATUS_CONFIG: Record<string, { color: string; bgColor: string; icon: typeof Clock; label: string }> = {
+  pending: { color: 'text-accent', bgColor: 'bg-accent/10', icon: Clock, label: 'PENDING' },
+  live: { color: 'text-accent', bgColor: 'bg-accent/10', icon: Clock, label: 'LIVE' },
+  win: { color: 'text-win', bgColor: 'bg-win/10', icon: CheckCircle, label: 'WON' },
+  won: { color: 'text-win', bgColor: 'bg-win/10', icon: CheckCircle, label: 'WON' },
+  loss: { color: 'text-loss', bgColor: 'bg-loss/10', icon: XCircle, label: 'LOST' },
+  lost: { color: 'text-loss', bgColor: 'bg-loss/10', icon: XCircle, label: 'LOST' },
+  push: { color: 'text-gold', bgColor: 'bg-gold/10', icon: CheckCircle, label: 'PUSH' },
+  pushed: { color: 'text-gold', bgColor: 'bg-gold/10', icon: CheckCircle, label: 'PUSH' },
+  void: { color: 'text-muted-dark', bgColor: 'bg-muted-dark/10', icon: XCircle, label: 'VOID' },
 };
 
 const SPORT_LABELS: Record<string, string> = {
-  overall: 'Overall', nfl: 'NFL', nba: 'NBA', mlb: 'MLB', nhl: 'NHL',
+  nfl: 'NFL', nba: 'NBA', mlb: 'MLB', nhl: 'NHL',
   cfb: 'CFB', cbb: 'CBB', soccer: 'Soccer', prizepicks: 'PrizePicks', dfs: 'DFS',
 };
 
@@ -76,23 +86,45 @@ function timeAgo(dateStr: string): string {
 
 export default function SlipsPage() {
   const { user } = useAuthStore();
+  const [view, setView] = useState<'bets' | 'slips'>('bets');
+  const [bets, setBets] = useState<BetRecord[]>([]);
   const [slips, setSlips] = useState<Slip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sportFilter, setSportFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
+  const [sportFilter, setSportFilter] = useState('');
+  const [stats, setStats] = useState<{ wins: number; losses: number; pushes: number; pending: number; totalPL: number; roi: number } | null>(null);
 
   useEffect(() => {
-    fetchSlips();
-  }, [sportFilter, statusFilter]);
+    if (view === 'bets') {
+      fetchBets();
+    } else {
+      fetchSlips();
+    }
+  }, [view, statusFilter, sportFilter]);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  async function fetchBets() {
+    try {
+      setLoading(true);
+      const params: Record<string, string> = { limit: '50' };
+      if (sportFilter) params.sport = sportFilter;
+      if (statusFilter) params.result = statusFilter;
+      const res = await betsAPI.list(params);
+      setBets(res.data.bets || []);
+    } catch {
+      // handled
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function fetchSlips() {
     try {
       setLoading(true);
-      const params: Record<string, string> = {};
-      if (sportFilter) params.sport = sportFilter;
-      if (statusFilter) params.status = statusFilter;
-      const res = await slipsAPI.feed(params);
+      const res = await slipsAPI.mine();
       setSlips(res.data.slips || []);
     } catch {
       // handled
@@ -101,26 +133,50 @@ export default function SlipsPage() {
     }
   }
 
-  async function handleReaction(slipId: string, reaction: string) {
+  async function fetchStats() {
     try {
-      await slipsAPI.react(slipId, reaction);
-      fetchSlips();
+      const res = await betsAPI.stats();
+      const data = res.data;
+      setStats({
+        wins: data.record.wins,
+        losses: data.record.losses,
+        pushes: data.record.pushes,
+        pending: data.pending_count,
+        totalPL: data.total_profit_loss,
+        roi: data.roi,
+      });
     } catch {
       // handled
     }
   }
 
-  async function handleTail(slipId: string) {
+  async function handleSettle(betId: string, result: string) {
     try {
-      await cappersAPI.tail(slipId);
-      alert('Bet tailed! Check your sportsbook to place the same bet.');
-    } catch (err: unknown) {
-      const errData = (err as { response?: { data?: { error?: string; subscribe?: boolean } } })?.response?.data;
-      if (errData?.subscribe) {
-        alert('Subscribe to this capper to tail their bets.');
-      } else {
-        alert(errData?.error || 'Failed to tail');
-      }
+      await betsAPI.settle(betId, result);
+      fetchBets();
+      fetchStats();
+    } catch {
+      // handled
+    }
+  }
+
+  async function handleShareSlip(betId: string, bet: BetRecord) {
+    try {
+      await slipsAPI.create({
+        title: bet.selection,
+        sport: bet.sport,
+        bet_type: bet.bet_type,
+        selection: bet.selection,
+        odds: parseFloat(bet.odds),
+        stake: parseFloat(bet.stake),
+        platform: bet.platform,
+        event_name: bet.event_name || undefined,
+        parlay_legs: bet.parlay_legs || undefined,
+        bet_id: betId,
+      });
+      alert('Bet shared to community!');
+    } catch {
+      alert('Failed to share bet');
     }
   }
 
@@ -130,409 +186,265 @@ export default function SlipsPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            LIVE BET SLIPS
+            MY BETS
           </h1>
-          <p className="text-muted-dark text-sm mt-1">Watch bets resolve in real-time</p>
+          <p className="text-muted-dark text-sm mt-1">Track your bets, settle results, and share wins</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
+        <Link
+          href="/dashboard/add-bet"
           className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors shrink-0"
         >
           <Plus size={18} />
-          <span style={{ fontFamily: 'var(--font-display)' }} className="text-sm sm:text-base">SHARE A BET</span>
-        </button>
+          <span style={{ fontFamily: 'var(--font-display)' }} className="text-sm sm:text-base">ADD BET</span>
+        </Link>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <select
-          value={sportFilter}
-          onChange={(e) => setSportFilter(e.target.value)}
-          className="bg-card border border-accent/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
-        >
-          <option value="">All Sports</option>
-          {Object.entries(SPORT_LABELS).filter(([k]) => k !== 'overall').map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-card border border-accent/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
-        >
-          <option value="">All Status</option>
-          <option value="live">Live</option>
-          <option value="won">Won</option>
-          <option value="lost">Lost</option>
-        </select>
-      </div>
-
-      {/* Create Slip Modal */}
-      {showCreate && (
-        <CreateSlipModal
-          onClose={() => setShowCreate(false)}
-          onCreated={() => { setShowCreate(false); fetchSlips(); }}
-        />
-      )}
-
-      {/* Slips Feed */}
-      {loading ? (
-        <div className="flex items-center justify-center h-32">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : slips.length === 0 ? (
-        <div className="bg-card border border-accent/20 rounded-lg p-12 text-center">
-          <Share2 size={48} className="mx-auto text-muted-dark mb-4" />
-          <p className="text-muted-dark text-lg">No bet slips yet</p>
-          <p className="text-muted-dark text-sm mt-1">Be the first to share a bet!</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {slips.map((slip) => (
-            <SlipCard
-              key={slip.id}
-              slip={slip}
-              currentUserId={user?.id}
-              onReact={handleReaction}
-              onTail={handleTail}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SlipCard({
-  slip,
-  currentUserId,
-  onReact,
-  onTail,
-}: {
-  slip: Slip;
-  currentUserId?: string;
-  onReact: (slipId: string, reaction: string) => void;
-  onTail: (slipId: string) => void;
-}) {
-  const statusCfg = STATUS_CONFIG[slip.status] || STATUS_CONFIG.live;
-  const StatusIcon = statusCfg.icon;
-  const oddsStr = formatOdds(slip.odds);
-  const pl = slip.profit_loss ? parseFloat(slip.profit_loss) : null;
-
-  return (
-    <div className="bg-card border border-accent/20 rounded-lg p-5 hover:border-accent/40 transition-colors">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-accent/30 flex items-center justify-center text-accent font-bold text-sm">
-            {slip.user.username.charAt(0).toUpperCase()}
+      {/* Stats Summary */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-card border border-accent/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>Record</p>
+            <p className="text-white font-bold text-lg mt-1" style={{ fontFamily: 'var(--font-number)' }}>
+              {stats.wins}-{stats.losses}-{stats.pushes}
+            </p>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <Link href={`/dashboard/profile?user=${slip.user.username}`} className="text-white font-medium hover:text-accent transition-colors">
-                @{slip.user.username}
-              </Link>
-              {slip.capper_tier === 'elite' && (
-                <span className="px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded-full">ELITE CAPPER</span>
-              )}
-              {slip.capper_tier === 'verified' && (
-                <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs font-semibold rounded-full">VERIFIED</span>
-              )}
-              {slip.capper_tier === 'capper' && (
-                <span className="px-2 py-0.5 bg-secondary text-muted text-xs font-semibold rounded-full">CAPPER</span>
-              )}
-            </div>
-            <p className="text-xs text-muted-dark">{timeAgo(slip.shared_at)}</p>
+          <div className="bg-card border border-accent/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>P/L</p>
+            <p className={`font-bold text-lg mt-1 ${stats.totalPL >= 0 ? 'text-win' : 'text-loss'}`} style={{ fontFamily: 'var(--font-number)' }}>
+              {stats.totalPL >= 0 ? '+' : ''}${stats.totalPL.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-card border border-accent/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>ROI</p>
+            <p className={`font-bold text-lg mt-1 ${stats.roi >= 0 ? 'text-win' : 'text-loss'}`} style={{ fontFamily: 'var(--font-number)' }}>
+              {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(1)}%
+            </p>
+          </div>
+          <div className="bg-card border border-accent/20 rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>Pending</p>
+            <p className="text-accent font-bold text-lg mt-1" style={{ fontFamily: 'var(--font-number)' }}>
+              {stats.pending}
+            </p>
           </div>
         </div>
-        <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${statusCfg.color} ${slip.status === 'live' ? 'bg-accent/10 animate-pulse' : slip.status === 'won' ? 'bg-win/10' : slip.status === 'lost' ? 'bg-loss/10' : 'bg-gold/10'}`}>
-          <StatusIcon size={14} />
-          {statusCfg.label}
+      )}
+
+      {/* View Toggle */}
+      <div className="flex items-center gap-3">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setView('bets')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+              view === 'bets' ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20'
+            }`}
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            MY BETS
+          </button>
+          <button
+            onClick={() => setView('slips')}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+              view === 'slips' ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20'
+            }`}
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            SHARED SLIPS
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-2 ml-auto flex-wrap">
+          <select
+            value={sportFilter}
+            onChange={(e) => setSportFilter(e.target.value)}
+            className="bg-card border border-accent/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent"
+          >
+            <option value="">All Sports</option>
+            {Object.entries(SPORT_LABELS).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+          {view === 'bets' && (
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-card border border-accent/20 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent"
+            >
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="win">Won</option>
+              <option value="loss">Lost</option>
+              <option value="push">Push</option>
+            </select>
+          )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="mb-3">
-        <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>
-          {slip.title}
-        </h3>
-        <p className="text-muted mt-1">{slip.selection}</p>
-        {slip.event_name && (
-          <p className="text-muted-dark text-sm mt-1">{slip.event_name}</p>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="flex gap-6 mb-4">
-        <div>
-          <span className="text-xs text-muted-dark uppercase tracking-wider">Odds</span>
-          <p className="text-white font-bold text-lg" style={{ fontFamily: 'var(--font-number)' }}>{oddsStr}</p>
+      {loading ? (
+        <div className="flex items-center justify-center h-32">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
-        <div>
-          <span className="text-xs text-muted-dark uppercase tracking-wider">Stake</span>
-          <p className="text-white font-bold text-lg" style={{ fontFamily: 'var(--font-number)' }}>${parseFloat(slip.stake).toFixed(0)}</p>
-        </div>
-        {pl !== null && (
-          <div>
-            <span className="text-xs text-muted-dark uppercase tracking-wider">P/L</span>
-            <p className={`font-bold text-lg ${pl >= 0 ? 'text-win' : 'text-loss'}`} style={{ fontFamily: 'var(--font-number)' }}>
-              {pl >= 0 ? '+' : ''}{pl.toFixed(2)}
-            </p>
-          </div>
-        )}
-        <div>
-          <span className="text-xs text-muted-dark uppercase tracking-wider">Sport</span>
-          <p className="text-accent text-sm font-semibold">{SPORT_LABELS[slip.sport] || slip.sport.toUpperCase()}</p>
-        </div>
-        {slip.parlay_legs && (
-          <div>
-            <span className="text-xs text-muted-dark uppercase tracking-wider">Legs</span>
-            <p className="text-gold font-bold text-lg" style={{ fontFamily: 'var(--font-number)' }}>{slip.parlay_legs}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Tags */}
-      <div className="flex gap-2 mb-4">
-        <span className="px-2 py-1 bg-accent/10 text-accent text-xs rounded-full">{slip.bet_type.replace('_', ' ').toUpperCase()}</span>
-        <span className="px-2 py-1 bg-secondary text-muted-dark text-xs rounded-full">{slip.platform.toUpperCase()}</span>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-3 border-t border-accent/10">
-        <div className="flex gap-2">
-          {Object.entries(REACTION_MAP).map(([key, { icon: Icon }]) => {
-            const count = slip.reactions[key] || 0;
-            const isActive = slip.user_reaction === key;
-            return (
-              <button
-                key={key}
-                onClick={() => onReact(slip.id, key)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
-                  isActive ? 'bg-accent/20 text-accent' : 'bg-secondary text-muted-dark hover:text-white'
-                }`}
-              >
-                <Icon size={14} />
-                {count > 0 && <span>{count}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-dark flex items-center gap-1">
-            <Eye size={12} /> {slip.views_count}
-          </span>
-          {slip.capper_tier && slip.status === 'live' && slip.user_id !== currentUserId && (
-            <button
-              onClick={() => onTail(slip.id)}
-              className="px-3 py-1.5 bg-gold text-background rounded-lg text-xs font-bold hover:bg-gold/80 transition-colors"
-              style={{ fontFamily: 'var(--font-display)' }}
+      ) : view === 'bets' ? (
+        bets.length === 0 ? (
+          <div className="bg-card border border-accent/20 rounded-lg p-12 text-center">
+            <BarChart3 size={48} className="mx-auto text-muted-dark mb-4" />
+            <p className="text-muted-dark text-lg">No bets yet</p>
+            <p className="text-muted-dark text-sm mt-1">Add your first bet to start tracking your performance</p>
+            <Link
+              href="/dashboard/add-bet"
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-accent text-background rounded-lg font-semibold"
             >
-              TAIL THIS
-            </button>
-          )}
-          <Link
-            href={`/dashboard/slips/${slip.id}`}
-            className="text-xs text-accent hover:text-accent-light flex items-center gap-1"
-          >
-            <ExternalLink size={12} /> View
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CreateSlipModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    sport: 'nfl',
-    bet_type: 'spread',
-    selection: '',
-    odds: '',
-    stake: '',
-    platform: 'draftkings',
-    event_name: '',
-    parlay_legs: '',
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      await slipsAPI.create({
-        title: form.title,
-        description: form.description || undefined,
-        sport: form.sport,
-        bet_type: form.bet_type,
-        selection: form.selection,
-        odds: parseFloat(form.odds),
-        stake: parseFloat(form.stake),
-        platform: form.platform,
-        event_name: form.event_name || undefined,
-        parlay_legs: form.parlay_legs ? parseInt(form.parlay_legs) : undefined,
-      });
-      onCreated();
-    } catch (err: unknown) {
-      const errData = (err as { response?: { data?: { error?: string } } })?.response?.data;
-      setError(errData?.error || 'Failed to create slip');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-card border border-accent/20 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>SHARE A BET SLIP</h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Title</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="e.g. Chiefs -3.5 Lock of the Week"
-              className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-              required
-            />
+              <Plus size={16} /> Add Bet
+            </Link>
           </div>
+        ) : (
+          <div className="space-y-3">
+            {bets.map((bet) => {
+              const statusCfg = STATUS_CONFIG[bet.result] || STATUS_CONFIG.pending;
+              const StatusIcon = statusCfg.icon;
+              const pl = bet.profit_loss ? parseFloat(bet.profit_loss) : null;
+              const isPending = bet.result === 'pending';
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Sport</label>
-              <select
-                value={form.sport}
-                onChange={(e) => setForm({ ...form, sport: e.target.value })}
-                className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-              >
-                {['nfl','nba','mlb','nhl','cfb','cbb','soccer','prizepicks','dfs'].map(s => (
-                  <option key={s} value={s}>{SPORT_LABELS[s] || s.toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Bet Type</label>
-              <select
-                value={form.bet_type}
-                onChange={(e) => setForm({ ...form, bet_type: e.target.value })}
-                className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-              >
-                {['spread','moneyline','over_under','parlay','prop','player_prop','teaser','futures','other'].map(t => (
-                  <option key={t} value={t}>{t.replace('_', ' ').toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
+              return (
+                <div key={bet.id} className="bg-card border border-accent/20 rounded-lg p-4 hover:border-accent/40 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusCfg.color} ${statusCfg.bgColor}`}>
+                          <StatusIcon size={10} />
+                          {statusCfg.label}
+                        </span>
+                        <span className="text-[10px] text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
+                          {bet.sport.toUpperCase()}
+                        </span>
+                        {bet.trust_status === 'synced_verified' ? (
+                          <span className="text-[10px] text-accent flex items-center gap-0.5">✓ Synced</span>
+                        ) : bet.trust_status === 'manually_validated' ? (
+                          <span className="text-[10px] text-accent flex items-center gap-0.5">✓ Validated</span>
+                        ) : bet.trust_status === 'manual_unverified' ? (
+                          <span className="text-[10px] text-yellow-400 flex items-center gap-0.5">⚠ Unverified</span>
+                        ) : bet.is_pregame_verified ? (
+                          <span className="text-[10px] text-accent">Verified</span>
+                        ) : null}
+                      </div>
+                      <p className="text-white font-medium text-sm truncate">{bet.selection}</p>
+                      {bet.event_name && (
+                        <p className="text-xs text-muted-dark mt-0.5 truncate">{bet.event_name}</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-accent font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>
+                        {formatOdds(bet.odds)}
+                      </p>
+                      <p className="text-xs text-muted-dark">${parseFloat(bet.stake).toFixed(0)}</p>
+                      {pl !== null && !isPending && (
+                        <p className={`text-xs font-bold ${pl >= 0 ? 'text-win' : 'text-loss'}`} style={{ fontFamily: 'var(--font-number)' }}>
+                          {pl >= 0 ? '+' : ''}{pl.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions row */}
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-accent/10">
+                    <span className="text-[10px] text-muted-dark">{timeAgo(bet.created_at)}</span>
+                    <div className="flex items-center gap-2">
+                      {isPending && (
+                        <>
+                          <button
+                            onClick={() => handleSettle(bet.id, 'win')}
+                            className="px-2 py-1 text-[10px] font-bold text-win bg-win/10 rounded hover:bg-win/20 transition-colors"
+                          >
+                            WON
+                          </button>
+                          <button
+                            onClick={() => handleSettle(bet.id, 'loss')}
+                            className="px-2 py-1 text-[10px] font-bold text-loss bg-loss/10 rounded hover:bg-loss/20 transition-colors"
+                          >
+                            LOST
+                          </button>
+                          <button
+                            onClick={() => handleSettle(bet.id, 'push')}
+                            className="px-2 py-1 text-[10px] font-bold text-gold bg-gold/10 rounded hover:bg-gold/20 transition-colors"
+                          >
+                            PUSH
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleShareSlip(bet.id, bet)}
+                        className="px-2 py-1 text-[10px] font-bold text-accent bg-accent/10 rounded hover:bg-accent/20 transition-colors flex items-center gap-1"
+                      >
+                        <Share2 size={10} /> SHARE
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-
-          <div>
-            <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Selection</label>
-            <input
-              type="text"
-              value={form.selection}
-              onChange={(e) => setForm({ ...form, selection: e.target.value })}
-              placeholder="e.g. Kansas City Chiefs -3.5"
-              className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-              required
-            />
+        )
+      ) : (
+        /* Shared Slips View */
+        slips.length === 0 ? (
+          <div className="bg-card border border-accent/20 rounded-lg p-12 text-center">
+            <Share2 size={48} className="mx-auto text-muted-dark mb-4" />
+            <p className="text-muted-dark text-lg">No shared slips yet</p>
+            <p className="text-muted-dark text-sm mt-1">Share a bet to the community for reactions</p>
           </div>
+        ) : (
+          <div className="space-y-3">
+            {slips.map((slip) => {
+              const statusCfg = STATUS_CONFIG[slip.status] || STATUS_CONFIG.live;
+              const StatusIcon = statusCfg.icon;
+              const pl = slip.profit_loss ? parseFloat(slip.profit_loss) : null;
 
-          <div>
-            <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Event</label>
-            <input
-              type="text"
-              value={form.event_name}
-              onChange={(e) => setForm({ ...form, event_name: e.target.value })}
-              placeholder="e.g. Chiefs vs Bills - Sunday 1:00 PM"
-              className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-            />
+              return (
+                <div key={slip.id} className="bg-card border border-accent/20 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusCfg.color} ${statusCfg.bgColor}`}>
+                          <StatusIcon size={10} />
+                          {statusCfg.label}
+                        </span>
+                        <span className="text-[10px] text-muted-dark uppercase tracking-wider">
+                          {slip.sport.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-white font-medium text-sm">{slip.title}</p>
+                      <p className="text-xs text-muted-dark mt-0.5">{slip.selection}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-accent font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>
+                        {formatOdds(slip.odds)}
+                      </p>
+                      <p className="text-xs text-muted-dark">${parseFloat(slip.stake).toFixed(0)}</p>
+                      {pl !== null && (
+                        <p className={`text-xs font-bold ${pl >= 0 ? 'text-win' : 'text-loss'}`} style={{ fontFamily: 'var(--font-number)' }}>
+                          {pl >= 0 ? '+' : ''}{pl.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-accent/10">
+                    <span className="text-[10px] text-muted-dark">
+                      {slip.views_count} views · {slip.shares_count} shares · {timeAgo(slip.shared_at)}
+                    </span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/slips/${slip.id}`); }}
+                      className="px-2 py-1 text-[10px] font-bold text-accent bg-accent/10 rounded hover:bg-accent/20 transition-colors flex items-center gap-1"
+                    >
+                      <Link2 size={10} /> COPY LINK
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Odds</label>
-              <input
-                type="number"
-                value={form.odds}
-                onChange={(e) => setForm({ ...form, odds: e.target.value })}
-                placeholder="-110"
-                className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Stake ($)</label>
-              <input
-                type="number"
-                value={form.stake}
-                onChange={(e) => setForm({ ...form, stake: e.target.value })}
-                placeholder="100"
-                className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Parlay Legs</label>
-              <input
-                type="number"
-                value={form.parlay_legs}
-                onChange={(e) => setForm({ ...form, parlay_legs: e.target.value })}
-                placeholder="—"
-                className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Platform</label>
-            <select
-              value={form.platform}
-              onChange={(e) => setForm({ ...form, platform: e.target.value })}
-              className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-            >
-              {['draftkings','fanduel','betmgm','caesars','espn_bet','pointsbet','prizepicks','underdog','other'].map(p => (
-                <option key={p} value={p}>{p.replace('_', ' ').toUpperCase()}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs text-muted-dark uppercase tracking-wider mb-1">Description (optional)</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Why you like this bet..."
-              rows={2}
-              className="w-full bg-secondary border border-accent/20 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent resize-none"
-            />
-          </div>
-
-          {error && <p className="text-loss text-sm">{error}</p>}
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2 border border-accent/20 rounded-lg text-muted hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors disabled:opacity-50"
-            >
-              {submitting ? 'Sharing...' : 'Share Bet'}
-            </button>
-          </div>
-        </form>
-      </div>
+        )
+      )}
     </div>
   );
 }

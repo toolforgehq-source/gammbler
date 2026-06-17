@@ -5,8 +5,10 @@ import { profileAPI, badgesAPI, dfsAPI, scoresAPI } from '@/lib/api';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { useAuthStore } from '@/lib/store';
 import { Settings, Calendar, TrendingUp, Users, Download, Gamepad2, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import { shareableAPI } from '@/lib/api';
 import Link from 'next/link';
+import FollowListModal from '@/components/ui/FollowListModal';
 import {
   LineChart,
   Line,
@@ -48,6 +50,7 @@ interface BadgeInfo {
   name: string;
   description: string;
   icon: string;
+  image?: string;
   earned: boolean;
   earned_at: string | null;
 }
@@ -64,6 +67,8 @@ export default function ProfilePage() {
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [allBadges, setAllBadges] = useState<BadgeInfo[]>([]);
+  const [totalBadgeCount, setTotalBadgeCount] = useState(0);
+  const [totalEarnedCount, setTotalEarnedCount] = useState(0);
   const [scoreHistory, setScoreHistory] = useState<Record<string, Array<{ date: string; score: number }>>>({});
   const [dfsScores, setDfsScores] = useState<Array<{ sport: string; score: string; is_unlocked: boolean; total_contests: number; roi: string; cash_rate: string }>>([]);
   const [dfsBadges, setDfsBadges] = useState<Array<{ badge_type: string; earned_at: string }>>([]);
@@ -74,22 +79,26 @@ export default function ProfilePage() {
     verification_pct: number;
     verification_level: string;
   } | null>(null);
+  const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
   const cardSport = 'overall';
 
   useEffect(() => {
     async function fetchProfile() {
       if (!user) return;
       try {
-        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes, rankRes] = await Promise.all([
+        const [profileRes, badgesRes, historyRes, dfsScoresRes, dfsBadgesRes, rankRes, categoriesRes] = await Promise.all([
           profileAPI.get(user.username),
           badgesAPI.getAll(),
           profileAPI.scoreHistory(user.username),
           dfsAPI.getScores().catch(() => ({ data: { scores: [] } })),
           dfsAPI.getBadges().catch(() => ({ data: { badges: [] } })),
           scoresAPI.getMyRank().catch(() => ({ data: { rank: null, total_ranked: 0 } })),
+          badgesAPI.getAllCategories().catch(() => ({ data: { total: 0, earned: 0 } })),
         ]);
         setProfile(profileRes.data.profile);
         setAllBadges(badgesRes.data.badges || []);
+        setTotalBadgeCount(categoriesRes.data.total || 0);
+        setTotalEarnedCount(categoriesRes.data.earned || 0);
         setScoreHistory(historyRes.data.history || {});
         setDfsScores(dfsScoresRes.data.scores || []);
         setDfsBadges(dfsBadgesRes.data.badges || []);
@@ -246,10 +255,13 @@ export default function ProfilePage() {
                   <span className="text-muted-dark ml-1">P/L</span>
                 </div>
               )}
-              <div className="flex items-center gap-1 text-muted-dark">
+              <button onClick={() => setFollowListType('followers')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
                 <Users size={14} />
                 <span className="font-bold text-white">{profile.followers}</span> followers
-              </div>
+              </button>
+              <button onClick={() => setFollowListType('following')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
+                <span className="font-bold text-white">{profile.following}</span> following
+              </button>
             </div>
           </div>
         </div>
@@ -442,7 +454,15 @@ export default function ProfilePage() {
                 <p className="text-xs text-muted-dark mb-2">DFS Badges</p>
                 <div className="flex flex-wrap gap-2">
                   {dfsBadges.map((b) => (
-                    <span key={b.badge_type} className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-full text-xs text-accent capitalize">
+                    <span key={b.badge_type} className="inline-flex items-center gap-1 px-2 py-1 bg-accent/10 border border-accent/20 rounded-full text-xs text-accent capitalize">
+                      <Image
+                        src={`/badges/${b.badge_type}.png`}
+                        alt={b.badge_type.replace(/^dfs_/, '').replace(/_/g, ' ')}
+                        width={16}
+                        height={16}
+                        className="object-contain"
+                        unoptimized
+                      />
                       {b.badge_type.replace(/^dfs_/, '').replace(/_/g, ' ')}
                     </span>
                   ))}
@@ -457,7 +477,7 @@ export default function ProfilePage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm uppercase tracking-wider text-muted-dark font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Badges ({earnedBadges.length}/{allBadges.length})
+            Badges ({totalEarnedCount || earnedBadges.length}/{totalBadgeCount || allBadges.length})
           </h3>
           <Link href="/dashboard/achievements" className="text-xs text-accent hover:text-accent-light">
             View All
@@ -471,7 +491,16 @@ export default function ProfilePage() {
                 badge.earned ? 'border-gold/40' : 'border-accent/10 opacity-30'
               }`}
             >
-              <div className="text-2xl mb-1">{badge.icon}</div>
+              <div className={`relative mx-auto mb-1 ${badge.earned ? '' : 'grayscale'}`} style={{ width: 48, height: 48 }}>
+                <Image
+                  src={badge.image || `/badges/${badge.badge_type}.png`}
+                  alt={badge.name}
+                  width={48}
+                  height={48}
+                  className="object-contain drop-shadow-md"
+                  unoptimized
+                />
+              </div>
               <p className="text-xs font-medium text-white truncate">{badge.name}</p>
               {badge.earned && badge.earned_at && (
                 <p className="text-xs text-muted-dark mt-1">
@@ -482,6 +511,15 @@ export default function ProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* Follow List Modal */}
+      {followListType && profile && (
+        <FollowListModal
+          username={profile.username}
+          type={followListType}
+          onClose={() => setFollowListType(null)}
+        />
+      )}
     </div>
   );
 }

@@ -6,7 +6,9 @@ import { profileAPI, scoresAPI } from '@/lib/api';
 import VerifiedBadge from '@/components/ui/VerifiedBadge';
 import { useAuthStore } from '@/lib/store';
 import { Calendar, TrendingUp, Users, UserPlus, UserMinus, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
+import FollowListModal from '@/components/ui/FollowListModal';
 import {
   LineChart,
   Line,
@@ -41,6 +43,7 @@ interface Profile {
   is_self: boolean;
   total_profit_loss?: number;
   is_verified?: boolean;
+  national_rank?: { rank: number | null; total_ranked: number };
 }
 
 function getScoreColor(score: number): string {
@@ -60,6 +63,7 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [followListType, setFollowListType] = useState<'followers' | 'following' | null>(null);
   const [verification, setVerification] = useState<{
     verification_pct: number;
     verification_level: string;
@@ -199,6 +203,17 @@ export default function PublicProfilePage() {
               </div>
             )}
 
+            {/* National Rank */}
+            {profile.national_rank?.rank && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm font-bold text-accent" style={{ fontFamily: 'var(--font-number)' }}>
+                  #{profile.national_rank.rank}
+                </span>
+                <span className="text-xs text-muted-dark">National Rank</span>
+                <span className="text-xs text-muted-dark">/ {profile.national_rank.total_ranked} ranked</span>
+              </div>
+            )}
+
             {/* Stats Row */}
             <div className="flex items-center gap-3 sm:gap-6 text-sm flex-wrap">
               <div>
@@ -213,10 +228,13 @@ export default function PublicProfilePage() {
                 </span>
                 <span className="text-muted-dark ml-1">ROI</span>
               </div>
-              <div className="flex items-center gap-1 text-muted-dark">
+              <button onClick={() => setFollowListType('followers')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
                 <Users size={14} />
                 <span className="font-bold text-white">{profile.followers}</span> followers
-              </div>
+              </button>
+              <button onClick={() => setFollowListType('following')} className="flex items-center gap-1 text-muted-dark hover:text-accent transition-colors">
+                <span className="font-bold text-white">{profile.following}</span> following
+              </button>
             </div>
           </div>
         </div>
@@ -348,6 +366,16 @@ export default function PublicProfilePage() {
                 key={badge.badge_type}
                 className="bg-card border border-gold/40 rounded-lg p-3 text-center"
               >
+                <div className="relative mx-auto mb-1" style={{ width: 48, height: 48 }}>
+                  <Image
+                    src={`/badges/${badge.badge_type}.png`}
+                    alt={badge.badge_type.replace(/_/g, ' ')}
+                    width={48}
+                    height={48}
+                    className="object-contain drop-shadow-md"
+                    unoptimized
+                  />
+                </div>
                 <p className="text-xs font-medium text-white truncate capitalize">
                   {badge.badge_type.replace(/_/g, ' ')}
                 </p>
@@ -358,6 +386,15 @@ export default function PublicProfilePage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Follow List Modal */}
+      {followListType && (
+        <FollowListModal
+          username={profile.username}
+          type={followListType}
+          onClose={() => setFollowListType(null)}
+        />
       )}
     </div>
   );
