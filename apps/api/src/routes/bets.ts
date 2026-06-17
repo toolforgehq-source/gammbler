@@ -440,7 +440,8 @@ router.get('/stats', authMiddleware, async (req: Request, res: Response): Promis
       filtered = filtered.filter((b) => new Date(b.created_at) >= cutoff);
     }
 
-    const settled = filtered.filter((b) => ['win', 'loss', 'push'].includes(b.result));
+    // Exclude manual_unverified bets from verified stats (record, P/L, ROI)
+    const settled = filtered.filter((b) => ['win', 'loss', 'push'].includes(b.result) && b.trust_status !== 'manual_unverified');
     const wins = settled.filter((b) => b.result === 'win').length;
     const losses = settled.filter((b) => b.result === 'loss').length;
     const pushes = settled.filter((b) => b.result === 'push').length;

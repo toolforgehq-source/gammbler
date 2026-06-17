@@ -225,18 +225,34 @@ export async function validateBetAgainstOdds(
       return { validated: false, reason: 'no_events_available' };
     }
 
-    // Find matching event by team names
+    // Find matching event by team names — score each event and pick the best match
+    // to avoid city-name collisions (e.g., "Los Angeles" matching Dodgers instead of Angels)
     const searchText = `${selection} ${eventName || ''}`.toLowerCase();
     let matchedEvent: OddsResponse | undefined;
+    let bestScore = 0;
 
     for (const event of events) {
       const home = event.home_team.toLowerCase();
       const away = event.away_team.toLowerCase();
-      if (searchText.includes(home) || searchText.includes(away) ||
-          home.split(' ').some(w => w.length > 3 && searchText.includes(w)) ||
-          away.split(' ').some(w => w.length > 3 && searchText.includes(w))) {
+      let score = 0;
+
+      // Full team name match = strongest signal (4 points)
+      if (searchText.includes(home)) score += 4;
+      if (searchText.includes(away)) score += 4;
+
+      // Partial word match = weaker signal (1 point per matching word)
+      if (score === 0) {
+        for (const w of home.split(' ')) {
+          if (w.length > 3 && searchText.includes(w)) score += 1;
+        }
+        for (const w of away.split(' ')) {
+          if (w.length > 3 && searchText.includes(w)) score += 1;
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
         matchedEvent = event;
-        break;
       }
     }
 
