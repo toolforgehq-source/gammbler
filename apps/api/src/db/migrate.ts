@@ -775,6 +775,28 @@ async function migrate() {
       UPDATE bets SET trust_status = 'manually_validated' WHERE is_pregame_verified = true AND is_manual = true AND trust_status = 'manual_unverified';
       UPDATE bets SET trust_status = 'synced_verified' WHERE is_manual = false AND trust_status = 'manual_unverified';
     `);
+    // ── Verified H2H: add game data + auto-settlement columns ──
+    await client.query(`
+      ALTER TYPE challenge_status ADD VALUE IF NOT EXISTS 'auto_settled';
+    `);
+    await client.query(`
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS odds_api_event_id TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS market TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS challenger_line NUMERIC;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS challenger_odds INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS challengee_odds INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS home_team TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS away_team TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS home_score INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS away_score INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS settlement_method TEXT;
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS challenges_verified_idx ON challenges(is_verified);
+      CREATE INDEX IF NOT EXISTS challenges_event_id_idx ON challenges(odds_api_event_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

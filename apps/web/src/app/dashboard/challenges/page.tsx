@@ -14,6 +14,9 @@ import {
   Search,
   Download,
   Send,
+  ShieldCheck,
+  Loader2,
+  Zap,
 } from 'lucide-react';
 
 interface ChallengeUser {
@@ -41,6 +44,18 @@ interface Challenge {
   challengee: ChallengeUser | null;
   winner: ChallengeUser | null;
   is_challenger: boolean;
+  // Verified H2H fields
+  is_verified: boolean;
+  odds_api_event_id: string | null;
+  market: string | null;
+  challenger_line: string | null;
+  challenger_odds: number | null;
+  challengee_odds: number | null;
+  home_team: string | null;
+  away_team: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  settlement_method: string | null;
 }
 
 interface H2HStats {
@@ -56,6 +71,29 @@ interface SearchUser {
   avatar_url: string | null;
 }
 
+interface OddsOutcome {
+  name: string;
+  price: number;
+  point?: number;
+}
+
+interface Market {
+  key: string;
+  outcomes: OddsOutcome[];
+}
+
+interface GameEvent {
+  id: string;
+  home_team: string;
+  away_team: string;
+  commence_time: string;
+  bookmakers: Array<{
+    key: string;
+    title: string;
+    markets: Market[];
+  }>;
+}
+
 const SPORTS = [
   { value: 'nfl', label: 'NFL' },
   { value: 'nba', label: 'NBA' },
@@ -66,18 +104,76 @@ const SPORTS = [
   { value: 'soccer', label: 'Soccer' },
 ];
 
-function StatusBadge({ status }: { status: string }) {
+function formatOdds(odds: number): string {
+  return odds > 0 ? `+${odds}` : String(odds);
+}
+
+function formatGameTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+  const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (isToday) return `Today ${timeStr}`;
+  if (isTomorrow) return `Tomorrow ${timeStr}`;
+  return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ` ${timeStr}`;
+}
+
+function getConsensusOdds(game: GameEvent, marketKey: string): Market | null {
+  const preferred = ['draftkings', 'fanduel', 'betmgm', 'caesars'];
+  for (const pref of preferred) {
+    const book = game.bookmakers.find(b => b.key === pref);
+    if (book) {
+      const market = book.markets.find(m => m.key === marketKey);
+      if (market) return market;
+    }
+  }
+  for (const book of game.bookmakers) {
+    const market = book.markets.find(m => m.key === marketKey);
+    if (market) return market;
+  }
+  return null;
+}
+
+function StatusBadge({ status, isVerified }: { status: string; isVerified?: boolean }) {
   const styles: Record<string, string> = {
     pending: 'bg-yellow-500/20 text-yellow-400',
     accepted: 'bg-blue-500/20 text-blue-400',
     declined: 'bg-red-500/20 text-red-400',
     settled: 'bg-green-500/20 text-green-400',
+    auto_settled: 'bg-green-500/20 text-green-400',
     cancelled: 'bg-gray-500/20 text-gray-400',
     expired: 'bg-gray-500/20 text-gray-400',
   };
+  const displayStatus = status === 'auto_settled' ? 'settled' : status;
   return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${styles[status] || styles.pending}`}>
-      {status}
+    <div className="flex items-center gap-1.5">
+      {isVerified && (
+        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/20 text-accent uppercase tracking-wider">
+          <ShieldCheck size={10} />
+          Verified
+        </span>
+      )}
+      {!isVerified && status !== 'pending' && (
+        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-400 uppercase tracking-wider">
+          Custom
+        </span>
+      )}
+      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${styles[status] || styles.pending}`}>
+        {displayStatus}
+      </span>
+    </div>
+  );
+}
+
+function MarketLabel({ market }: { market: string | null }) {
+  if (!market) return null;
+  const labels: Record<string, string> = { h2h: 'Moneyline', spreads: 'Spread', totals: 'Over/Under' };
+  return (
+    <span className="text-xs px-1.5 py-0.5 bg-accent/10 text-accent rounded font-medium">
+      {labels[market] || market}
     </span>
   );
 }
@@ -86,17 +182,18 @@ function ChallengesPageInner() {
   const searchParams = useSearchParams();
   const opponentParam = searchParams.get('opponent');
   const { user } = useAuthStore();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [challengesList, setChallengesList] = useState<Challenge[]>([]);
   const [stats, setStats] = useState<H2HStats>({ wins: 0, losses: 0, draws: 0, pending_received: 0 });
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'all' | 'pending' | 'active' | 'settled'>('all');
   const [showCreate, setShowCreate] = useState(!!opponentParam);
 
   // Create form state
+  const [createMode, setCreateMode] = useState<'verified' | 'custom'>('verified');
   const [searchQuery, setSearchQuery] = useState(opponentParam || '');
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
-  const [sport, setSport] = useState('nfl');
+  const [sport, setSport] = useState('mlb');
   const [eventName, setEventName] = useState('');
   const [challengerPick, setChallengerPick] = useState('');
   const [message, setMessage] = useState('');
@@ -104,9 +201,18 @@ function ChallengesPageInner() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
+  // Verified game picker state
+  const [games, setGames] = useState<GameEvent[]>([]);
+  const [gamesLoading, setGamesLoading] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<GameEvent | null>(null);
+  const [selectedMarket, setSelectedMarket] = useState<'h2h' | 'spreads' | 'totals'>('h2h');
+  const [selectedOutcome, setSelectedOutcome] = useState<OddsOutcome | null>(null);
+  const [opponentOutcome, setOpponentOutcome] = useState<OddsOutcome | null>(null);
+
   // Accept modal
   const [acceptingChallenge, setAcceptingChallenge] = useState<Challenge | null>(null);
   const [acceptPick, setAcceptPick] = useState('');
+  const [accepting, setAccepting] = useState(false);
 
   // Settle modal
   const [settlingChallenge, setSettlingChallenge] = useState<Challenge | null>(null);
@@ -126,7 +232,7 @@ function ChallengesPageInner() {
           challengesAPI.list(statusFilter ? { status: statusFilter } : undefined),
           challengesAPI.stats(),
         ]);
-        setChallenges(challengesRes.data.challenges || []);
+        setChallengesList(challengesRes.data.challenges || []);
         setStats(statsRes.data);
       } catch {
         // ignore
@@ -154,8 +260,7 @@ function ChallengesPageInner() {
   // User search debounce
   useEffect(() => {
     if (searchQuery.length < 2) {
-      const clear = () => setSearchResults([]);
-      clear();
+      setSearchResults([]);
       return;
     }
     const timeout = setTimeout(async () => {
@@ -169,26 +274,92 @@ function ChallengesPageInner() {
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
+  // Fetch games when sport changes (verified mode)
+  useEffect(() => {
+    if (createMode !== 'verified' || !showCreate) return;
+    setGamesLoading(true);
+    setGames([]);
+    setSelectedGame(null);
+    setSelectedOutcome(null);
+    setOpponentOutcome(null);
+    challengesAPI.games(sport).then((res) => {
+      setGames(res.data.games || []);
+    }).catch(() => {
+      setGames([]);
+    }).finally(() => {
+      setGamesLoading(false);
+    });
+  }, [sport, createMode, showCreate]);
+
+  function selectOutcome(game: GameEvent, market: 'h2h' | 'spreads' | 'totals', outcome: OddsOutcome) {
+    setSelectedGame(game);
+    setSelectedMarket(market);
+    setSelectedOutcome(outcome);
+    setEventName(`${game.away_team} @ ${game.home_team}`);
+
+    // Determine the pick text
+    if (market === 'h2h') {
+      setChallengerPick(outcome.name);
+    } else if (market === 'spreads') {
+      const pointStr = outcome.point != null ? (outcome.point > 0 ? `+${outcome.point}` : String(outcome.point)) : '';
+      setChallengerPick(`${outcome.name} ${pointStr}`);
+    } else if (market === 'totals') {
+      const pointStr = outcome.point != null ? String(outcome.point) : '';
+      setChallengerPick(`${outcome.name} ${pointStr}`);
+    }
+
+    // Find the opponent's outcome
+    const marketData = getConsensusOdds(game, market);
+    if (marketData) {
+      const opp = marketData.outcomes.find(o => o.name !== outcome.name);
+      setOpponentOutcome(opp || null);
+    }
+  }
+
   async function handleCreate() {
-    if (!selectedUser || !eventName || !challengerPick) return;
+    if (!selectedUser) return;
+
+    if (createMode === 'verified') {
+      if (!selectedGame || !selectedOutcome) return;
+    } else {
+      if (!eventName || !challengerPick) return;
+    }
+
     setCreating(true);
     setCreateError('');
     try {
-      await challengesAPI.create({
+      const payload: Parameters<typeof challengesAPI.create>[0] = {
         challengee_username: selectedUser.username,
         sport,
         event_name: eventName,
         challenger_pick: challengerPick,
         message: message || undefined,
         stake_display: stakeDisplay || undefined,
-      });
+      };
+
+      if (createMode === 'verified' && selectedGame && selectedOutcome) {
+        payload.is_verified = true;
+        payload.odds_api_event_id = selectedGame.id;
+        payload.market = selectedMarket;
+        payload.event_start_time = selectedGame.commence_time;
+        payload.challenger_odds = selectedOutcome.price;
+        payload.home_team = selectedGame.home_team;
+        payload.away_team = selectedGame.away_team;
+
+        if (selectedMarket === 'spreads' && selectedOutcome.point != null) {
+          payload.challenger_line = selectedOutcome.point;
+        } else if (selectedMarket === 'totals' && selectedOutcome.point != null) {
+          payload.challenger_line = selectedOutcome.point;
+        }
+
+        if (opponentOutcome) {
+          payload.challengee_odds = opponentOutcome.price;
+        }
+      }
+
+      await challengesAPI.create(payload);
       setShowCreate(false);
-      setSelectedUser(null);
-      setSearchQuery('');
-      setEventName('');
-      setChallengerPick('');
-      setMessage('');
-      setStakeDisplay('');
+      resetCreateForm();
       refresh();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } };
@@ -198,15 +369,36 @@ function ChallengesPageInner() {
     }
   }
 
-  async function handleAccept() {
-    if (!acceptingChallenge || !acceptPick) return;
+  function resetCreateForm() {
+    setSelectedUser(null);
+    setSearchQuery('');
+    setEventName('');
+    setChallengerPick('');
+    setMessage('');
+    setStakeDisplay('');
+    setSelectedGame(null);
+    setSelectedOutcome(null);
+    setOpponentOutcome(null);
+    setCreateMode('verified');
+  }
+
+  async function handleAccept(challenge: Challenge) {
+    setAccepting(true);
     try {
-      await challengesAPI.accept(acceptingChallenge.id, acceptPick);
+      if (challenge.is_verified) {
+        // Verified: no pick needed, server auto-assigns
+        await challengesAPI.accept(challenge.id);
+      } else {
+        if (!acceptPick) return;
+        await challengesAPI.accept(challenge.id, acceptPick);
+      }
       setAcceptingChallenge(null);
       setAcceptPick('');
       refresh();
     } catch {
       // ignore
+    } finally {
+      setAccepting(false);
     }
   }
 
@@ -273,7 +465,7 @@ function ChallengesPageInner() {
           <p className="text-sm text-muted-dark mt-1">Challenge friends, pick your side, prove who&apos;s sharper.</p>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => { setShowCreate(true); setCreateMode('verified'); }}
           className="flex items-center gap-2 px-4 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors text-sm self-start sm:self-auto"
           style={{ fontFamily: 'var(--font-display)' }}
         >
@@ -320,18 +512,25 @@ function ChallengesPageInner() {
 
       {/* Challenges list */}
       <div className="space-y-3">
-        {challenges.length === 0 ? (
+        {challengesList.length === 0 ? (
           <div className="bg-card border border-accent/20 rounded-lg p-12 text-center">
             <Target size={40} className="text-muted-dark mx-auto mb-4" />
             <p className="text-muted-dark">No challenges yet. Send one!</p>
           </div>
         ) : (
-          challenges.map((challenge) => (
+          challengesList.map((challenge) => (
             <ChallengeCard
               key={challenge.id}
               challenge={challenge}
               userId={user?.id || ''}
-              onAccept={(c) => { setAcceptingChallenge(c); setAcceptPick(''); }}
+              onAccept={(c) => {
+                if (c.is_verified) {
+                  handleAccept(c);
+                } else {
+                  setAcceptingChallenge(c);
+                  setAcceptPick('');
+                }
+              }}
               onDecline={handleDecline}
               onCancel={handleCancel}
               onSettle={(c) => setSettlingChallenge(c)}
@@ -341,16 +540,49 @@ function ChallengesPageInner() {
         )}
       </div>
 
-      {/* Create Challenge Modal */}
+      {/* ═══════ Create Challenge Modal ═══════ */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-secondary border border-accent/20 rounded-xl w-full max-w-lg p-6 space-y-5">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-secondary border border-accent/20 rounded-xl w-full max-w-lg p-6 space-y-5 my-8">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>New Challenge</h2>
-              <button onClick={() => setShowCreate(false)} className="text-muted-dark hover:text-white">
+              <button onClick={() => { setShowCreate(false); resetCreateForm(); }} className="text-muted-dark hover:text-white">
                 <X size={20} />
               </button>
             </div>
+
+            {/* Mode Toggle */}
+            <div className="flex gap-1 bg-card rounded-lg p-1">
+              <button
+                onClick={() => setCreateMode('verified')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-semibold transition-colors ${
+                  createMode === 'verified' ? 'bg-accent/20 text-accent' : 'text-muted-dark hover:text-white'
+                }`}
+              >
+                <ShieldCheck size={12} />
+                Verified — Pick a Game
+              </button>
+              <button
+                onClick={() => setCreateMode('custom')}
+                className={`flex-1 py-2 rounded-md text-xs font-semibold transition-colors ${
+                  createMode === 'custom' ? 'bg-gray-500/20 text-gray-300' : 'text-muted-dark hover:text-white'
+                }`}
+              >
+                Custom — Type Your Own
+              </button>
+            </div>
+
+            {createMode === 'verified' && (
+              <p className="text-xs text-accent flex items-center gap-1.5">
+                <ShieldCheck size={12} />
+                Verified challenges use real game data and auto-settle when the game ends.
+              </p>
+            )}
+            {createMode === 'custom' && (
+              <p className="text-xs text-muted-dark">
+                Custom challenges are for fun. They require manual settlement and are labeled &quot;Custom&quot; in your H2H record.
+              </p>
+            )}
 
             {/* User Search */}
             <div>
@@ -378,7 +610,7 @@ function ChallengesPageInner() {
                     className="w-full bg-card border border-accent/20 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-muted-dark focus:border-accent/50 focus:outline-none"
                   />
                   {searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-accent/20 rounded-lg overflow-hidden z-10">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-accent/20 rounded-lg overflow-hidden z-10 max-h-48 overflow-y-auto">
                       {searchResults.map((u) => (
                         <button
                           key={u.id}
@@ -417,35 +649,146 @@ function ChallengesPageInner() {
               </div>
             </div>
 
-            {/* Game / Event */}
-            <div>
-              <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                Game / Event
-              </label>
-              <input
-                type="text"
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-                placeholder="e.g., Chiefs vs Eagles"
-                className="w-full bg-card border border-accent/20 rounded-lg px-4 py-2 text-sm text-white placeholder-muted-dark focus:border-accent/50 focus:outline-none"
-              />
-            </div>
+            {/* ─── Verified Mode: Game Picker ─── */}
+            {createMode === 'verified' && (
+              <>
+                {/* Market Tabs */}
+                <div>
+                  <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+                    Market
+                  </label>
+                  <div className="flex gap-1 bg-card rounded-lg p-1">
+                    {([
+                      { key: 'h2h' as const, label: 'Moneyline' },
+                      { key: 'spreads' as const, label: 'Spread' },
+                      { key: 'totals' as const, label: 'Over/Under' },
+                    ]).map((m) => (
+                      <button
+                        key={m.key}
+                        onClick={() => { setSelectedMarket(m.key); setSelectedGame(null); setSelectedOutcome(null); setOpponentOutcome(null); }}
+                        className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                          selectedMarket === m.key ? 'bg-accent/20 text-accent' : 'text-muted-dark hover:text-white'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Your Pick */}
-            <div>
-              <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                Your Pick
-              </label>
-              <input
-                type="text"
-                value={challengerPick}
-                onChange={(e) => setChallengerPick(e.target.value)}
-                placeholder="e.g., Chiefs -3.5"
-                className="w-full bg-card border border-accent/20 rounded-lg px-4 py-2 text-sm text-white placeholder-muted-dark focus:border-accent/50 focus:outline-none"
-              />
-            </div>
+                {/* Games List */}
+                <div>
+                  <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+                    Pick a Game ({games.length} available)
+                  </label>
+                  <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                    {gamesLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 size={20} className="animate-spin text-accent" />
+                        <span className="text-sm text-muted-dark ml-2">Loading games...</span>
+                      </div>
+                    ) : games.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-muted-dark">No upcoming games for {SPORTS.find(s => s.value === sport)?.label || sport}.</p>
+                      </div>
+                    ) : (
+                      games.map((game) => {
+                        const market = getConsensusOdds(game, selectedMarket);
+                        if (!market) return null;
+                        const isSelected = selectedGame?.id === game.id;
 
-            {/* Bragging Rights / Stakes */}
+                        return (
+                          <div
+                            key={game.id}
+                            className={`bg-card border rounded-lg p-3 ${
+                              isSelected ? 'border-accent' : 'border-accent/20'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs text-muted-dark">{formatGameTime(game.commence_time)}</span>
+                            </div>
+                            <div className="flex items-center justify-between mb-2 text-sm">
+                              <span className="text-white font-medium">{game.away_team}</span>
+                              <span className="text-xs text-muted-dark">@</span>
+                              <span className="text-white font-medium">{game.home_team}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {market.outcomes.map((outcome) => {
+                                const isMyPick = isSelected && selectedOutcome?.name === outcome.name;
+                                const pointStr = outcome.point != null
+                                  ? ` (${outcome.point > 0 ? '+' : ''}${outcome.point})`
+                                  : '';
+                                return (
+                                  <button
+                                    key={outcome.name}
+                                    onClick={() => selectOutcome(game, selectedMarket, outcome)}
+                                    className={`py-2 px-3 rounded-md text-xs font-semibold transition-colors border ${
+                                      isMyPick
+                                        ? 'bg-accent text-background border-accent'
+                                        : 'bg-secondary text-white border-accent/20 hover:border-accent/50'
+                                    }`}
+                                  >
+                                    <span className="block">{outcome.name}{pointStr}</span>
+                                    <span className="block text-[11px] mt-0.5 opacity-80">{formatOdds(outcome.price)}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Selected Pick Summary */}
+                {selectedGame && selectedOutcome && (
+                  <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 space-y-1">
+                    <p className="text-xs text-accent font-semibold uppercase tracking-wider">Your Pick</p>
+                    <p className="text-sm text-white font-bold">{challengerPick} {formatOdds(selectedOutcome.price)}</p>
+                    <p className="text-xs text-muted-dark">{eventName}</p>
+                    {opponentOutcome && (
+                      <p className="text-xs text-muted-dark">
+                        Opponent gets: <span className="text-white">{opponentOutcome.name}{opponentOutcome.point != null ? ` (${opponentOutcome.point > 0 ? '+' : ''}${opponentOutcome.point})` : ''} {formatOdds(opponentOutcome.price)}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ─── Custom Mode: Free Text ─── */}
+            {createMode === 'custom' && (
+              <>
+                <div>
+                  <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+                    Game / Event
+                  </label>
+                  <input
+                    type="text"
+                    value={eventName}
+                    onChange={(e) => setEventName(e.target.value)}
+                    placeholder="e.g., Chiefs vs Eagles"
+                    className="w-full bg-card border border-accent/20 rounded-lg px-4 py-2 text-sm text-white placeholder-muted-dark focus:border-accent/50 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+                    Your Pick
+                  </label>
+                  <input
+                    type="text"
+                    value={challengerPick}
+                    onChange={(e) => setChallengerPick(e.target.value)}
+                    placeholder="e.g., Chiefs -3.5"
+                    className="w-full bg-card border border-accent/20 rounded-lg px-4 py-2 text-sm text-white placeholder-muted-dark focus:border-accent/50 focus:outline-none"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Stakes + Message (both modes) */}
             <div>
               <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
                 Stakes (optional — bragging rights only)
@@ -459,7 +802,6 @@ function ChallengesPageInner() {
               />
             </div>
 
-            {/* Message */}
             <div>
               <label className="text-xs text-muted-dark uppercase tracking-wider block mb-2" style={{ fontFamily: 'var(--font-display)' }}>
                 Trash Talk (optional)
@@ -479,19 +821,23 @@ function ChallengesPageInner() {
 
             <button
               onClick={handleCreate}
-              disabled={creating || !selectedUser || !eventName || !challengerPick}
+              disabled={
+                creating || !selectedUser ||
+                (createMode === 'verified' ? !selectedGame || !selectedOutcome : !eventName || !challengerPick)
+              }
               className="w-full flex items-center justify-center gap-2 bg-accent text-background py-3 rounded-lg font-semibold hover:bg-accent-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: 'var(--font-display)' }}
             >
+              {createMode === 'verified' && <ShieldCheck size={16} />}
               <Send size={16} />
-              {creating ? 'Sending...' : 'Send Challenge'}
+              {creating ? 'Sending...' : createMode === 'verified' ? 'Send Verified Challenge' : 'Send Custom Challenge'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Accept Challenge Modal */}
-      {acceptingChallenge && (
+      {/* ═══════ Accept Challenge Modal (Custom only) ═══════ */}
+      {acceptingChallenge && !acceptingChallenge.is_verified && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-secondary border border-accent/20 rounded-xl w-full max-w-md p-6 space-y-5">
             <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Accept Challenge</h2>
@@ -532,7 +878,7 @@ function ChallengesPageInner() {
                 Cancel
               </button>
               <button
-                onClick={handleAccept}
+                onClick={() => handleAccept(acceptingChallenge)}
                 disabled={!acceptPick}
                 className="flex-1 flex items-center justify-center gap-2 py-2 bg-accent text-background rounded-lg font-semibold hover:bg-accent-light transition-colors disabled:opacity-50 text-sm"
               >
@@ -544,7 +890,7 @@ function ChallengesPageInner() {
         </div>
       )}
 
-      {/* Settle Challenge Modal */}
+      {/* ═══════ Settle Challenge Modal (Custom only) ═══════ */}
       {settlingChallenge && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-secondary border border-accent/20 rounded-xl w-full max-w-md p-6 space-y-5">
@@ -610,7 +956,7 @@ function ChallengeCard({
   const isWinner = challenge.winner_id === userId;
   const isPending = challenge.status === 'pending';
   const isAccepted = challenge.status === 'accepted';
-  const isSettled = challenge.status === 'settled';
+  const isSettled = challenge.status === 'settled' || challenge.status === 'auto_settled';
 
   return (
     <div className={`bg-card border rounded-lg p-5 ${
@@ -635,7 +981,7 @@ function ChallengeCard({
             <span className="text-sm font-medium text-white">@{challenge.challengee?.username}</span>
           </div>
         </div>
-        <StatusBadge status={challenge.status} />
+        <StatusBadge status={challenge.status} isVerified={challenge.is_verified} />
       </div>
 
       <div className="space-y-2 mb-3">
@@ -643,19 +989,44 @@ function ChallengeCard({
           <span className="text-xs text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
             {challenge.sport.toUpperCase()}
           </span>
+          <MarketLabel market={challenge.market} />
           <span className="text-sm text-white font-medium">{challenge.event_name}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-secondary/50 rounded-lg p-2">
             <p className="text-xs text-muted-dark">@{challenge.challenger?.username}&apos;s pick</p>
-            <p className="text-sm text-white font-semibold">{challenge.challenger_pick}</p>
+            <p className="text-sm text-white font-semibold">
+              {challenge.challenger_pick}
+              {challenge.challenger_odds != null && (
+                <span className="text-xs text-muted-dark ml-1">({formatOdds(challenge.challenger_odds)})</span>
+              )}
+            </p>
           </div>
           <div className="bg-secondary/50 rounded-lg p-2">
             <p className="text-xs text-muted-dark">@{challenge.challengee?.username}&apos;s pick</p>
-            <p className="text-sm text-white font-semibold">{challenge.challengee_pick || 'Waiting...'}</p>
+            <p className="text-sm text-white font-semibold">
+              {challenge.challengee_pick || 'Waiting...'}
+              {challenge.challengee_odds != null && challenge.challengee_pick && (
+                <span className="text-xs text-muted-dark ml-1">({formatOdds(challenge.challengee_odds)})</span>
+              )}
+            </p>
           </div>
         </div>
+
+        {/* Final score for auto-settled */}
+        {isSettled && challenge.home_score != null && challenge.away_score != null && (
+          <div className="flex items-center gap-2 bg-secondary/30 rounded-lg p-2">
+            <Zap size={12} className="text-accent" />
+            <span className="text-xs text-muted-dark">Final Score:</span>
+            <span className="text-sm text-white font-bold">
+              {challenge.away_team || 'Away'} {challenge.away_score} — {challenge.home_team || 'Home'} {challenge.home_score}
+            </span>
+            {challenge.settlement_method === 'auto' && (
+              <span className="text-xs text-accent ml-auto">Auto-settled</span>
+            )}
+          </div>
+        )}
 
         {challenge.stake_display && (
           <p className="text-xs text-gold">Stakes: {challenge.stake_display}</p>
@@ -677,6 +1048,13 @@ function ChallengeCard({
         </div>
       )}
 
+      {/* Push display */}
+      {isSettled && !challenge.winner_id && (
+        <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-gray-500/10">
+          <span className="text-sm font-semibold text-gray-400">Push — no winner</span>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-2 pt-2 border-t border-accent/10">
         {/* Pending + I'm the challengee → Accept/Decline */}
@@ -687,7 +1065,7 @@ function ChallengeCard({
               className="flex items-center gap-1 px-3 py-1.5 bg-accent text-background rounded-md text-xs font-semibold hover:bg-accent-light transition-colors"
             >
               <Check size={12} />
-              Accept
+              {challenge.is_verified ? 'Accept (auto-pick)' : 'Accept'}
             </button>
             <button
               onClick={() => onDecline(challenge.id)}
@@ -710,8 +1088,8 @@ function ChallengeCard({
           </button>
         )}
 
-        {/* Accepted → Settle */}
-        {isAccepted && (
+        {/* Accepted → Settle (custom only) or Waiting (verified) */}
+        {isAccepted && !challenge.is_verified && (
           <button
             onClick={() => onSettle(challenge)}
             className="flex items-center gap-1 px-3 py-1.5 bg-accent text-background rounded-md text-xs font-semibold hover:bg-accent-light transition-colors"
@@ -719,6 +1097,12 @@ function ChallengeCard({
             <Trophy size={12} />
             Settle
           </button>
+        )}
+        {isAccepted && challenge.is_verified && (
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-400 rounded-md text-xs font-medium">
+            <Clock size={12} />
+            Waiting for game result...
+          </span>
         )}
 
         {/* Settled → Download result card */}

@@ -540,7 +540,7 @@ export const leagueEntries = pgTable('league_entries', {
 // ── Head-to-Head Challenges ─────────────────────────────────
 
 export const challengeStatusEnum = pgEnum('challenge_status', [
-  'pending', 'accepted', 'declined', 'settled', 'cancelled', 'expired',
+  'pending', 'accepted', 'declined', 'settled', 'cancelled', 'expired', 'auto_settled',
 ]);
 
 export const challenges = pgTable('challenges', {
@@ -559,6 +559,18 @@ export const challenges = pgTable('challenges', {
   settled_at: timestamp('settled_at', { withTimezone: true }),
   expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  // Verified H2H fields
+  is_verified: boolean('is_verified').default(false).notNull(),
+  odds_api_event_id: text('odds_api_event_id'),
+  market: text('market'), // 'h2h', 'spreads', 'totals'
+  challenger_line: numeric('challenger_line'),
+  challenger_odds: integer('challenger_odds'),
+  challengee_odds: integer('challengee_odds'),
+  home_team: text('home_team'),
+  away_team: text('away_team'),
+  home_score: integer('home_score'),
+  away_score: integer('away_score'),
+  settlement_method: text('settlement_method'), // 'auto' or 'manual'
 }, (table) => ({
   challengerIdx: index('challenges_challenger_idx').on(table.challenger_id),
   challengeeIdx: index('challenges_challengee_idx').on(table.challengee_id),
@@ -566,6 +578,8 @@ export const challenges = pgTable('challenges', {
   winnerIdx: index('challenges_winner_idx').on(table.winner_id),
   sportIdx: index('challenges_sport_idx').on(table.sport),
   expiresAtIdx: index('challenges_expires_at_idx').on(table.expires_at),
+  verifiedIdx: index('challenges_verified_idx').on(table.is_verified),
+  eventIdIdx: index('challenges_event_id_idx').on(table.odds_api_event_id),
 }));
 
 // ── Score Snapshots (historical Gammbler Score tracking) ─────
