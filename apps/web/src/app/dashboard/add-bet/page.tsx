@@ -5,7 +5,7 @@ import { betsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import {
   Upload, Plus, Check, AlertCircle, Shield, Clock, Camera, Loader2,
-  Search, Lock, Zap,
+  Search, Lock, Zap, AlertTriangle, ShieldCheck, ShieldAlert,
 } from 'lucide-react';
 
 const SPORTS = ['nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer'];
@@ -101,17 +101,51 @@ export default function AddBetPage() {
   const screenshotRef = useRef<HTMLInputElement>(null);
   const [parsing, setParsing] = useState(false);
   const [parseMessage, setParseMessage] = useState('');
+  const [gamesError, setGamesError] = useState('');
+  const [sportCounts, setSportCounts] = useState<Record<string, number>>({});
+  const [lastTrustStatus, setLastTrustStatus] = useState<string | null>(null);
+
+  // On mount, detect which sports have games and auto-select
+  useEffect(() => {
+    const detectActiveSport = async () => {
+      try {
+        const res = await betsAPI.activeSports();
+        const sports: Array<{ sport: string; gameCount: number }> = res.data.sports || [];
+        const counts: Record<string, number> = {};
+        for (const s of sports) counts[s.sport] = s.gameCount;
+        setSportCounts(counts);
+
+        // Auto-select first sport with games (prefer MLB, NHL, NBA, NFL in that order for seasonality)
+        const preferred = ['mlb', 'nba', 'nhl', 'soccer', 'nfl', 'cfb', 'cbb'];
+        const active = preferred.find(s => (counts[s] || 0) > 0);
+        if (active) setSport(active);
+      } catch {
+        // Silently fail — user can still pick manually
+      }
+    };
+    detectActiveSport();
+  }, []);
 
   // Fetch games with odds when sport changes
   useEffect(() => {
     if (tab === 'games') {
       const loadGames = async () => {
         setGamesLoading(true);
+        setGamesError('');
         try {
           const res = await betsAPI.gamesWithOdds(sport);
           setGames(res.data.games || []);
-        } catch {
+          if ((res.data.games || []).length === 0) {
+            setGamesError(`No upcoming games for ${sport.toUpperCase()}. This sport may be in the offseason.`);
+          }
+        } catch (err: unknown) {
           setGames([]);
+          const errData = (err as { response?: { data?: { error?: string; code?: string } } })?.response?.data;
+          if (errData?.code === 'ODDS_API_ERROR') {
+            setGamesError('Failed to load games from the odds provider. Please try again in a moment.');
+          } else {
+            setGamesError('Unable to load games. Check your connection and try again.');
+          }
         } finally {
           setGamesLoading(false);
         }
@@ -164,10 +198,15 @@ export default function AddBetPage() {
         event_name: eventName || undefined,
         result: 'pending',
       });
-      const verified = res.data.pregame_verified;
-      setSuccess(verified
-        ? 'Bet locked in — Pre-Game Verified ✓'
-        : 'Bet added successfully');
+      const trustStatus = res.data.trust_status;
+      setLastTrustStatus(trustStatus);
+      if (trustStatus === 'manually_validated') {
+        setSuccess('Bet locked in — Validated against real odds ✓');
+      } else if (trustStatus === 'manual_unverified') {
+        setSuccess('Bet saved for personal tracking — marked UNVERIFIED (does not count toward verified score)');
+      } else {
+        setSuccess('Bet added successfully');
+      }
       // Reset
       setSelection('');
       setOdds('');
@@ -301,8 +340,13 @@ export default function AddBetPage() {
 
       {/* Feedback */}
       {success && (
-        <div className="bg-win/10 border border-win/40 rounded-lg p-3 text-sm text-win flex items-center gap-2">
-          <Check size={16} /> {success}
+        <div className={`border rounded-lg p-3 text-sm flex items-center gap-2 ${
+          lastTrustStatus === 'manual_unverified'
+            ? 'bg-yellow-500/10 border-yellow-500/40 text-yellow-400'
+            : 'bg-win/10 border-win/40 text-win'
+        }`}>
+          {lastTrustStatus === 'manual_unverified' ? <ShieldAlert size={16} /> : lastTrustStatus === 'manually_validated' ? <ShieldCheck size={16} /> : <Check size={16} />}
+          {success}
         </div>
       )}
       {error && (
@@ -316,18 +360,26 @@ export default function AddBetPage() {
         <div className="space-y-4">
           {/* Sport selector */}
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {SPORTS.map(s => (
-              <button
-                key={s}
-                onClick={() => { setSport(s); setSelectedGame(null); setSelectedOutcome(null); }}
-                className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
-                  sport === s ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20 hover:border-accent/40'
-                }`}
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                {s.toUpperCase()}
-              </button>
-            ))}
+            {SPORTS.map(s => {
+              const count = sportCounts[s];
+              return (
+                <button
+                  key={s}
+                  onClick={() => { setSport(s); setSelectedGame(null); setSelectedOutcome(null); setGamesError(''); }}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors relative ${
+                    sport === s ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20 hover:border-accent/40'
+                  }`}
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {s.toUpperCase()}
+                  {count !== undefined && count > 0 && (
+                    <span className={`ml-1.5 text-[10px] font-normal ${sport === s ? 'text-background/70' : 'text-accent/60'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search games */}
@@ -360,8 +412,24 @@ export default function AddBetPage() {
 
           {/* Games list */}
           {gamesLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center justify-center h-40">
+              <div className="text-center">
+                <Loader2 size={32} className="text-accent mx-auto mb-3 animate-spin" />
+                <p className="text-sm text-muted-dark">Loading {sport.toUpperCase()} games...</p>
+                <p className="text-xs text-muted-dark mt-1">Fetching live odds from sportsbooks</p>
+              </div>
+            </div>
+          ) : gamesError ? (
+            <div className="bg-card border border-loss/20 rounded-lg p-8 text-center">
+              <AlertTriangle size={32} className="mx-auto text-loss mb-3" />
+              <p className="text-loss font-medium">{gamesError}</p>
+              <p className="text-xs text-muted-dark mt-2">Try another sport{sportCounts && Object.entries(sportCounts).some(([, c]) => c > 0) ? ` — ${Object.entries(sportCounts).filter(([, c]) => c > 0).map(([s, c]) => `${s.toUpperCase()} (${c})`).join(', ')} have games` : ''}</p>
+              <button
+                onClick={() => { setGamesError(''); const loadRetry = async () => { setGamesLoading(true); try { const r = await betsAPI.gamesWithOdds(sport); setGames(r.data.games || []); } catch { setGamesError('Still unable to load games.'); } finally { setGamesLoading(false); } }; loadRetry(); }}
+                className="mt-3 px-4 py-2 text-sm bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition-colors"
+              >
+                Retry
+              </button>
             </div>
           ) : filteredGames.length === 0 ? (
             <div className="bg-card border border-accent/20 rounded-lg p-8 text-center">
@@ -568,18 +636,18 @@ export default function AddBetPage() {
             </select>
           </div>
 
-          {/* Pre-Game Verified Banner (free users only) */}
-          {isFree && (
-            <div className="bg-accent/5 border border-accent/30 rounded-lg p-4 flex items-start gap-3">
-              <Shield size={20} className="text-accent mt-0.5 shrink-0" />
-              <div className="text-sm">
-                <p className="text-accent font-semibold">Pre-Game Verified</p>
-                <p className="text-muted-dark mt-1">
-                  Your bets are entered <span className="text-white font-medium">before kickoff</span> for maximum score accuracy.
-                </p>
-              </div>
+          {/* Trust System Banner */}
+          <div className="bg-yellow-500/5 border border-yellow-500/30 rounded-lg p-4 flex items-start gap-3">
+            <ShieldAlert size={20} className="text-yellow-400 mt-0.5 shrink-0" />
+            <div className="text-sm">
+              <p className="text-yellow-400 font-semibold">Manual Bet Verification</p>
+              <p className="text-muted-dark mt-1">
+                Manual bets are checked against <span className="text-white font-medium">real sportsbook odds</span>.
+                Bets that match real lines are <span className="text-accent font-medium">Validated</span> and count toward your score.
+                Unverified bets are saved for personal tracking only.
+              </p>
             </div>
-          )}
+          </div>
 
           <form onSubmit={handleManualSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -804,10 +872,16 @@ export default function AddBetPage() {
               </div>
             </div>
 
-            {isFree && (
+            {tab === 'games' && (
               <div className="flex items-center gap-2 mb-4 p-2 bg-accent/10 rounded-lg">
-                <Shield size={14} className="text-accent" />
-                <span className="text-xs text-accent">This bet will be Pre-Game Verified</span>
+                <ShieldCheck size={14} className="text-accent" />
+                <span className="text-xs text-accent">This bet will be Validated — picked from real odds</span>
+              </div>
+            )}
+            {tab === 'manual' && (
+              <div className="flex items-center gap-2 mb-4 p-2 bg-yellow-500/10 rounded-lg">
+                <ShieldAlert size={14} className="text-yellow-400" />
+                <span className="text-xs text-yellow-400">Manual bets are checked against real odds. Unverified bets won&apos;t count toward your verified score.</span>
               </div>
             )}
 

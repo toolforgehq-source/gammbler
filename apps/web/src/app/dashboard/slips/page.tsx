@@ -46,6 +46,7 @@ interface BetRecord {
   created_at: string;
   settled_at: string | null;
   is_pregame_verified: boolean;
+  trust_status?: 'synced_verified' | 'manually_validated' | 'manual_unverified';
 }
 
 const STATUS_CONFIG: Record<string, { color: string; bgColor: string; icon: typeof Clock; label: string }> = {
@@ -312,9 +313,15 @@ export default function SlipsPage() {
                         <span className="text-[10px] text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
                           {bet.sport.toUpperCase()}
                         </span>
-                        {bet.is_pregame_verified && (
+                        {bet.trust_status === 'synced_verified' ? (
+                          <span className="text-[10px] text-accent flex items-center gap-0.5">✓ Synced</span>
+                        ) : bet.trust_status === 'manually_validated' ? (
+                          <span className="text-[10px] text-accent flex items-center gap-0.5">✓ Validated</span>
+                        ) : bet.trust_status === 'manual_unverified' ? (
+                          <span className="text-[10px] text-yellow-400 flex items-center gap-0.5">⚠ Unverified</span>
+                        ) : bet.is_pregame_verified ? (
                           <span className="text-[10px] text-accent">Verified</span>
-                        )}
+                        ) : null}
                       </div>
                       <p className="text-white font-medium text-sm truncate">{bet.selection}</p>
                       {bet.event_name && (

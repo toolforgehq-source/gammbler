@@ -83,6 +83,8 @@ router.post('/', authMiddleware, attachTier, async (req: Request, res: Response)
     let eventStartTime: Date | null = null;
     let oddsApiEventId: string | null = null;
     let isPregameVerified = false;
+    let trustStatus: 'synced_verified' | 'manually_validated' | 'manual_unverified' = 'manual_unverified';
+    let validationReason: string | null = null;
 
     if (!isPro) {
       // Free users MUST submit bets as 'pending' — no pre-settled results allowed
@@ -111,12 +113,27 @@ router.post('/', authMiddleware, attachTier, async (req: Request, res: Response)
           return;
         }
 
-        // Game hasn't started — bet is pre-game verified
         isPregameVerified = true;
       }
-      // If no matching event found (e.g. futures, props not tied to a specific game),
-      // allow the bet but mark it as NOT pre-game verified.
-      // These unverified bets carry less weight / can be flagged.
+
+      // ── Trust Validation: check bet against real Odds API data ──
+      const { validateBetAgainstOdds } = await import('../services/odds-api');
+      const validation = await validateBetAgainstOdds(
+        body.sport, body.event_name, body.selection, body.odds, body.bet_type
+      );
+
+      if (validation.validated) {
+        trustStatus = 'manually_validated';
+        validationReason = 'odds_match';
+        if (validation.matchedEventId && !oddsApiEventId) {
+          oddsApiEventId = validation.matchedEventId;
+        }
+        console.log(`[Trust] Manual bet validated: ${body.selection} @ ${body.odds} (${body.sport})`);
+      } else {
+        trustStatus = 'manual_unverified';
+        validationReason = validation.reason || 'unverified';
+        console.log(`[Trust] Manual bet NOT validated: ${body.selection} @ ${body.odds} — reason: ${validationReason}`);
+      }
     } else {
       // Pro users: still try to match event for data enrichment, but no blocking
       const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
@@ -124,6 +141,19 @@ router.post('/', authMiddleware, attachTier, async (req: Request, res: Response)
         eventStartTime = matchedEvent.commenceTime;
         oddsApiEventId = matchedEvent.eventId;
         isPregameVerified = !hasGameStarted(matchedEvent.commenceTime);
+      }
+
+      // Pro manual bets also get validated
+      const { validateBetAgainstOdds } = await import('../services/odds-api');
+      const validation = await validateBetAgainstOdds(
+        body.sport, body.event_name, body.selection, body.odds, body.bet_type
+      );
+      if (validation.validated) {
+        trustStatus = 'manually_validated';
+        validationReason = 'odds_match';
+      } else {
+        trustStatus = 'manual_unverified';
+        validationReason = validation.reason || 'unverified';
       }
     }
 
@@ -153,11 +183,13 @@ router.post('/', authMiddleware, attachTier, async (req: Request, res: Response)
         event_start_time: eventStartTime,
         is_pregame_verified: isPregameVerified,
         odds_api_event_id: oddsApiEventId,
+        trust_status: trustStatus,
+        validation_reason: validationReason,
       })
       .returning();
 
-    // Recalculate scores if bet is settled
-    if (body.result !== 'pending') {
+    // Recalculate scores if bet is settled (only verified bets count)
+    if (body.result !== 'pending' && trustStatus !== 'manual_unverified') {
       await updateAllScores(userId);
       await checkAndAwardBadges(userId);
     }
@@ -165,6 +197,8 @@ router.post('/', authMiddleware, attachTier, async (req: Request, res: Response)
     res.status(201).json({
       bet,
       pregame_verified: isPregameVerified,
+      trust_status: trustStatus,
+      validation_reason: validationReason,
       ...(eventStartTime && { event_start_time: eventStartTime.toISOString() }),
     });
   } catch (err) {
@@ -286,19 +320,32 @@ router.get('/games-with-odds', authMiddleware, async (req: Request, res: Respons
       return;
     }
 
-    const { getLiveOdds, mapSportToOddsApiKey } = await import('../services/odds-api');
-    const sportKey = mapSportToOddsApiKey(sport);
-    const events = await getLiveOdds(sportKey);
+    const { getLiveOddsMultiLeague } = await import('../services/odds-api');
+    const events = await getLiveOddsMultiLeague(sport);
 
-    // Sort by commence time (soonest first), filter out started games at end
+    console.log(`[Odds API] games-with-odds for ${sport}: ${events.length} events returned`);
+
+    // Sort by commence time (soonest first)
     const sorted = events.sort((a, b) => 
       new Date(a.commence_time).getTime() - new Date(b.commence_time).getTime()
     );
 
-    res.json({ games: sorted });
+    res.json({ games: sorted, sport, count: sorted.length });
   } catch (err) {
-    console.error('Games with odds error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('[Odds API] Games with odds error:', err);
+    res.status(500).json({ error: 'Failed to load games. Please try again.', code: 'ODDS_API_ERROR' });
+  }
+});
+
+// GET /bets/active-sports — which sports currently have games available
+router.get('/active-sports', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { getActiveSports } = await import('../services/odds-api');
+    const sports = await getActiveSports();
+    res.json({ sports });
+  } catch (err) {
+    console.error('[Odds API] Active sports error:', err);
+    res.status(500).json({ error: 'Failed to check active sports' });
   }
 });
 

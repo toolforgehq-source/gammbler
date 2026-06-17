@@ -704,6 +704,21 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
     `);
 
+    // ── Trust Status for bet verification system ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE trust_status AS ENUM ('synced_verified', 'manually_validated', 'manual_unverified'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    `);
+    await client.query(`
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS trust_status trust_status NOT NULL DEFAULT 'manual_unverified';
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS validation_reason VARCHAR(100);
+    `);
+    // Backfill: SharpSports synced bets → synced_verified, pre-game verified manual → manually_validated
+    await client.query(`
+      UPDATE bets SET trust_status = 'synced_verified' WHERE sharpsports_bet_id IS NOT NULL AND trust_status = 'manual_unverified';
+      UPDATE bets SET trust_status = 'manually_validated' WHERE is_pregame_verified = true AND is_manual = true AND trust_status = 'manual_unverified';
+      UPDATE bets SET trust_status = 'synced_verified' WHERE is_manual = false AND trust_status = 'manual_unverified';
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

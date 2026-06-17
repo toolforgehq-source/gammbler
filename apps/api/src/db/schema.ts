@@ -58,6 +58,10 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'score_change', 'bet_settled', 'new_follower',
 ]);
 
+export const trustStatusEnum = pgEnum('trust_status', [
+  'synced_verified', 'manually_validated', 'manual_unverified',
+]);
+
 // ── Tables ───────────────────────────────────────────────────
 
 export const users = pgTable('users', {
@@ -112,6 +116,8 @@ export const bets = pgTable('bets', {
   event_start_time: timestamp('event_start_time', { withTimezone: true }),
   is_pregame_verified: boolean('is_pregame_verified').default(false).notNull(),
   odds_api_event_id: varchar('odds_api_event_id', { length: 255 }),
+  trust_status: trustStatusEnum('trust_status').default('manual_unverified').notNull(),
+  validation_reason: varchar('validation_reason', { length: 100 }),
 }, (table) => ({
   userIdIdx: index('bets_user_id_idx').on(table.user_id),
   sportIdx: index('bets_sport_idx').on(table.sport),

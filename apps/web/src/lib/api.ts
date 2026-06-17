@@ -68,6 +68,7 @@ export const betsAPI = {
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
   upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
   gamesWithOdds: (sport: string) => api.get('/bets/games-with-odds', { params: { sport } }),
+  activeSports: () => api.get('/bets/active-sports'),
   parseScreenshot: (file: File) => {
     const form = new FormData();
     form.append('screenshot', file);
