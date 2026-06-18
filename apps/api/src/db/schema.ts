@@ -24,7 +24,7 @@ export const betResultEnum = pgEnum('bet_result', [
 ]);
 
 export const sportEnum = pgEnum('sport', [
-  'overall', 'nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer', 'prizepicks', 'dfs',
+  'overall', 'nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer', 'prizepicks', 'dfs', 'other',
 ]);
 
 export const platformEnum = pgEnum('platform', [
@@ -90,6 +90,9 @@ export const users = pgTable('users', {
   email_verification_token: varchar('email_verification_token', { length: 64 }),
   password_reset_token: varchar('password_reset_token', { length: 64 }),
   password_reset_expires: timestamp('password_reset_expires', { withTimezone: true }),
+  past_due_since: timestamp('past_due_since', { withTimezone: true }),
+  payment_flags: jsonb('payment_flags').default('{}'),
+  referral_count: integer('referral_count').default(0).notNull(),
 }, (table) => ({
   emailIdx: index('users_email_idx').on(table.email),
   usernameIdx: index('users_username_idx').on(table.username),
@@ -739,4 +742,21 @@ export const creatorBadges = pgTable('creator_badges', {
 }, (table) => ({
   userBadgeUnique: uniqueIndex('creator_badges_user_badge_unique').on(table.user_id, table.badge_id),
   userIdx: index('creator_badges_user_idx').on(table.user_id),
+}));
+
+// ── Content Reports (moderation) ───────────────────────────────
+
+export const contentReports = pgTable('content_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  reporter_user_id: uuid('reporter_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  post_id: uuid('post_id').references(() => creatorPosts.id, { onDelete: 'cascade' }),
+  reported_user_id: uuid('reported_user_id').references(() => users.id, { onDelete: 'cascade' }),
+  reason: varchar('reason', { length: 100 }).notNull(),
+  details: text('details'),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  reviewed_at: timestamp('reviewed_at', { withTimezone: true }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  statusIdx: index('content_reports_status_idx').on(table.status),
+  postIdx: index('content_reports_post_idx').on(table.post_id),
 }));

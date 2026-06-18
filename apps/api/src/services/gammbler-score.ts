@@ -119,7 +119,7 @@ export async function calculateGammblerScore(
   userId: string,
   sport: Sport
 ): Promise<{ score: number; components: Record<string, number>; settledCount: number }> {
-  // Fetch all settled bets for this user — exclude manual_unverified from verified scoring
+  // Fetch all settled bets for this user — exclude manual_unverified from scoring
   const allSettledBets = await db
     .select()
     .from(bets)

@@ -797,6 +797,36 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS challenges_event_id_idx ON challenges(odds_api_event_id);
     `);
 
+    // Add 'other' to sport enum — must be outside transaction
+    await client.query('COMMIT');
+    await client.query(`ALTER TYPE sport ADD VALUE IF NOT EXISTS 'other'`).catch(() => {});
+    await client.query('BEGIN');
+
+    // Pre-launch hardening: payment grace period, flags, referral caps, content reports
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS past_due_since TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_flags JSONB DEFAULT '{}';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(10);
+    `);
+
+    // Content moderation: post reports
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS content_reports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        reporter_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        post_id UUID REFERENCES creator_posts(id) ON DELETE CASCADE,
+        reported_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        reason VARCHAR(100) NOT NULL,
+        details TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        reviewed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS content_reports_status_idx ON content_reports(status);
+      CREATE INDEX IF NOT EXISTS content_reports_post_idx ON content_reports(post_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {

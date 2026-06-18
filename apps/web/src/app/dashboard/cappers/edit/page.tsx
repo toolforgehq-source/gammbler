@@ -203,16 +203,10 @@ export default function EditCapperProfilePage() {
         </div>
 
         <div>
-          <label className="text-xs text-muted-dark block mb-1">Subscription Price ($/month)</label>
-          <input
-            type="number"
-            value={(profile.price_cents / 100).toFixed(2)}
-            onChange={(e) => setProfile((p) => ({ ...p, price_cents: Math.round(parseFloat(e.target.value || '0') * 100) }))}
-            min="1.99"
-            max="99.99"
-            step="0.01"
-            className="w-full bg-background border border-accent/20 rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted-dark focus:outline-none focus:border-accent/50"
-          />
+          <label className="text-xs text-muted-dark block mb-1">Subscription Price</label>
+          <div className="w-full bg-background border border-accent/20 rounded-lg px-3 py-2 text-sm text-muted-dark">
+            Free (paid subscriptions coming soon)
+          </div>
         </div>
       </div>
 

@@ -412,10 +412,16 @@ router.get('/stats', authMiddleware, async (req: Request, res: Response): Promis
     const platform = req.query.platform as string;
     const timeFilter = req.query.time as string; // week, month, year, all
 
+    // Exclude manual_unverified from public-facing stats
     const allBets = await db
       .select()
       .from(bets)
-      .where(eq(bets.user_id, req.user!.userId));
+      .where(
+        and(
+          eq(bets.user_id, req.user!.userId),
+          sql`COALESCE(${bets.trust_status}, 'synced_verified') != 'manual_unverified'`
+        )
+      );
 
     let filtered = allBets;
     if (sport) filtered = filtered.filter((b) => b.sport === sport);

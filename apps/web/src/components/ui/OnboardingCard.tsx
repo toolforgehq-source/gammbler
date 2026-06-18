@@ -83,7 +83,7 @@ export default function OnboardingCard({ settledBetCount, betsNeeded, emailVerif
               Quick
             </span>
           </div>
-          <p className="text-sm font-semibold text-white mb-1">Upload CSV</p>
+          <p className="text-sm font-semibold text-white mb-1">Upload CSV <span className="text-[10px] text-gold">(Pro)</span></p>
           <p className="text-xs text-muted-dark">Bulk import from a spreadsheet</p>
           <ChevronRight size={14} className="text-muted-dark mt-2 group-hover:translate-x-1 transition-transform" />
         </Link>

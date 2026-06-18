@@ -147,7 +147,7 @@ export default function CappersPage() {
           <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
             CAPPER MARKETPLACE
           </h1>
-          <p className="text-muted-dark text-sm mt-1">Subscribe to cappers. Tail their picks. Build your own audience.</p>
+          <p className="text-muted-dark text-sm mt-1">Follow cappers. Tail their picks. Build your own audience.</p>
         </div>
         <div className="flex items-center gap-2">
           {isCapper && (
@@ -186,7 +186,7 @@ export default function CappersPage() {
                   <Users size={14} className="text-muted" />
                   <span className="text-xs font-bold text-muted">CAPPER</span>
                 </div>
-                <p className="text-xs text-muted-dark">Any user. Post picks, build followers, offer subscriptions.</p>
+                <p className="text-xs text-muted-dark">Any user. Post picks, build followers.</p>
               </div>
               <div className="bg-accent/5 border border-accent/20 rounded-lg p-3">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -203,7 +203,7 @@ export default function CappersPage() {
                 <p className="text-xs text-muted-dark">Score 85+ with 100+ tracked picks. Top-tier performance.</p>
               </div>
             </div>
-            <p className="text-muted-dark mt-1">Creators keep <span className="text-accent font-semibold">80%</span> of subscription revenue. Gammbler takes a 20% platform fee.</p>
+            <p className="text-muted-dark mt-1">Follow cappers to see their live bet slips. Paid subscriptions and creator monetization coming soon.</p>
           </div>
         </div>
       </div>
@@ -333,9 +333,9 @@ export default function CappersPage() {
                     </div>
                     <div className="text-center">
                       <p className="text-accent font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>
-                        ${(capper.price_cents / 100).toFixed(2)}
+                        Free
                       </p>
-                      <p className="text-xs text-muted-dark">/month</p>
+                      <p className="text-xs text-muted-dark">to follow</p>
                     </div>
                   </div>
                   {capper.user_id !== user?.id && (
@@ -344,14 +344,14 @@ export default function CappersPage() {
                         onClick={() => handleUnsubscribe(capper.user_id)}
                         className="px-3 sm:px-4 py-2 border border-accent/40 text-accent rounded-lg text-sm font-semibold hover:bg-accent/10 transition-colors flex items-center gap-1"
                       >
-                        <UserMinus size={14} /> <span className="hidden sm:inline">Subscribed</span>
+                        <UserMinus size={14} /> <span className="hidden sm:inline">Following</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => handleSubscribe(capper.user_id)}
                         className="px-3 sm:px-4 py-2 bg-accent text-background rounded-lg text-sm font-semibold hover:bg-accent-light transition-colors flex items-center gap-1"
                       >
-                        <UserPlus size={14} /> <span className="hidden sm:inline">Subscribe</span>
+                        <UserPlus size={14} /> <span className="hidden sm:inline">Follow</span>
                       </button>
                     )
                   )}

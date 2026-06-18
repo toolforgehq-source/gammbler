@@ -7,8 +7,8 @@ import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
 import { sendNewFollowerEmail } from '../services/email';
 import { checkAndAwardCreatorBadges } from '../services/creator-badges';
-import multer from 'multer';
 import { notifyNewFollower } from '../services/notifications';
+import multer from 'multer';
 
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
@@ -123,11 +123,16 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       isFollowing = !!follow;
     }
 
-    // Get overall record
+    // Get overall record — exclude manual_unverified bets from public stats
     const allBets = await db
       .select()
       .from(bets)
-      .where(eq(bets.user_id, user.id));
+      .where(
+        and(
+          eq(bets.user_id, user.id),
+          sql`${bets.trust_status} != 'manual_unverified'`
+        )
+      );
 
     const settled = allBets.filter((b) => ['win', 'loss', 'push'].includes(b.result));
     const record = {
@@ -282,6 +287,7 @@ router.post('/follow/:userId', authMiddleware, async (req: Request, res: Respons
       .where(eq(users.id, req.user!.userId))
       .limit(1);
     if (followedUser && followerUser) {
+      sendNewFollowerEmail(followedUser.email, followedUser.username, followerUser.username).catch(() => {});
       notifyNewFollower(req.params.userId, followerUser.username).catch(() => {});
     }
 

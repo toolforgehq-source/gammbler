@@ -334,7 +334,7 @@ export default function AddBetPage() {
           }`}
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          <Upload size={16} /> CSV
+          <Upload size={16} /> CSV <span className="text-[10px] text-gold">(Pro)</span>
         </button>
       </div>
 
@@ -812,6 +812,7 @@ export default function AddBetPage() {
           <p className="text-sm text-muted-dark">
             Upload a CSV file exported from your sportsbook. We&apos;ll automatically map the columns and import your bets.
           </p>
+          <p className="text-xs text-gold font-semibold">CSV import is a Pro feature. Upgrade to Pro to use this feature.</p>
           <div
             className="bg-card border-2 border-dashed border-accent/30 rounded-lg p-12 text-center cursor-pointer hover:border-accent/60 transition-colors"
             onClick={() => fileRef.current?.click()}

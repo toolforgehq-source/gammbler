@@ -121,7 +121,7 @@ export default function VerifiedScorePassModal({ isOpen, onClose, onCsvUpload }:
                   </li>
                   <li className="text-sm text-muted-dark flex items-center gap-2">
                     <CheckCircle size={14} className="text-accent flex-shrink-0" />
-                    Future bets sync automatically
+                    Sync bets from your sportsbook
                   </li>
                 </ul>
                 {loading === 'verified' && (

@@ -11,6 +11,7 @@ import cron from 'node-cron';
 import { checkTrialReminders, sendWeeklyReports } from './services/scheduled-emails';
 import { snapshotAllScores } from './services/score-snapshots';
 import { snapshotAllDfsScores } from './services/dfs-score-snapshots';
+import { refreshCapperScores } from './services/capper-refresh';
 import { settleVerifiedChallenges, expireStaleVerifiedChallenges } from './services/challenge-settlement';
 
 // Routes
@@ -138,6 +139,7 @@ server.listen(env.PORT, () => {
   cron.schedule('0 0 * * *', () => {
     snapshotAllScores().catch((err) => console.error('[Cron] Score snapshot error:', err));
     snapshotAllDfsScores().catch((err) => console.error('[Cron] DFS score snapshot error:', err));
+    refreshCapperScores().catch((err) => console.error('[Cron] Capper refresh error:', err));
   });
 
   // Auto-settle verified H2H challenges every 15 minutes

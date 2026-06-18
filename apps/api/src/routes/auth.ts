@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { db } from '../db';
 import { users } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { generateToken, authMiddleware } from '../middleware/auth';
 import { getUserTier } from '../middleware/subscription';
 import { TRIAL_DAYS } from '@gammbler/shared';
@@ -66,17 +66,31 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
 
-    // Handle referral bonus
+    // Handle referral bonus with abuse prevention
+    const MAX_REFERRAL_BONUSES = 20;
     let referredBy: string | undefined;
     if (body.referral_code) {
       const referrer = await db.select().from(users).where(eq(users.referral_code, body.referral_code)).limit(1);
       if (referrer.length > 0) {
-        referredBy = referrer[0].id;
-        // Add bonus days to both
-        trialEndsAt.setDate(trialEndsAt.getDate() + 3);
-        const referrerTrialEnd = new Date(referrer[0].trial_ends_at);
-        referrerTrialEnd.setDate(referrerTrialEnd.getDate() + 3);
-        await db.update(users).set({ trial_ends_at: referrerTrialEnd }).where(eq(users.id, referrer[0].id));
+        // Prevent self-referral (same email domain + similar username pattern)
+        if (referrer[0].email === body.email) {
+          console.warn(`[Referral] Self-referral blocked: ${body.email}`);
+        } else {
+          const referralCount = referrer[0].referral_count ?? 0;
+          if (referralCount >= MAX_REFERRAL_BONUSES) {
+            console.warn(`[Referral] Cap reached for ${referrer[0].username} (${referralCount} referrals)`);
+          } else {
+            referredBy = referrer[0].id;
+            trialEndsAt.setDate(trialEndsAt.getDate() + 3);
+            const referrerTrialEnd = new Date(referrer[0].trial_ends_at);
+            referrerTrialEnd.setDate(referrerTrialEnd.getDate() + 3);
+            await db.update(users).set({
+              trial_ends_at: referrerTrialEnd,
+              referral_count: sql`COALESCE(${users.referral_count}, 0) + 1`,
+            }).where(eq(users.id, referrer[0].id));
+            console.log(`[Referral] ${referrer[0].username} referred a new user (${referralCount + 1}/${MAX_REFERRAL_BONUSES})`);
+          }
+        }
       }
     }
 
@@ -185,6 +199,7 @@ router.get('/me', authMiddleware, async (req: Request, res: Response): Promise<v
         notification_preferences: users.notification_preferences,
         verified_score_pass: users.verified_score_pass,
         email_verified: users.email_verified,
+        past_due_since: users.past_due_since,
       })
       .from(users)
       .where(eq(users.id, req.user!.userId))
@@ -195,7 +210,7 @@ router.get('/me', authMiddleware, async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const tier = getUserTier(user.subscription_status, user.trial_ends_at);
+    const tier = getUserTier(user.subscription_status, user.trial_ends_at, user.past_due_since);
     res.json({ user: { ...user, tier } });
   } catch (err) {
     console.error('Get me error:', err);
