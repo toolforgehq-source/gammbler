@@ -58,16 +58,27 @@ router.post('/create-checkout', paymentLimiter, authMiddleware, async (req: Requ
       await db.update(users).set({ stripe_customer_id: customerId }).where(eq(users.id, user.id));
     }
 
+    // Use price ID if configured, otherwise create ad-hoc price
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = env.STRIPE_PRICE_ID
+      ? [{ price: env.STRIPE_PRICE_ID, quantity: 1 }]
+      : [{
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Gammbler Pro',
+              description: 'Pro subscription — sportsbook sync, CSV import, and all premium features.',
+            },
+            unit_amount: env.PRO_PRICE_CENTS,
+            recurring: { interval: 'month' },
+          },
+          quantity: 1,
+        }];
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       mode: 'subscription',
-      line_items: [
-        {
-          price: env.STRIPE_PRICE_ID,
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       success_url: `${env.FRONTEND_URL}/dashboard?subscription=success`,
       cancel_url: `${env.FRONTEND_URL}/subscribe?cancelled=true`,
       metadata: { user_id: user.id },

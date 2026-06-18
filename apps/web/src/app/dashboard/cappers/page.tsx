@@ -147,7 +147,7 @@ export default function CappersPage() {
           <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
             CAPPER MARKETPLACE
           </h1>
-          <p className="text-muted-dark text-sm mt-1">Subscribe to cappers. Tail their picks. Build your own audience.</p>
+          <p className="text-muted-dark text-sm mt-1">Follow cappers. Tail their picks. Build your own audience.</p>
         </div>
         <div className="flex items-center gap-2">
           {isCapper && (
