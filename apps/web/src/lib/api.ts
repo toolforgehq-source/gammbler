@@ -68,6 +68,7 @@ export const betsAPI = {
   stats: (params?: Record<string, string>) => api.get('/bets/stats', { params }),
   upcomingEvents: (sport: string) => api.get('/bets/upcoming-events', { params: { sport } }),
   gamesWithOdds: (sport: string) => api.get('/bets/games-with-odds', { params: { sport } }),
+  activeSports: () => api.get('/bets/active-sports'),
   parseScreenshot: (file: File) => {
     const form = new FormData();
     form.append('screenshot', file);
@@ -144,8 +145,14 @@ export const profileAPI = {
 // Notifications
 export const notificationsAPI = {
   list: (params?: Record<string, string>) => api.get('/notifications', { params }),
+  unreadCount: () => api.get('/notifications/unread-count'),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.post('/notifications/read-all'),
+  vapidKey: () => api.get('/notifications/vapid-key'),
+  pushSubscribe: (subscription: PushSubscription) => api.post('/notifications/push-subscribe', subscription.toJSON()),
+  pushUnsubscribe: (endpoint: string) => api.delete('/notifications/push-subscribe', { data: { endpoint } }),
+  getPreferences: () => api.get('/notifications/preferences'),
+  updatePreferences: (prefs: Record<string, boolean>) => api.patch('/notifications/preferences', prefs),
 };
 
 // Stripe
@@ -211,6 +218,7 @@ export const cappersAPI = {
   list: (params?: Record<string, string>) => api.get('/cappers', { params }),
   get: (userId: string) => api.get(`/cappers/${userId}`),
   apply: () => api.post('/cappers/apply'),
+  refreshTier: () => api.post('/cappers/refresh-tier'),
   updateProfile: (data: Record<string, unknown>) =>
     api.patch('/cappers/me', data),
   subscribe: (userId: string) => api.post(`/cappers/${userId}/subscribe`),
@@ -246,6 +254,7 @@ export const challengesAPI = {
   list: (params?: Record<string, string>) => api.get('/challenges', { params }),
   get: (id: string) => api.get(`/challenges/${id}`),
   stats: () => api.get('/challenges/stats'),
+  games: (sport: string) => api.get('/challenges/games', { params: { sport } }),
   create: (data: {
     challengee_username: string;
     sport: string;
@@ -254,8 +263,16 @@ export const challengesAPI = {
     challenger_pick: string;
     message?: string;
     stake_display?: string;
+    is_verified?: boolean;
+    odds_api_event_id?: string;
+    market?: string;
+    challenger_line?: number;
+    challenger_odds?: number;
+    challengee_odds?: number;
+    home_team?: string;
+    away_team?: string;
   }) => api.post('/challenges', data),
-  accept: (id: string, pick: string) => api.patch(`/challenges/${id}/accept`, { pick }),
+  accept: (id: string, pick?: string) => api.patch(`/challenges/${id}/accept`, { pick }),
   decline: (id: string) => api.patch(`/challenges/${id}/decline`),
   cancel: (id: string) => api.patch(`/challenges/${id}/cancel`),
   settle: (id: string, winner_id: string) => api.patch(`/challenges/${id}/settle`, { winner_id }),

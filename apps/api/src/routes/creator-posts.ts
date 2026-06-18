@@ -9,6 +9,7 @@ import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { z } from 'zod';
 import { checkAndAwardCreatorBadges } from '../services/creator-badges';
+import { notifyCreatorPost } from '../services/notifications';
 
 const router = Router();
 
@@ -56,6 +57,23 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
 
     // Check creator badges (fire & forget)
     checkAndAwardCreatorBadges(userId).catch(() => {});
+
+    // Notify followers about new post (fire & forget)
+    const followerRows = await db
+      .select({ follower_id: follows.follower_id })
+      .from(follows)
+      .where(eq(follows.following_id, userId))
+      .limit(500);
+
+    const postPreview = parsed.data.content.substring(0, 80);
+    for (const f of followerRows) {
+      notifyCreatorPost(
+        f.follower_id,
+        user?.username || 'A creator',
+        postPreview,
+        post.id,
+      ).catch(() => {});
+    }
 
     res.status(201).json({
       post: {

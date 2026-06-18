@@ -12,6 +12,7 @@ import { checkTrialReminders, sendWeeklyReports } from './services/scheduled-ema
 import { snapshotAllScores } from './services/score-snapshots';
 import { snapshotAllDfsScores } from './services/dfs-score-snapshots';
 import { refreshCapperScores } from './services/capper-refresh';
+import { settleVerifiedChallenges, expireStaleVerifiedChallenges } from './services/challenge-settlement';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -139,6 +140,16 @@ server.listen(env.PORT, () => {
     snapshotAllScores().catch((err) => console.error('[Cron] Score snapshot error:', err));
     snapshotAllDfsScores().catch((err) => console.error('[Cron] DFS score snapshot error:', err));
     refreshCapperScores().catch((err) => console.error('[Cron] Capper refresh error:', err));
+  });
+
+  // Auto-settle verified H2H challenges every 15 minutes
+  cron.schedule('*/15 * * * *', () => {
+    settleVerifiedChallenges().catch((err) => console.error('[Cron] H2H auto-settlement error:', err));
+  });
+
+  // Expire stale verified challenges daily at 1am UTC
+  cron.schedule('0 1 * * *', () => {
+    expireStaleVerifiedChallenges().catch((err) => console.error('[Cron] H2H stale expiry error:', err));
   });
 
   console.log('Scheduled jobs registered');

@@ -155,6 +155,8 @@ export async function syncBets(userId: string, platform: string): Promise<number
         is_manual: false,
         sharpsports_bet_id: remoteBet.id,
         parlay_legs: remoteBet.legs,
+        trust_status: 'synced_verified',
+        validation_reason: 'sharpsports_sync',
       } as typeof bets.$inferInsert);
 
       imported++;

@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { users, gammblerScores, badges, follows, bets, scoreSnapshots } from '../db/schema';
+import { users, gammblerScores, badges, follows, bets, scoreSnapshots, capperProfiles } from '../db/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
 import { sendNewFollowerEmail } from '../services/email';
 import { checkAndAwardCreatorBadges } from '../services/creator-badges';
-import { notifyNewFollower } from '../services/notification-triggers';
+import { notifyNewFollower } from '../services/notifications';
 import multer from 'multer';
 
 const avatarUpload = multer({
@@ -174,6 +174,13 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       };
     }
 
+    // Get capper status
+    const [capperProfile] = await db
+      .select({ tier: capperProfiles.tier, status: capperProfiles.status })
+      .from(capperProfiles)
+      .where(eq(capperProfiles.user_id, user.id))
+      .limit(1);
+
     const publicProfile: Record<string, unknown> = {
       id: user.id,
       username: user.username,
@@ -195,6 +202,7 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       is_self: req.user?.userId === user.id,
       is_verified: user.verified_score_pass || user.subscription_status === 'active',
       national_rank: nationalRank,
+      capper_tier: capperProfile?.status === 'active' ? capperProfile.tier : null,
     };
 
     // Add private fields if viewing own profile

@@ -81,7 +81,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-bold text-white mb-3">5. Capper Marketplace</h2>
             <p>
-              The Capper Marketplace allows users (&quot;Cappers&quot;) to offer paid subscriptions for their picks and analysis. Gammbler facilitates these transactions and retains a 30% platform fee on subscription revenue. By participating as a Capper, you agree that:
+              The Capper Marketplace allows users (&quot;Cappers&quot;) to offer paid subscriptions for their picks and analysis. Any user may become a Capper regardless of subscription tier. Gammbler retains a 20% standard platform fee on subscription revenue (fee rates may vary by creator program). By participating as a Capper, you agree that:
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1 text-gray-400">
               <li>Your published picks and analysis are your own opinions, not guaranteed outcomes</li>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import AuthInitializer from '@/components/layout/AuthInitializer';
+import PushNotifications from '@/components/PushNotifications';
 
 export default function DashboardLayout({
   children,
@@ -29,6 +30,7 @@ export default function DashboardLayout({
             </div>
           </main>
         </div>
+        <PushNotifications />
       </div>
     </AuthInitializer>
   );

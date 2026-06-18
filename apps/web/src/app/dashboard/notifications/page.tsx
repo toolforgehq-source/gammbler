@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { notificationsAPI } from '@/lib/api';
-import { Bell, Check } from 'lucide-react';
+import {
+  Bell, Check, Target, UserPlus, TrendingUp, Trophy, PenLine, Swords, Award,
+} from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -13,6 +16,19 @@ interface Notification {
   data: Record<string, unknown>;
   created_at: string;
 }
+
+const TYPE_ICONS: Record<string, typeof Bell> = {
+  challenge_received: Target,
+  challenge_accepted: Target,
+  challenge_settled: Target,
+  new_follower: UserPlus,
+  score_change: TrendingUp,
+  rank_milestone: Trophy,
+  leaderboard_passed: Trophy,
+  creator_post: PenLine,
+  league_invite: Swords,
+  badge_earned: Award,
+};
 
 function timeAgo(dateStr: string): string {
   const now = new Date();
@@ -25,6 +41,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,12 +61,19 @@ export default function NotificationsPage() {
     }
   };
 
-  const markRead = async (id: string) => {
-    try {
-      await notificationsAPI.markRead(id);
-      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
-    } catch {
-      // ignore
+  const handleClick = async (n: Notification) => {
+    if (!n.read) {
+      try {
+        await notificationsAPI.markRead(n.id);
+        setNotifications((prev) => prev.map((item) => item.id === n.id ? { ...item, read: true } : item));
+      } catch {
+        // ignore
+      }
+    }
+
+    const url = n.data?.url as string | undefined;
+    if (url) {
+      router.push(url);
     }
   };
 
@@ -65,39 +89,52 @@ export default function NotificationsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      {unreadCount > 0 && (
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-dark">{unreadCount} unread</p>
+      <div className="flex justify-between items-center">
+        <h1 className="text-lg font-bold uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
+          Notifications
+        </h1>
+        {unreadCount > 0 && (
           <button onClick={markAllRead} className="text-xs text-accent hover:text-accent-light flex items-center gap-1">
             <Check size={14} /> Mark all read
           </button>
-        </div>
+        )}
+      </div>
+
+      {unreadCount > 0 && (
+        <p className="text-sm text-muted-dark">{unreadCount} unread</p>
       )}
 
       {notifications.length === 0 ? (
         <div className="text-center py-20">
           <Bell size={48} className="text-muted-dark mx-auto mb-4" />
           <p className="text-muted-dark">No notifications yet.</p>
+          <p className="text-xs text-muted-dark mt-2">You&apos;ll be notified about challenges, score milestones, and more.</p>
         </div>
       ) : (
-        notifications.map((n) => (
-          <div
-            key={n.id}
-            onClick={() => !n.read && markRead(n.id)}
-            className={`bg-card border rounded-lg p-4 cursor-pointer transition-colors ${
-              n.read ? 'border-accent/10 opacity-60' : 'border-accent/30 hover:border-accent/50'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              {!n.read && <div className="w-2 h-2 rounded-full bg-accent mt-1.5 flex-shrink-0" />}
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">{n.title}</p>
-                <p className="text-xs text-muted-dark mt-1">{n.body}</p>
-                <p className="text-xs text-muted-dark mt-2">{timeAgo(n.created_at)}</p>
+        notifications.map((n) => {
+          const Icon = TYPE_ICONS[n.type] || Bell;
+          return (
+            <div
+              key={n.id}
+              onClick={() => handleClick(n)}
+              className={`bg-card border rounded-lg p-4 cursor-pointer transition-colors ${
+                n.read ? 'border-accent/10 opacity-60' : 'border-accent/30 hover:border-accent/50'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 flex-shrink-0 ${n.read ? 'text-muted-dark' : 'text-accent'}`}>
+                  <Icon size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white">{n.title}</p>
+                  <p className="text-xs text-muted-dark mt-1">{n.body}</p>
+                  <p className="text-xs text-muted-dark mt-2">{timeAgo(n.created_at)}</p>
+                </div>
+                {!n.read && <div className="w-2 h-2 rounded-full bg-accent mt-1.5 flex-shrink-0" />}
               </div>
             </div>
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );

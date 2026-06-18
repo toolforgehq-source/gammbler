@@ -704,6 +704,99 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
     `);
 
+    // Notification system enhancements
+    await client.query(`
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}';
+
+      -- Add new notification types to enum
+      DO $$ BEGIN
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'challenge_received';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'challenge_accepted';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'challenge_settled';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'creator_post';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'league_invite';
+        ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'rank_milestone';
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+
+      -- Push subscriptions table for browser push notifications
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS push_subscriptions_endpoint_idx ON push_subscriptions(endpoint);
+    `);
+
+    // ── Capper system overhaul: tier, creator plan, revenue share ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE capper_tier AS ENUM ('capper','verified','elite'); EXCEPTION WHEN duplicate_object THEN null; END $$
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS tier capper_tier NOT NULL DEFAULT 'capper';
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS creator_plan_type VARCHAR(50) NOT NULL DEFAULT 'standard';
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS revenue_share_pct NUMERIC(5,2) NOT NULL DEFAULT 80.00;
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ALTER COLUMN verified_at DROP NOT NULL;
+    `);
+
+    await client.query(`
+      ALTER TABLE capper_profiles ALTER COLUMN verified_at DROP DEFAULT;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS capper_profiles_tier_idx ON capper_profiles(tier);
+    `);
+
+    // ── Trust Status for bet verification system ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE trust_status AS ENUM ('synced_verified', 'manually_validated', 'manual_unverified'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    `);
+    await client.query(`
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS trust_status trust_status NOT NULL DEFAULT 'manual_unverified';
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS validation_reason VARCHAR(100);
+    `);
+    // Backfill: SharpSports synced bets → synced_verified, pre-game verified manual → manually_validated
+    await client.query(`
+      UPDATE bets SET trust_status = 'synced_verified' WHERE sharpsports_bet_id IS NOT NULL AND trust_status = 'manual_unverified';
+      UPDATE bets SET trust_status = 'manually_validated' WHERE is_pregame_verified = true AND is_manual = true AND trust_status = 'manual_unverified';
+      UPDATE bets SET trust_status = 'synced_verified' WHERE is_manual = false AND trust_status = 'manual_unverified';
+    `);
+    // ── Verified H2H: add game data + auto-settlement columns ──
+    await client.query(`
+      ALTER TYPE challenge_status ADD VALUE IF NOT EXISTS 'auto_settled';
+    `);
+    await client.query(`
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS odds_api_event_id TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS market TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS challenger_line NUMERIC;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS challenger_odds INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS challengee_odds INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS home_team TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS away_team TEXT;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS home_score INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS away_score INTEGER;
+      ALTER TABLE challenges ADD COLUMN IF NOT EXISTS settlement_method TEXT;
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS challenges_verified_idx ON challenges(is_verified);
+      CREATE INDEX IF NOT EXISTS challenges_event_id_idx ON challenges(odds_api_event_id);
+    `);
+
     // Add 'other' to sport enum — must be outside transaction
     await client.query('COMMIT');
     await client.query(`ALTER TYPE sport ADD VALUE IF NOT EXISTS 'other'`).catch(() => {});

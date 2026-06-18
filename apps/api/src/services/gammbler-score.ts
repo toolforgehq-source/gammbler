@@ -8,6 +8,7 @@ import {
   MIN_BETS_TO_UNLOCK,
   MAX_DAILY_SCORE_DROP,
 } from '@gammbler/shared';
+import { notifyScoreMilestone, notifyRankMilestone } from './notifications';
 
 interface BetRow {
   id: string;
@@ -126,7 +127,7 @@ export async function calculateGammblerScore(
       and(
         eq(bets.user_id, userId),
         inArray(bets.result, ['win', 'loss', 'push']),
-        sql`COALESCE(${bets.trust_status}, 'synced_verified') != 'manual_unverified'`
+        ne(bets.trust_status, 'manual_unverified')
       )
     );
 
@@ -274,5 +275,27 @@ export async function updateAllScores(userId: string): Promise<void> {
           score_change_today: values.score_change_today,
         },
       });
+
+    // Score milestone notification (only for unlocked scores with a previous value)
+    if (isUnlocked && existing.length > 0) {
+      const prevScore = parseFloat(String(existing[0].score));
+      notifyScoreMilestone(userId, sport, prevScore, adjustedScore).catch(() => {});
+    }
+
+    // Rank milestone notification (for overall sport only)
+    if (isUnlocked && sport === 'overall') {
+      const [rankResult] = await db
+        .select({ rank: sql<number>`count(*)::int + 1` })
+        .from(gammblerScores)
+        .where(
+          and(
+            eq(gammblerScores.sport, 'overall'),
+            eq(gammblerScores.is_unlocked, true),
+            sql`${gammblerScores.score}::numeric > ${String(adjustedScore)}::numeric`,
+          )
+        );
+      const rank = rankResult?.rank ?? 999;
+      notifyRankMilestone(userId, rank, 'overall').catch(() => {});
+    }
   }
 }

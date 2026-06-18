@@ -6,6 +6,7 @@ import { eq, and, or, desc, sql, inArray } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { createFeedEvent } from '../services/feed';
 import { sendChallengeReceivedEmail, sendChallengeResultEmail } from '../services/email';
+import { notifyChallengeReceived, notifyChallengeAccepted, notifyChallengeSettled } from '../services/notifications';
 import { H2H_CHALLENGE_EXPIRY_HOURS, H2H_MAX_ACTIVE_CHALLENGES } from '@gammbler/shared';
 
 const router = Router();
@@ -18,6 +19,15 @@ const createChallengeSchema = z.object({
   challenger_pick: z.string().min(1).max(200),
   message: z.string().max(500).optional(),
   stake_display: z.string().max(100).optional(),
+  // Verified H2H fields
+  is_verified: z.boolean().optional(),
+  odds_api_event_id: z.string().optional(),
+  market: z.enum(['h2h', 'spreads', 'totals']).optional(),
+  challenger_line: z.number().optional(),
+  challenger_odds: z.number().int().optional(),
+  challengee_odds: z.number().int().optional(),
+  home_team: z.string().optional(),
+  away_team: z.string().optional(),
 });
 
 const settleChallengeSchema = z.object({
@@ -38,12 +48,20 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     )!;
 
     if (status) {
-      const validStatuses = ['pending', 'accepted', 'declined', 'settled', 'cancelled', 'expired'];
+      const validStatuses = ['pending', 'accepted', 'declined', 'settled', 'cancelled', 'expired', 'auto_settled'];
       if (validStatuses.includes(status)) {
-        conditions = and(
-          conditions,
-          eq(challenges.status, status as any)
-        )!;
+        // "settled" filter should include both manual and auto-settled
+        if (status === 'settled') {
+          conditions = and(
+            conditions,
+            sql`${challenges.status} IN ('settled', 'auto_settled')`
+          )!;
+        } else {
+          conditions = and(
+            conditions,
+            eq(challenges.status, status as any)
+          )!;
+        }
       }
     }
 
@@ -92,12 +110,14 @@ router.get('/stats', authMiddleware, async (req: Request, res: Response): Promis
   try {
     const userId = req.user!.userId;
 
+    const settledCondition = sql`${challenges.status} IN ('settled', 'auto_settled')`;
+
     const [winsResult] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(challenges)
       .where(
         and(
-          eq(challenges.status, 'settled'),
+          settledCondition,
           eq(challenges.winner_id, userId)
         )
       );
@@ -107,7 +127,7 @@ router.get('/stats', authMiddleware, async (req: Request, res: Response): Promis
       .from(challenges)
       .where(
         and(
-          eq(challenges.status, 'settled'),
+          settledCondition,
           or(
             eq(challenges.challenger_id, userId),
             eq(challenges.challengee_id, userId)
@@ -121,7 +141,7 @@ router.get('/stats', authMiddleware, async (req: Request, res: Response): Promis
       .from(challenges)
       .where(
         and(
-          eq(challenges.status, 'settled'),
+          settledCondition,
           or(
             eq(challenges.challenger_id, userId),
             eq(challenges.challengee_id, userId)
@@ -181,6 +201,29 @@ router.get('/search-users', authMiddleware, async (req: Request, res: Response):
     res.json({ users: results });
   } catch (err) {
     console.error('Search users error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /challenges/games — get games with odds for verified H2H game picker
+router.get('/games', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const sport = req.query.sport as string;
+    if (!sport) {
+      res.status(400).json({ error: 'Sport parameter is required' });
+      return;
+    }
+
+    const { getLiveOddsMultiLeague } = await import('../services/odds-api');
+    const events = await getLiveOddsMultiLeague(sport);
+
+    // Filter out games that have already started
+    const now = new Date();
+    const upcoming = events.filter((e) => new Date(e.commence_time) > now);
+
+    res.json({ games: upcoming });
+  } catch (err) {
+    console.error('Challenge games error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -298,6 +341,14 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
       .where(eq(users.id, userId))
       .limit(1);
 
+    // Verified H2H: block challenges on games that have already started
+    if (body.is_verified && body.event_start_time) {
+      if (new Date(body.event_start_time) <= new Date()) {
+        res.status(400).json({ error: 'Cannot create a challenge on a game that has already started' });
+        return;
+      }
+    }
+
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + H2H_CHALLENGE_EXPIRY_HOURS);
 
@@ -313,6 +364,15 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
         message: body.message || null,
         stake_display: body.stake_display || null,
         expires_at: expiresAt,
+        // Verified H2H fields
+        is_verified: body.is_verified || false,
+        odds_api_event_id: body.odds_api_event_id || null,
+        market: body.market || null,
+        challenger_line: body.challenger_line != null ? String(body.challenger_line) : null,
+        challenger_odds: body.challenger_odds || null,
+        challengee_odds: body.challengee_odds || null,
+        home_team: body.home_team || null,
+        away_team: body.away_team || null,
       })
       .returning();
 
@@ -325,15 +385,15 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
       sport: body.sport,
     }, body.sport);
 
-    // Send email notification (fire-and-forget)
-    sendChallengeReceivedEmail(
-      challengee.email,
-      challengee.username,
+    // Send notification (in-app + email + push, fire-and-forget)
+    notifyChallengeReceived(
+      challengee.id,
       challenger?.username || 'Someone',
       body.event_name,
       body.challenger_pick,
-      body.sport.toUpperCase()
-    ).catch((err) => console.error('Challenge email error:', err));
+      body.sport,
+      created.id,
+    ).catch((err) => console.error('Challenge notification error:', err));
 
     res.status(201).json({ challenge: created });
   } catch (err) {
@@ -351,11 +411,6 @@ router.patch('/:id/accept', authMiddleware, async (req: Request, res: Response):
   try {
     const userId = req.user!.userId;
     const { pick } = req.body;
-
-    if (!pick || typeof pick !== 'string' || pick.length === 0) {
-      res.status(400).json({ error: 'Pick is required' });
-      return;
-    }
 
     const [challenge] = await db
       .select()
@@ -386,11 +441,57 @@ router.patch('/:id/accept', authMiddleware, async (req: Request, res: Response):
       return;
     }
 
+    // For verified challenges: auto-determine the opponent's pick
+    let challengeePick: string;
+    if (challenge.is_verified && challenge.market && challenge.home_team && challenge.away_team) {
+      if (challenge.market === 'h2h') {
+        // Moneyline: opponent gets the other team
+        challengeePick = challenge.challenger_pick === challenge.home_team
+          ? challenge.away_team
+          : challenge.home_team;
+      } else if (challenge.market === 'spreads') {
+        // Spread: opponent gets the opposite side
+        const line = parseFloat(String(challenge.challenger_line || 0));
+        const isHome = challenge.challenger_pick.includes(challenge.home_team);
+        const oppTeam = isHome ? challenge.away_team : challenge.home_team;
+        const oppLine = -line;
+        challengeePick = `${oppTeam} ${oppLine > 0 ? '+' : ''}${oppLine}`;
+      } else if (challenge.market === 'totals') {
+        // Totals: opponent gets the opposite side
+        const line = parseFloat(String(challenge.challenger_line || 0));
+        challengeePick = challenge.challenger_pick.toLowerCase().includes('over')
+          ? `Under ${line}`
+          : `Over ${line}`;
+      } else {
+        challengeePick = pick || '';
+      }
+    } else {
+      // Custom challenge: pick is required
+      if (!pick || typeof pick !== 'string' || pick.length === 0) {
+        res.status(400).json({ error: 'Pick is required' });
+        return;
+      }
+      challengeePick = pick;
+    }
+
     const [updated] = await db
       .update(challenges)
-      .set({ status: 'accepted', challengee_pick: pick })
+      .set({ status: 'accepted', challengee_pick: challengeePick })
       .where(eq(challenges.id, challenge.id))
       .returning();
+
+    // Notify challenger that challenge was accepted (fire-and-forget)
+    const [accepter] = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    notifyChallengeAccepted(
+      challenge.challenger_id,
+      accepter?.username || 'Someone',
+      challenge.event_name,
+      challenge.id,
+    ).catch((err) => console.error('Challenge accepted notification error:', err));
 
     res.json({ challenge: updated });
   } catch (err) {
@@ -477,7 +578,7 @@ router.patch('/:id/cancel', authMiddleware, async (req: Request, res: Response):
   }
 });
 
-// PATCH /challenges/:id/settle — settle a challenge (either participant)
+// PATCH /challenges/:id/settle — settle a challenge (only custom challenges; verified auto-settle)
 router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.userId;
@@ -491,6 +592,12 @@ router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response):
 
     if (!challenge) {
       res.status(404).json({ error: 'Challenge not found' });
+      return;
+    }
+
+    // Block manual settlement of verified challenges
+    if (challenge.is_verified) {
+      res.status(400).json({ error: 'Verified challenges are automatically settled when the game completes. Manual settlement is not allowed.' });
       return;
     }
 
@@ -517,6 +624,7 @@ router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response):
         status: 'settled',
         winner_id: body.winner_id,
         settled_at: new Date(),
+        settlement_method: 'manual',
       })
       .where(eq(challenges.id, challenge.id))
       .returning();
@@ -550,24 +658,24 @@ router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response):
       console.error('H2H badge check error:', err)
     );
 
-    // Send result emails (fire-and-forget)
+    // Send result notifications (in-app + email + push, fire-and-forget)
     if (winner) {
-      sendChallengeResultEmail(
-        winner.email,
-        winner.username,
+      notifyChallengeSettled(
+        winner.id,
         true,
         loser?.username || 'opponent',
-        challenge.event_name
-      ).catch((err) => console.error('Challenge result email error:', err));
+        challenge.event_name,
+        challenge.id,
+      ).catch((err) => console.error('Challenge settled notification error:', err));
     }
     if (loser) {
-      sendChallengeResultEmail(
-        loser.email,
-        loser.username,
+      notifyChallengeSettled(
+        loser.id,
         false,
         winner?.username || 'opponent',
-        challenge.event_name
-      ).catch((err) => console.error('Challenge result email error:', err));
+        challenge.event_name,
+        challenge.id,
+      ).catch((err) => console.error('Challenge settled notification error:', err));
     }
 
     res.json({ challenge: updated });
@@ -581,21 +689,21 @@ router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response):
   }
 });
 
-// H2H badge checking logic
-async function checkH2hBadges(userId: string): Promise<void> {
+// H2H badge checking logic (exported for auto-settlement cron)
+export async function checkH2hBadges(userId: string): Promise<void> {
   const existingBadges = await db
     .select({ badge_type: badges.badge_type })
     .from(badges)
     .where(eq(badges.user_id, userId));
   const has = new Set(existingBadges.map((b) => b.badge_type));
 
-  // Count H2H wins
+  // Count H2H wins (both manual and auto-settled)
   const [winsResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(challenges)
     .where(
       and(
-        eq(challenges.status, 'settled'),
+        sql`${challenges.status} IN ('settled', 'auto_settled')`,
         eq(challenges.winner_id, userId)
       )
     );
@@ -619,7 +727,7 @@ async function checkH2hBadges(userId: string): Promise<void> {
     .from(challenges)
     .where(
       and(
-        eq(challenges.status, 'settled'),
+        sql`${challenges.status} IN ('settled', 'auto_settled')`,
         or(
           eq(challenges.challenger_id, userId),
           eq(challenges.challengee_id, userId)

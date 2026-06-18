@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { profileAPI, connectionsAPI, stripeAPI, authAPI } from '@/lib/api';
-import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Trash2, Camera, X as XIcon } from 'lucide-react';
+import { profileAPI, connectionsAPI, stripeAPI, authAPI, notificationsAPI } from '@/lib/api';
+import { Link2, Unlink, ExternalLink, CreditCard, LogOut, Shield, ShieldCheck, Trash2, Camera, X as XIcon, Bell } from 'lucide-react';
 import VerifiedScorePassModal from '@/components/ui/VerifiedScorePassModal';
 
 const PLATFORMS = [
@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
 
   const isPro = user?.tier === 'pro' || user?.subscription_status === 'active' || user?.subscription_status === 'trialing';
   const hasVerifiedPass = user?.verified_score_pass || false;
@@ -43,6 +44,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     connectionsAPI.list().then((res) => setConnections(res.data.connections || [])).catch(() => {});
+    notificationsAPI.getPreferences().then((res) => setNotifPrefs(res.data.preferences || {})).catch(() => {});
 
     // Check for verified_pass success redirect
     const params = new URLSearchParams(window.location.search);
@@ -343,7 +345,78 @@ export default function SettingsPage() {
         </button>
       </section>
 
-      {/* Sign Out & Delete */}
+      {/* Notification Preferences */}
+      <section className="bg-card border border-accent/20 rounded-lg p-6">
+        <h2 className="text-lg uppercase tracking-wider font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+          <Bell size={18} className="inline mr-2" />Notifications
+        </h2>
+        <p className="text-xs text-muted-dark mb-4">Control which notifications you receive via email and browser push.</p>
+        <div className="space-y-4">
+          {[
+            { key: 'challenges', label: 'Challenges', desc: 'H2H challenges received, accepted, and settled' },
+            { key: 'social', label: 'Social', desc: 'New followers' },
+            { key: 'score', label: 'Score & Rank', desc: 'Score milestones and rank changes' },
+            { key: 'creators', label: 'Creators', desc: 'New posts from creators you follow' },
+            { key: 'achievements', label: 'Achievements', desc: 'Badges earned' },
+            { key: 'leagues', label: 'Leagues', desc: 'League invites and updates' },
+          ].map(({ key, label, desc }) => (
+            <div key={key} className="border-b border-accent/10 pb-3 last:border-0 last:pb-0">
+              <div className="flex justify-between items-center mb-1">
+                <div>
+                  <p className="text-sm text-white font-medium">{label}</p>
+                  <p className="text-xs text-muted-dark">{desc}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const newVal = !(notifPrefs[`${key}_enabled`] !== false);
+                    const updated = { ...notifPrefs, [`${key}_enabled`]: newVal };
+                    setNotifPrefs(updated);
+                    await notificationsAPI.updatePreferences({ [`${key}_enabled`]: newVal }).catch(() => {});
+                  }}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    notifPrefs[`${key}_enabled`] !== false ? 'bg-accent' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
+                    notifPrefs[`${key}_enabled`] !== false ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+              {notifPrefs[`${key}_enabled`] !== false && (
+                <div className="flex gap-4 mt-2 ml-1">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs[`${key}_email`] !== false}
+                      onChange={async (e) => {
+                        const updated = { ...notifPrefs, [`${key}_email`]: e.target.checked };
+                        setNotifPrefs(updated);
+                        await notificationsAPI.updatePreferences({ [`${key}_email`]: e.target.checked }).catch(() => {});
+                      }}
+                      className="rounded border-accent/30 bg-secondary text-accent focus:ring-accent"
+                    />
+                    <span className="text-xs text-muted-dark">Email</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifPrefs[`${key}_push`] !== false}
+                      onChange={async (e) => {
+                        const updated = { ...notifPrefs, [`${key}_push`]: e.target.checked };
+                        setNotifPrefs(updated);
+                        await notificationsAPI.updatePreferences({ [`${key}_push`]: e.target.checked }).catch(() => {});
+                      }}
+                      className="rounded border-accent/30 bg-secondary text-accent focus:ring-accent"
+                    />
+                    <span className="text-xs text-muted-dark">Push</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="flex items-center justify-between">
         <button
           onClick={logout}

@@ -56,6 +56,12 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'trial_ending_10', 'trial_ending_13', 'trial_ended',
   'weekly_report', 'badge_earned', 'leaderboard_passed',
   'score_change', 'bet_settled', 'new_follower',
+  'challenge_received', 'challenge_accepted', 'challenge_settled',
+  'creator_post', 'league_invite', 'rank_milestone',
+]);
+
+export const trustStatusEnum = pgEnum('trust_status', [
+  'synced_verified', 'manually_validated', 'manual_unverified',
 ]);
 
 // ── Tables ───────────────────────────────────────────────────
@@ -115,7 +121,8 @@ export const bets = pgTable('bets', {
   event_start_time: timestamp('event_start_time', { withTimezone: true }),
   is_pregame_verified: boolean('is_pregame_verified').default(false).notNull(),
   odds_api_event_id: varchar('odds_api_event_id', { length: 255 }),
-  trust_status: varchar('trust_status', { length: 30 }).default('synced_verified'),
+  trust_status: trustStatusEnum('trust_status').default('manual_unverified').notNull(),
+  validation_reason: varchar('validation_reason', { length: 100 }),
 }, (table) => ({
   userIdIdx: index('bets_user_id_idx').on(table.user_id),
   sportIdx: index('bets_sport_idx').on(table.sport),
@@ -207,11 +214,24 @@ export const notifications = pgTable('notifications', {
   type: notificationTypeEnum('type').notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   body: text('body').notNull(),
+  data: jsonb('data').default('{}'),
   read: boolean('read').default(false).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('notifications_user_idx').on(table.user_id),
   readIdx: index('notifications_read_idx').on(table.user_id, table.read),
+}));
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  user_id: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('push_subscriptions_user_idx').on(table.user_id),
+  endpointIdx: uniqueIndex('push_subscriptions_endpoint_idx').on(table.endpoint),
 }));
 
 export const sportsbookConnections = pgTable('sportsbook_connections', {
@@ -384,6 +404,10 @@ export const capperStatusEnum = pgEnum('capper_status', [
   'pending', 'active', 'suspended',
 ]);
 
+export const capperTierEnum = pgEnum('capper_tier', [
+  'capper', 'verified', 'elite',
+]);
+
 export const capperSubStatusEnum = pgEnum('capper_sub_status', [
   'active', 'cancelled', 'expired',
 ]);
@@ -401,16 +425,20 @@ export const capperProfiles = pgTable('capper_profiles', {
   favorite_teams: jsonb('favorite_teams').default('[]'),
   betting_style: varchar('betting_style', { length: 100 }),
   social_links: jsonb('social_links').default('{}'),
+  tier: capperTierEnum('tier').default('capper').notNull(),
+  creator_plan_type: varchar('creator_plan_type', { length: 50 }).default('standard').notNull(),
+  revenue_share_pct: numeric('revenue_share_pct', { precision: 5, scale: 2 }).default('80.00').notNull(),
   total_subscribers: integer('total_subscribers').default(0).notNull(),
   total_followers: integer('total_followers').default(0).notNull(),
   total_tails: integer('total_tails').default(0).notNull(),
   total_earnings_cents: integer('total_earnings_cents').default(0).notNull(),
-  verified_at: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
+  verified_at: timestamp('verified_at', { withTimezone: true }),
   verified_score: numeric('verified_score', { precision: 5, scale: 1 }).default('0').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdx: index('capper_profiles_user_idx').on(table.user_id),
   statusIdx: index('capper_profiles_status_idx').on(table.status),
+  tierIdx: index('capper_profiles_tier_idx').on(table.tier),
 }));
 
 export const capperSubscriptions = pgTable('capper_subscriptions', {
@@ -515,7 +543,7 @@ export const leagueEntries = pgTable('league_entries', {
 // ── Head-to-Head Challenges ─────────────────────────────────
 
 export const challengeStatusEnum = pgEnum('challenge_status', [
-  'pending', 'accepted', 'declined', 'settled', 'cancelled', 'expired',
+  'pending', 'accepted', 'declined', 'settled', 'cancelled', 'expired', 'auto_settled',
 ]);
 
 export const challenges = pgTable('challenges', {
@@ -534,6 +562,18 @@ export const challenges = pgTable('challenges', {
   settled_at: timestamp('settled_at', { withTimezone: true }),
   expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  // Verified H2H fields
+  is_verified: boolean('is_verified').default(false).notNull(),
+  odds_api_event_id: text('odds_api_event_id'),
+  market: text('market'), // 'h2h', 'spreads', 'totals'
+  challenger_line: numeric('challenger_line'),
+  challenger_odds: integer('challenger_odds'),
+  challengee_odds: integer('challengee_odds'),
+  home_team: text('home_team'),
+  away_team: text('away_team'),
+  home_score: integer('home_score'),
+  away_score: integer('away_score'),
+  settlement_method: text('settlement_method'), // 'auto' or 'manual'
 }, (table) => ({
   challengerIdx: index('challenges_challenger_idx').on(table.challenger_id),
   challengeeIdx: index('challenges_challengee_idx').on(table.challengee_id),
@@ -541,6 +581,8 @@ export const challenges = pgTable('challenges', {
   winnerIdx: index('challenges_winner_idx').on(table.winner_id),
   sportIdx: index('challenges_sport_idx').on(table.sport),
   expiresAtIdx: index('challenges_expires_at_idx').on(table.expires_at),
+  verifiedIdx: index('challenges_verified_idx').on(table.is_verified),
+  eventIdIdx: index('challenges_event_id_idx').on(table.odds_api_event_id),
 }));
 
 // ── Score Snapshots (historical Gammbler Score tracking) ─────

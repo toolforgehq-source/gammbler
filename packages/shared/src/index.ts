@@ -440,10 +440,32 @@ export interface TailEvent {
   created_at: string;
 }
 
-export const CAPPER_MIN_SCORE = 80;
-export const CAPPER_MIN_BETS = 100;
-export const CAPPER_PLATFORM_RAKE = 0.30;
+// Capper tier thresholds
+export const CAPPER_VERIFIED_MIN_SCORE = 75;
+export const CAPPER_VERIFIED_MIN_BETS = 50;
+export const CAPPER_ELITE_MIN_SCORE = 85;
+export const CAPPER_ELITE_MIN_BETS = 100;
+
+// Creator revenue share (default for new cappers)
+export const CAPPER_DEFAULT_PLATFORM_FEE = 0.20;
 export const CAPPER_DEFAULT_PRICE_CENTS = 499;
+
+// Predefined creator plan types with fee percentages
+export const CREATOR_PLAN_TYPES: Record<string, { label: string; fee_pct: number }> = {
+  standard: { label: 'Standard Creator', fee_pct: 0.20 },
+  early_creator: { label: 'Early Creator', fee_pct: 0.10 },
+  founding_creator: { label: 'Founding Creator', fee_pct: 0.05 },
+  partner: { label: 'Partner Creator', fee_pct: 0.10 },
+  ambassador: { label: 'Ambassador Creator', fee_pct: 0.15 },
+};
+
+export type CapperTier = 'capper' | 'verified' | 'elite';
+export type CreatorPlanType = keyof typeof CREATOR_PLAN_TYPES;
+
+// Legacy exports for backward compatibility
+export const CAPPER_MIN_SCORE = CAPPER_VERIFIED_MIN_SCORE;
+export const CAPPER_MIN_BETS = CAPPER_VERIFIED_MIN_BETS;
+export const CAPPER_PLATFORM_RAKE = CAPPER_DEFAULT_PLATFORM_FEE;
 export const CAPPER_SCORE_WARNING_THRESHOLD = 70;
 
 // ── Feature: Cash Leagues ───────────────────────────────────
