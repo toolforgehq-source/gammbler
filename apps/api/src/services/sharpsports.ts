@@ -41,7 +41,7 @@ export async function initiateConnection(userId: string, platform: string): Prom
     `${SHARPSPORTS_BASE}/context/`,
     {
       book: platform,
-      callback_url: `${env.FRONTEND_URL}/settings/connections?status=connected`,
+      callback_url: `${env.FRONTEND_URL}/dashboard/settings?status=connected`,
     },
     { headers: getHeaders() }
   );
@@ -188,7 +188,8 @@ function mapSport(sport: string, league: string): string {
   if (s.includes('baseball') || s.includes('mlb')) return 'mlb';
   if (s.includes('hockey') || s.includes('nhl')) return 'nhl';
   if (s.includes('soccer') || s.includes('mls') || s.includes('premier')) return 'soccer';
-  return 'nfl';
+  console.warn(`[SharpSports] Unknown sport/league mapping: sport="${sport}", league="${league}"`);
+  return 'other';
 }
 
 function mapBetType(type: string): string {

@@ -3,6 +3,7 @@ import { db } from '../db';
 import {
   creatorPosts, creatorPostLikes, creatorPostComments,
   capperProfiles, capperSubscriptions, users, follows,
+  contentReports,
 } from '../db/schema';
 import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
@@ -185,7 +186,8 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
     const formattedPosts = posts.map((p) => {
       const isOwn = p.user_id === userId;
       const isSubscribed = subscribedToIds.has(p.user_id);
-      const isUnlocked = !p.is_subscriber_only || isOwn || isSubscribed;
+      // All content is accessible while paid subscriptions are not yet live
+      const isUnlocked = true;
 
       return {
         id: p.id,
@@ -345,6 +347,97 @@ router.delete('/:postId', authMiddleware, async (req: Request, res: Response): P
     res.json({ deleted: true });
   } catch (err) {
     console.error('Delete post error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /creator-posts/:postId/report — report a post
+router.post('/:postId/report', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { reason, details } = req.body;
+
+    if (!reason || typeof reason !== 'string' || reason.length < 3) {
+      res.status(400).json({ error: 'Reason is required (min 3 characters)' });
+      return;
+    }
+
+    const [post] = await db
+      .select({ user_id: creatorPosts.user_id })
+      .from(creatorPosts)
+      .where(eq(creatorPosts.id, req.params.postId))
+      .limit(1);
+
+    if (!post) {
+      res.status(404).json({ error: 'Post not found' });
+      return;
+    }
+
+    await db.insert(contentReports).values({
+      reporter_user_id: req.user!.userId,
+      post_id: req.params.postId,
+      reported_user_id: post.user_id,
+      reason: reason.slice(0, 100),
+      details: details ? String(details).slice(0, 2000) : null,
+    });
+
+    console.log(`[Moderation] Post ${req.params.postId} reported by ${req.user!.userId}: ${reason}`);
+    res.json({ reported: true });
+  } catch (err) {
+    console.error('Report post error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /creator-posts/admin/reports — admin: view reported content
+router.get('/admin/reports', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const status = (req.query.status as string) || 'pending';
+    const reports = await db
+      .select()
+      .from(contentReports)
+      .where(eq(contentReports.status, status))
+      .orderBy(desc(contentReports.created_at))
+      .limit(50);
+
+    res.json({ reports });
+  } catch (err) {
+    console.error('Get reports error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PATCH /creator-posts/admin/reports/:reportId — admin: update report status
+router.patch('/admin/reports/:reportId', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { status: newStatus, action } = req.body;
+
+    if (!['reviewed', 'dismissed', 'actioned'].includes(newStatus)) {
+      res.status(400).json({ error: 'Invalid status' });
+      return;
+    }
+
+    await db
+      .update(contentReports)
+      .set({ status: newStatus, reviewed_at: new Date() })
+      .where(eq(contentReports.id, req.params.reportId));
+
+    // If action is 'remove', hide the reported post
+    if (action === 'remove') {
+      const [report] = await db
+        .select({ post_id: contentReports.post_id })
+        .from(contentReports)
+        .where(eq(contentReports.id, req.params.reportId))
+        .limit(1);
+
+      if (report?.post_id) {
+        await db.delete(creatorPosts).where(eq(creatorPosts.id, report.post_id));
+        console.log(`[Moderation] Post ${report.post_id} removed by admin action`);
+      }
+    }
+
+    res.json({ updated: true });
+  } catch (err) {
+    console.error('Update report error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

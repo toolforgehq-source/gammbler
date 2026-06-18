@@ -7,6 +7,7 @@ import { attachTier } from '../middleware/subscription';
 import { z } from 'zod';
 import { sendNewFollowerEmail } from '../services/email';
 import { checkAndAwardCreatorBadges } from '../services/creator-badges';
+import { notifyNewFollower } from '../services/notification-triggers';
 import multer from 'multer';
 
 const avatarUpload = multer({
@@ -122,11 +123,16 @@ router.get('/:username', optionalAuth, async (req: Request, res: Response): Prom
       isFollowing = !!follow;
     }
 
-    // Get overall record
+    // Get overall record — exclude manual_unverified bets from public stats
     const allBets = await db
       .select()
       .from(bets)
-      .where(eq(bets.user_id, user.id));
+      .where(
+        and(
+          eq(bets.user_id, user.id),
+          sql`${bets.trust_status} != 'manual_unverified'`
+        )
+      );
 
     const settled = allBets.filter((b) => ['win', 'loss', 'push'].includes(b.result));
     const record = {
@@ -274,6 +280,7 @@ router.post('/follow/:userId', authMiddleware, async (req: Request, res: Respons
       .limit(1);
     if (followedUser && followerUser) {
       sendNewFollowerEmail(followedUser.email, followedUser.username, followerUser.username).catch(() => {});
+      notifyNewFollower(req.params.userId, followerUser.username).catch(() => {});
     }
 
     // Check creator badges for the followed user (fire & forget)

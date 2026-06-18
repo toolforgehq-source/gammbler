@@ -572,11 +572,11 @@ export default function HomePage() {
                   </div>
                   <div className="text-center p-2 rounded-lg bg-white/[0.03]">
                     <p className="text-lg font-black text-[#4caf50]" style={{ fontFamily: 'var(--font-number)' }}>312</p>
-                    <p className="text-[9px] text-[#6b6b6b] uppercase">Subscribers</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">Followers</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-white/[0.03]">
-                    <p className="text-lg font-black text-[#FFD700]" style={{ fontFamily: 'var(--font-number)' }}>$4,365</p>
-                    <p className="text-[9px] text-[#6b6b6b] uppercase">Monthly</p>
+                    <p className="text-lg font-black text-[#FFD700]" style={{ fontFamily: 'var(--font-number)' }}>91.8</p>
+                    <p className="text-[9px] text-[#6b6b6b] uppercase">Score</p>
                   </div>
                 </div>
                 <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.05]">
@@ -606,10 +606,10 @@ export default function HomePage() {
                 The best bettors build credibility. The best creators build audiences.
               </p>
               <p className="text-[#9e9e9e] leading-relaxed mb-4">
-                Create content. Gain followers. Earn subscribers. Build your betting brand.
+                Create content. Gain followers. Build your betting brand.
               </p>
               <ul className="space-y-3 mb-8">
-                {['Post picks & analysis', 'Subscriber-only content', 'Keep 80% of revenue', 'Grow your audience'].map((item, i) => (
+                {['Post picks & analysis', 'Share live bet slips', 'Build your reputation', 'Grow your audience'].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-[#9e9e9e]">
                     <Zap size={16} className="text-[#9c27b0]" />
                     <span>{item}</span>

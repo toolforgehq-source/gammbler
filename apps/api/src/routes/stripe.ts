@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
+import rateLimit from 'express-rate-limit';
 import { db } from '../db';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -13,13 +14,21 @@ import {
 
 const router = Router();
 
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many payment requests. Please try again later.' },
+});
+
 function getStripe(): Stripe | null {
   if (!env.STRIPE_SECRET_KEY) return null;
   return new Stripe(env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' as any });
 }
 
 // POST /stripe/create-checkout — create checkout session for subscription
-router.post('/create-checkout', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.post('/create-checkout', paymentLimiter, authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const stripe = getStripe();
     if (!stripe) {
@@ -72,7 +81,7 @@ router.post('/create-checkout', authMiddleware, async (req: Request, res: Respon
 });
 
 // POST /stripe/create-verified-pass-checkout — one-time payment for Verified Score Pass
-router.post('/create-verified-pass-checkout', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.post('/create-verified-pass-checkout', paymentLimiter, authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const stripe = getStripe();
     if (!stripe) {
@@ -140,7 +149,7 @@ router.post('/create-verified-pass-checkout', authMiddleware, async (req: Reques
 });
 
 // POST /stripe/create-portal — create billing portal session
-router.post('/create-portal', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+router.post('/create-portal', paymentLimiter, authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const stripe = getStripe();
     if (!stripe) {
@@ -202,9 +211,16 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
         else if (subscription.status === 'past_due') status = 'past_due';
         else if (subscription.status === 'canceled' || subscription.status === 'unpaid') status = 'cancelled';
 
+        const updateData: Record<string, unknown> = { subscription_status: status };
+        if (status === 'active' || status === 'trialing') {
+          updateData.past_due_since = null;
+        } else if (status === 'past_due') {
+          updateData.past_due_since = new Date();
+        }
+
         const [updatedUser] = await db
           .update(users)
-          .set({ subscription_status: status })
+          .set(updateData)
           .where(eq(users.stripe_customer_id, customerId))
           .returning({ email: users.email, username: users.username });
 
@@ -219,7 +235,7 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
         const delCustomerId = delSub.customer as string;
         const [cancelledUser] = await db
           .update(users)
-          .set({ subscription_status: 'cancelled' })
+          .set({ subscription_status: 'cancelled', past_due_since: null })
           .where(eq(users.stripe_customer_id, delCustomerId))
           .returning({ email: users.email, username: users.username });
 
@@ -234,13 +250,17 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
         const failedCustomerId = failedInvoice.customer as string;
         const [pastDueUser] = await db
           .update(users)
-          .set({ subscription_status: 'past_due' })
+          .set({
+            subscription_status: 'past_due',
+            past_due_since: new Date(),
+          })
           .where(eq(users.stripe_customer_id, failedCustomerId))
           .returning({ email: users.email, username: users.username });
 
         if (pastDueUser) {
           sendPaymentFailedEmail(pastDueUser.email, pastDueUser.username).catch(() => {});
         }
+        console.log(`[Stripe] Payment failed for customer ${failedCustomerId}`);
         break;
       }
 
@@ -255,6 +275,7 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
               verified_score_pass_purchased_at: new Date(),
             })
             .where(eq(users.stripe_customer_id, sessionCustomerId));
+          console.log(`[Stripe] Verified Score Pass granted for customer ${sessionCustomerId}`);
         }
         break;
       }
@@ -264,8 +285,63 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
         const customerId = invoice.customer as string;
         await db
           .update(users)
-          .set({ subscription_status: 'active' })
+          .set({
+            subscription_status: 'active',
+            past_due_since: null,
+          })
           .where(eq(users.stripe_customer_id, customerId));
+        console.log(`[Stripe] Payment succeeded for customer ${customerId}`);
+        break;
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const refundCustomerId = charge.customer as string;
+        const metadata = charge.metadata || {};
+
+        console.log(`[Stripe] Refund processed for customer ${refundCustomerId}`, {
+          amount: charge.amount_refunded,
+          metadata,
+        });
+
+        // If this was a Verified Score Pass refund, revoke the pass
+        if (metadata.purchase_type === 'verified_score_pass') {
+          await db
+            .update(users)
+            .set({ verified_score_pass: false })
+            .where(eq(users.stripe_customer_id, refundCustomerId));
+          console.log(`[Stripe] Verified Score Pass revoked due to refund for customer ${refundCustomerId}`);
+        }
+        break;
+      }
+
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute;
+        const disputeCharge = typeof dispute.charge === 'string' ? dispute.charge : (dispute.charge as Stripe.Charge)?.id;
+        console.warn(`[Stripe] DISPUTE CREATED — charge: ${disputeCharge}, reason: ${dispute.reason}, amount: ${dispute.amount}`);
+
+        // Get customer ID from the charge object
+        const disputeChargeObj = typeof dispute.charge === 'object' ? dispute.charge as Stripe.Charge : null;
+        const disputeCustomerId = disputeChargeObj?.customer
+          ? (typeof disputeChargeObj.customer === 'string' ? disputeChargeObj.customer : disputeChargeObj.customer.id)
+          : null;
+
+        if (disputeCustomerId) {
+          const [disputedUser] = await db
+            .update(users)
+            .set({
+              subscription_status: 'cancelled',
+              verified_score_pass: false,
+              past_due_since: null,
+              payment_flags: { disputed: true, dispute_reason: dispute.reason, dispute_date: new Date().toISOString() },
+            })
+            .where(eq(users.stripe_customer_id, disputeCustomerId))
+            .returning({ email: users.email, username: users.username });
+
+          if (disputedUser) {
+            console.warn(`[Stripe] Account flagged and access revoked for ${disputedUser.username} due to dispute`);
+          }
+        }
         break;
       }
     }

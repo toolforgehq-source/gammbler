@@ -5,13 +5,27 @@ import { eq } from 'drizzle-orm';
 
 export type UserTier = 'free' | 'pro';
 
-export function getUserTier(subscriptionStatus: string, trialEndsAt: string | Date): UserTier {
+const PAST_DUE_GRACE_DAYS = 7;
+
+export function getUserTier(
+  subscriptionStatus: string,
+  trialEndsAt: string | Date,
+  pastDueSince?: string | Date | null,
+): UserTier {
   const now = new Date();
   const isTrialing = subscriptionStatus === 'trialing' && new Date(trialEndsAt) > now;
   const isActive = subscriptionStatus === 'active';
-  const isPastDue = subscriptionStatus === 'past_due';
 
-  return (isTrialing || isActive || isPastDue) ? 'pro' : 'free';
+  if (isTrialing || isActive) return 'pro';
+
+  // past_due gets a limited grace period
+  if (subscriptionStatus === 'past_due' && pastDueSince) {
+    const graceEnd = new Date(pastDueSince);
+    graceEnd.setDate(graceEnd.getDate() + PAST_DUE_GRACE_DAYS);
+    if (now < graceEnd) return 'pro';
+  }
+
+  return 'free';
 }
 
 async function loadUserTier(req: Request, res: Response): Promise<UserTier | null> {
@@ -24,6 +38,7 @@ async function loadUserTier(req: Request, res: Response): Promise<UserTier | nul
     .select({
       subscription_status: users.subscription_status,
       trial_ends_at: users.trial_ends_at,
+      past_due_since: users.past_due_since,
     })
     .from(users)
     .where(eq(users.id, req.user.userId))
@@ -34,7 +49,7 @@ async function loadUserTier(req: Request, res: Response): Promise<UserTier | nul
     return null;
   }
 
-  const tier = getUserTier(user.subscription_status, user.trial_ends_at);
+  const tier = getUserTier(user.subscription_status, user.trial_ends_at, user.past_due_since);
   req.userTier = tier;
   return tier;
 }

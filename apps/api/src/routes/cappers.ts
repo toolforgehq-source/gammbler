@@ -314,18 +314,17 @@ router.patch('/me', authMiddleware, async (req: Request, res: Response): Promise
   }
 });
 
-// POST /cappers/:userId/subscribe — subscribe to a capper
+// POST /cappers/:userId/subscribe — follow a capper (free — paid subscriptions coming soon)
 router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const capperUserId = req.params.userId;
     const subscriberUserId = req.user!.userId;
 
     if (capperUserId === subscriberUserId) {
-      res.status(400).json({ error: 'Cannot subscribe to yourself' });
+      res.status(400).json({ error: 'Cannot follow yourself' });
       return;
     }
 
-    // Check capper exists
     const [capper] = await db
       .select()
       .from(capperProfiles)
@@ -342,7 +341,6 @@ router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Resp
       return;
     }
 
-    // Check existing sub
     const [existing] = await db
       .select()
       .from(capperSubscriptions)
@@ -355,17 +353,14 @@ router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Resp
       .limit(1);
 
     if (existing && existing.status === 'active') {
-      res.status(409).json({ error: 'Already subscribed' });
+      res.status(409).json({ error: 'Already following' });
       return;
     }
 
-    // For now, create subscription directly (Stripe integration handled separately)
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
-
+    // Free follow — no payment required. Paid subscriptions via Stripe coming soon.
     if (existing) {
       const [updated] = await db.update(capperSubscriptions)
-        .set({ status: 'active', expires_at: expiresAt })
+        .set({ status: 'active', expires_at: null })
         .where(eq(capperSubscriptions.id, existing.id))
         .returning();
 
@@ -380,20 +375,19 @@ router.post('/:userId/subscribe', authMiddleware, async (req: Request, res: Resp
     const [subscription] = await db.insert(capperSubscriptions).values({
       capper_user_id: capperUserId,
       subscriber_user_id: subscriberUserId,
-      price_cents: capper.price_cents,
-      expires_at: expiresAt,
+      price_cents: 0,
+      expires_at: null,
     }).returning();
 
     await db.update(capperProfiles)
       .set({ total_subscribers: sql`${capperProfiles.total_subscribers} + 1` })
       .where(eq(capperProfiles.user_id, capperUserId));
 
-    // Check creator badges for the capper (fire & forget)
     checkAndAwardCreatorBadges(capperUserId).catch(() => {});
 
     res.status(201).json({ subscription });
   } catch (err) {
-    console.error('Subscribe to capper error:', err);
+    console.error('Follow capper error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

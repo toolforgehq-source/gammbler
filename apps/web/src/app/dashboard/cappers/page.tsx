@@ -171,8 +171,8 @@ export default function CappersPage() {
         <Shield size={20} className="text-gold mt-0.5 shrink-0" />
         <div className="text-sm text-muted">
           <p><span className="text-gold font-semibold">Anyone can become a Capper</span> — no minimum score required. Build your audience and earn from subscribers.</p>
-          <p className="mt-1">Subscribe to get instant access to their live bet slips, creator posts, and subscriber-only content.</p>
-          <p className="text-muted-dark mt-1">Creators keep 80%. Gammbler takes a 20% platform fee.</p>
+          <p className="mt-1">Follow cappers to see their live bet slips and creator posts in your feed.</p>
+          <p className="text-muted-dark mt-1">Paid subscriptions and creator monetization coming soon.</p>
         </div>
       </div>
 
@@ -269,9 +269,9 @@ export default function CappersPage() {
                     </div>
                     <div className="text-center">
                       <p className="text-accent font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>
-                        ${(capper.price_cents / 100).toFixed(2)}
+                        Free
                       </p>
-                      <p className="text-xs text-muted-dark">/month</p>
+                      <p className="text-xs text-muted-dark">to follow</p>
                     </div>
                   </div>
                   {capper.user_id !== user?.id && (
@@ -280,14 +280,14 @@ export default function CappersPage() {
                         onClick={() => handleUnsubscribe(capper.user_id)}
                         className="px-3 sm:px-4 py-2 border border-accent/40 text-accent rounded-lg text-sm font-semibold hover:bg-accent/10 transition-colors flex items-center gap-1"
                       >
-                        <UserMinus size={14} /> <span className="hidden sm:inline">Subscribed</span>
+                        <UserMinus size={14} /> <span className="hidden sm:inline">Following</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => handleSubscribe(capper.user_id)}
                         className="px-3 sm:px-4 py-2 bg-accent text-background rounded-lg text-sm font-semibold hover:bg-accent-light transition-colors flex items-center gap-1"
                       >
-                        <UserPlus size={14} /> <span className="hidden sm:inline">Subscribe</span>
+                        <UserPlus size={14} /> <span className="hidden sm:inline">Follow</span>
                       </button>
                     )
                   )}

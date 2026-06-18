@@ -4,6 +4,7 @@ import { eq, and, desc, sql, inArray, gte } from 'drizzle-orm';
 import { BadgeType } from '@gammbler/shared';
 import { createFeedEvent } from './feed';
 import { sendBadgeEarnedEmail } from './email';
+import { notifyBadgeEarned } from './notification-triggers';
 
 const BADGE_DISPLAY: Record<string, { name: string; description: string }> = {
   first_win: { name: 'First Win', description: 'Won your first bet on Gammbler' },
@@ -41,10 +42,16 @@ export async function checkAndAwardBadges(userId: string): Promise<string[]> {
     .where(eq(badges.user_id, userId));
   const has = new Set(existingBadges.map((b) => b.badge_type));
 
+  // Exclude manual_unverified bets from badge calculations
   const userBets = await db
     .select()
     .from(bets)
-    .where(eq(bets.user_id, userId))
+    .where(
+      and(
+        eq(bets.user_id, userId),
+        sql`COALESCE(${bets.trust_status}, 'synced_verified') != 'manual_unverified'`
+      )
+    )
     .orderBy(desc(bets.settled_at));
 
   const settledBets = userBets.filter((b) => ['win', 'loss', 'push'].includes(b.result));
@@ -192,6 +199,7 @@ async function awardBadge(userId: string, badgeType: string): Promise<string> {
   if (user) {
     const display = BADGE_DISPLAY[badgeType] || { name: badgeType, description: '' };
     sendBadgeEarnedEmail(user.email, user.username, display.name, display.description).catch(() => {});
+    notifyBadgeEarned(userId, display.name).catch(() => {});
   }
 
   return badgeType;
