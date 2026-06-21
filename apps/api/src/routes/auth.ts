@@ -20,6 +20,9 @@ const signupSchema = z.object({
   date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth must be YYYY-MM-DD'),
   tos_accepted: z.boolean().refine((v) => v === true, { message: 'You must accept the Terms of Service' }),
   referral_code: z.string().optional(),
+  utm_source: z.string().optional(),
+  utm_medium: z.string().optional(),
+  utm_campaign: z.string().optional(),
 });
 
 function isAtLeast18(dob: string): boolean {
@@ -95,6 +98,10 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
         referral_code: referralCode,
         referred_by: referredBy,
         email_verification_token: emailVerificationToken,
+        utm_source: body.utm_source || null,
+        utm_medium: body.utm_medium || null,
+        utm_campaign: body.utm_campaign || null,
+        last_active_at: new Date(),
       })
       .returning();
 

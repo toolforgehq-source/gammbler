@@ -84,6 +84,15 @@ export const users = pgTable('users', {
   email_verification_token: varchar('email_verification_token', { length: 64 }),
   password_reset_token: varchar('password_reset_token', { length: 64 }),
   password_reset_expires: timestamp('password_reset_expires', { withTimezone: true }),
+  past_due_since: timestamp('past_due_since', { withTimezone: true }),
+  payment_flags: jsonb('payment_flags').default('{}'),
+  referral_count: integer('referral_count').default(0).notNull(),
+  // Growth Brain: acquisition & activity tracking
+  utm_source: varchar('utm_source', { length: 100 }),
+  utm_medium: varchar('utm_medium', { length: 100 }),
+  utm_campaign: varchar('utm_campaign', { length: 200 }),
+  last_active_at: timestamp('last_active_at', { withTimezone: true }),
+  signup_context: jsonb('signup_context'),
 }, (table) => ({
   emailIdx: index('users_email_idx').on(table.email),
   usernameIdx: index('users_username_idx').on(table.username),
@@ -404,6 +413,7 @@ export const capperProfiles = pgTable('capper_profiles', {
   verified_at: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
   verified_score: numeric('verified_score', { precision: 5, scale: 1 }).default('0').notNull(),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  acquisition_source: varchar('acquisition_source', { length: 100 }),
 }, (table) => ({
   userIdx: index('capper_profiles_user_idx').on(table.user_id),
   statusIdx: index('capper_profiles_status_idx').on(table.status),
@@ -696,4 +706,207 @@ export const creatorBadges = pgTable('creator_badges', {
 }, (table) => ({
   userBadgeUnique: uniqueIndex('creator_badges_user_badge_unique').on(table.user_id, table.badge_id),
   userIdx: index('creator_badges_user_idx').on(table.user_id),
+}));
+
+// ── Content Reports (moderation) ───────────────────────────────
+
+export const contentReports = pgTable('content_reports', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  reporter_user_id: uuid('reporter_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  post_id: uuid('post_id').references(() => creatorPosts.id, { onDelete: 'cascade' }),
+  reported_user_id: uuid('reported_user_id').references(() => users.id, { onDelete: 'cascade' }),
+  reason: varchar('reason', { length: 100 }).notNull(),
+  details: text('details'),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  reviewed_at: timestamp('reviewed_at', { withTimezone: true }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  statusIdx: index('content_reports_status_idx').on(table.status),
+  postIdx: index('content_reports_post_idx').on(table.post_id),
+}));
+
+// ══════════════════════════════════════════════════════════════
+// GROWTH BRAIN — AI Chief Growth Officer
+// ══════════════════════════════════════════════════════════════
+
+// ── Growth Brain Enums ────────────────────────────────────────
+
+export const growthActionTypeEnum = pgEnum('growth_action_type', [
+  'creator_outreach', 'onboarding_nudge', 'referral_campaign',
+  'retention_campaign', 'seo_article', 'social_content',
+  'community_reply', 'ai_discoverability_page',
+]);
+
+export const growthOpportunityStatusEnum = pgEnum('growth_opportunity_status', [
+  'proposed', 'approved', 'rejected', 'executed', 'measuring', 'expired', 'completed',
+]);
+
+export const outreachTargetStatusEnum = pgEnum('outreach_target_status', [
+  'discovered', 'queued', 'contacted', 'replied', 'converted', 'declined', 'no_response',
+]);
+
+// ── Growth Beliefs ────────────────────────────────────────────
+
+export const growthBeliefs = pgTable('growth_beliefs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  belief_key: varchar('belief_key', { length: 200 }).notNull().unique(),
+  belief_value: numeric('belief_value', { precision: 12, scale: 6 }).notNull(),
+  sample_size: integer('sample_size').default(0).notNull(),
+  confidence: numeric('confidence', { precision: 5, scale: 4 }).default('0').notNull(),
+  previous_value: numeric('previous_value', { precision: 12, scale: 6 }),
+  previous_sample_size: integer('previous_sample_size'),
+  updated_reason: text('updated_reason'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  beliefKeyIdx: index('growth_beliefs_key_idx').on(table.belief_key),
+}));
+
+// ── Growth Opportunities ──────────────────────────────────────
+
+export const growthOpportunities = pgTable('growth_opportunities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  action_type: growthActionTypeEnum('action_type').notNull(),
+  channel: varchar('channel', { length: 50 }).notNull(),
+  why_this: text('why_this').notNull(),
+  why_now: text('why_now').notNull(),
+  evidence: jsonb('evidence').default('{}').notNull(),
+  expected_asbs: numeric('expected_asbs', { precision: 10, scale: 4 }).notNull(),
+  p_success: numeric('p_success', { precision: 7, scale: 6 }).notNull(),
+  confidence: numeric('confidence', { precision: 5, scale: 4 }).notNull(),
+  urgency: numeric('urgency', { precision: 5, scale: 2 }).default('1.00').notNull(),
+  ev_score: numeric('ev_score', { precision: 12, scale: 6 }).notNull(),
+  cost_dollars: numeric('cost_dollars', { precision: 10, scale: 2 }).default('0'),
+  founder_time_minutes: integer('founder_time_minutes').default(0),
+  asbs_per_dollar: numeric('asbs_per_dollar', { precision: 10, scale: 4 }),
+  asbs_per_minute: numeric('asbs_per_minute', { precision: 10, scale: 6 }),
+  success_criteria: text('success_criteria').notNull(),
+  learning_objective: text('learning_objective').notNull(),
+  content: jsonb('content'),
+  target_type: varchar('target_type', { length: 50 }),
+  target_id: varchar('target_id', { length: 255 }),
+  target_metadata: jsonb('target_metadata'),
+  status: growthOpportunityStatusEnum('status').default('proposed').notNull(),
+  rejection_reason: text('rejection_reason'),
+  is_exploratory: boolean('is_exploratory').default(false).notNull(),
+  measurement_window_days: integer('measurement_window_days').default(30).notNull(),
+  proposed_at: timestamp('proposed_at', { withTimezone: true }).defaultNow().notNull(),
+  approved_at: timestamp('approved_at', { withTimezone: true }),
+  executed_at: timestamp('executed_at', { withTimezone: true }),
+  expires_at: timestamp('expires_at', { withTimezone: true }),
+  completed_at: timestamp('completed_at', { withTimezone: true }),
+}, (table) => ({
+  statusIdx: index('growth_opportunities_status_idx').on(table.status),
+  actionTypeIdx: index('growth_opportunities_action_type_idx').on(table.action_type),
+  evScoreIdx: index('growth_opportunities_ev_score_idx').on(table.ev_score),
+  proposedAtIdx: index('growth_opportunities_proposed_at_idx').on(table.proposed_at),
+}));
+
+// ── Growth Outcomes ───────────────────────────────────────────
+
+export const growthOutcomes = pgTable('growth_outcomes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  opportunity_id: uuid('opportunity_id').notNull().references(() => growthOpportunities.id, { onDelete: 'cascade' }),
+  email_delivered: boolean('email_delivered'),
+  email_opened: boolean('email_opened'),
+  email_opened_at: timestamp('email_opened_at', { withTimezone: true }),
+  email_clicked: boolean('email_clicked'),
+  email_replied: boolean('email_replied'),
+  reply_sentiment: varchar('reply_sentiment', { length: 30 }),
+  impressions: integer('impressions'),
+  engagements: integer('engagements'),
+  link_clicks: integer('link_clicks'),
+  indexed: boolean('indexed'),
+  indexed_at: timestamp('indexed_at', { withTimezone: true }),
+  campaign_sent_count: integer('campaign_sent_count'),
+  campaign_open_rate: numeric('campaign_open_rate', { precision: 7, scale: 4 }),
+  campaign_click_rate: numeric('campaign_click_rate', { precision: 7, scale: 4 }),
+  target_signed_up: boolean('target_signed_up').default(false),
+  target_user_id: uuid('target_user_id'),
+  target_signup_at: timestamp('target_signup_at', { withTimezone: true }),
+  creator_profile_created: boolean('creator_profile_created').default(false),
+  creator_first_post_at: timestamp('creator_first_post_at', { withTimezone: true }),
+  creator_active: boolean('creator_active').default(false),
+  direct_asbs_created: integer('direct_asbs_created').default(0).notNull(),
+  users_brought: integer('users_brought').default(0),
+  users_reached_first_bet: integer('users_reached_first_bet').default(0),
+  users_reached_score: integer('users_reached_score').default(0),
+  users_active_14d: integer('users_active_14d').default(0),
+  pro_conversions: integer('pro_conversions').default(0),
+  revenue_cents: integer('revenue_cents').default(0),
+  ranking_position_30d: integer('ranking_position_30d'),
+  ranking_position_60d: integer('ranking_position_60d'),
+  ranking_position_90d: integer('ranking_position_90d'),
+  monthly_organic_traffic: integer('monthly_organic_traffic'),
+  measurement_complete: boolean('measurement_complete').default(false).notNull(),
+  measurement_complete_at: timestamp('measurement_complete_at', { withTimezone: true }),
+  first_measured_at: timestamp('first_measured_at', { withTimezone: true }).defaultNow().notNull(),
+  last_measured_at: timestamp('last_measured_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  opportunityIdx: index('growth_outcomes_opportunity_idx').on(table.opportunity_id),
+  measurementIdx: index('growth_outcomes_measurement_idx').on(table.measurement_complete),
+}));
+
+// ── Outreach Targets ──────────────────────────────────────────
+
+export const outreachTargets = pgTable('outreach_targets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  platform: varchar('platform', { length: 50 }).notNull(),
+  platform_id: varchar('platform_id', { length: 255 }),
+  display_name: varchar('display_name', { length: 200 }),
+  email: varchar('email', { length: 255 }),
+  follower_count: integer('follower_count'),
+  engagement_rate: numeric('engagement_rate', { precision: 7, scale: 4 }),
+  sport_focus: varchar('sport_focus', { length: 50 }),
+  posts_last_7d: integer('posts_last_7d'),
+  posts_last_30d: integer('posts_last_30d'),
+  has_existing_platform: boolean('has_existing_platform').default(false),
+  segment: varchar('segment', { length: 100 }),
+  brain_score: numeric('brain_score', { precision: 5, scale: 1 }),
+  status: outreachTargetStatusEnum('status').default('discovered').notNull(),
+  gammbler_user_id: uuid('gammbler_user_id').references(() => users.id),
+  discovered_at: timestamp('discovered_at', { withTimezone: true }).defaultNow().notNull(),
+  first_contacted_at: timestamp('first_contacted_at', { withTimezone: true }),
+  last_contacted_at: timestamp('last_contacted_at', { withTimezone: true }),
+  contact_count: integer('contact_count').default(0).notNull(),
+}, (table) => ({
+  platformIdUnique: uniqueIndex('outreach_targets_platform_unique').on(table.platform, table.platform_id),
+  statusIdx: index('outreach_targets_status_idx').on(table.status),
+  segmentIdx: index('outreach_targets_segment_idx').on(table.segment),
+}));
+
+// ── Funnel Snapshots ──────────────────────────────────────────
+
+export const funnelSnapshots = pgTable('funnel_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  snapshot_date: timestamp('snapshot_date', { withTimezone: true }).notNull(),
+  total_users: integer('total_users').default(0).notNull(),
+  total_with_first_bet: integer('total_with_first_bet').default(0).notNull(),
+  total_with_sportsbook: integer('total_with_sportsbook').default(0).notNull(),
+  total_score_unlocked: integer('total_score_unlocked').default(0).notNull(),
+  total_active_14d: integer('total_active_14d').default(0).notNull(),
+  total_active_7d: integer('total_active_7d').default(0).notNull(),
+  total_pro_subscribers: integer('total_pro_subscribers').default(0).notNull(),
+  total_creators: integer('total_creators').default(0).notNull(),
+  total_active_creators: integer('total_active_creators').default(0).notNull(),
+  signup_to_first_bet_rate: numeric('signup_to_first_bet_rate', { precision: 7, scale: 4 }),
+  first_bet_to_score_rate: numeric('first_bet_to_score_rate', { precision: 7, scale: 4 }),
+  score_to_active_14d_rate: numeric('score_to_active_14d_rate', { precision: 7, scale: 4 }),
+  active_to_pro_rate: numeric('active_to_pro_rate', { precision: 7, scale: 4 }),
+  new_signups_7d: integer('new_signups_7d').default(0),
+  new_asbs_7d: integer('new_asbs_7d').default(0),
+  new_creators_7d: integer('new_creators_7d').default(0),
+  new_pro_7d: integer('new_pro_7d').default(0),
+  churned_asbs_7d: integer('churned_asbs_7d').default(0),
+  net_asb_growth_7d: integer('net_asb_growth_7d').default(0),
+  asbs_from_creator_referral_7d: integer('asbs_from_creator_referral_7d').default(0),
+  asbs_from_organic_7d: integer('asbs_from_organic_7d').default(0),
+  asbs_from_referral_7d: integer('asbs_from_referral_7d').default(0),
+  mrr_cents: integer('mrr_cents').default(0),
+  mrr_change_cents: integer('mrr_change_cents').default(0),
+  biggest_dropoff_stage: varchar('biggest_dropoff_stage', { length: 100 }),
+  biggest_dropoff_rate: numeric('biggest_dropoff_rate', { precision: 7, scale: 4 }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  snapshotDateUnique: uniqueIndex('funnel_snapshots_date_unique').on(table.snapshot_date),
 }));

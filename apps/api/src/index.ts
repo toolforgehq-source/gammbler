@@ -11,6 +11,8 @@ import cron from 'node-cron';
 import { checkTrialReminders, sendWeeklyReports } from './services/scheduled-emails';
 import { snapshotAllScores } from './services/score-snapshots';
 import { snapshotAllDfsScores } from './services/dfs-score-snapshots';
+import { runDailyBrainCycle, initializeGrowthBrain } from './services/growth-brain';
+import { captureFunnelSnapshot } from './services/funnel-snapshot';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -36,6 +38,7 @@ import creatorLeaderboardRoutes from './routes/creator-leaderboards';
 import creatorBadgeRoutes from './routes/creator-badges';
 import creatorDiscoveryRoutes from './routes/creator-discovery';
 import statsRoutes from './routes/stats';
+import growthBrainRoutes from './routes/growth-brain';
 
 const app = express();
 const server = createServer(app);
@@ -91,6 +94,7 @@ app.use('/api/creator-leaderboards', creatorLeaderboardRoutes);
 app.use('/api/creator-badges', creatorBadgeRoutes);
 app.use('/api/creator-discovery', creatorDiscoveryRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/growth-brain', growthBrainRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -138,6 +142,19 @@ server.listen(env.PORT, () => {
     snapshotAllScores().catch((err) => console.error('[Cron] Score snapshot error:', err));
     snapshotAllDfsScores().catch((err) => console.error('[Cron] DFS score snapshot error:', err));
   });
+
+  // Growth Brain: funnel snapshot at 6am UTC daily
+  cron.schedule('0 6 * * *', () => {
+    captureFunnelSnapshot().catch((err) => console.error('[Cron] Funnel snapshot error:', err));
+  });
+
+  // Growth Brain: daily brain cycle at 6:30am UTC (generate opportunities)
+  cron.schedule('30 6 * * *', () => {
+    runDailyBrainCycle().catch((err) => console.error('[Cron] Growth Brain cycle error:', err));
+  });
+
+  // Initialize Growth Brain beliefs on first startup
+  initializeGrowthBrain().catch((err) => console.error('[Growth Brain] Init error:', err));
 
   console.log('Scheduled jobs registered');
 });
