@@ -77,7 +77,7 @@ export async function seedBeliefsFromHistoricalData(): Promise<void> {
         (SELECT COUNT(DISTINCT user_id)::int FROM gammbler_scores WHERE is_unlocked = true AND sport = 'overall') AS users_score_unlocked,
         (SELECT COUNT(*)::int FROM users WHERE subscription_status = 'active') AS pro_users,
         (SELECT COUNT(*)::int FROM capper_profiles WHERE status = 'active') AS creators,
-        (SELECT COUNT(DISTINCT user_id)::int FROM users WHERE referred_by IS NOT NULL) AS referred_users
+        (SELECT COUNT(*)::int FROM users WHERE referred_by IS NOT NULL) AS referred_users
     )
     SELECT * FROM funnel
   `);
