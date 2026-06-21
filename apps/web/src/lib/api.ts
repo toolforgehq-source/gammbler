@@ -306,6 +306,25 @@ export const dfsAPI = {
   },
 };
 
+// Growth Brain
+export const growthBrainAPI = {
+  dashboard: () => api.get('/growth-brain/dashboard'),
+  funnel: () => api.get('/growth-brain/funnel'),
+  beliefs: () => api.get('/growth-brain/beliefs'),
+  opportunities: (params?: Record<string, string>) => api.get('/growth-brain/opportunities', { params }),
+  approveOpportunity: (id: string) => api.post(`/growth-brain/opportunities/${id}/approve`),
+  rejectOpportunity: (id: string, reason: string) => api.post(`/growth-brain/opportunities/${id}/reject`, { reason }),
+  executeOpportunity: (id: string) => api.post(`/growth-brain/opportunities/${id}/execute`),
+  runCycle: () => api.post('/growth-brain/run-cycle'),
+  initialize: () => api.post('/growth-brain/initialize'),
+  snapshot: () => api.post('/growth-brain/snapshot'),
+  snapshots: () => api.get('/growth-brain/snapshots'),
+  viral: () => api.get('/growth-brain/viral'),
+  cohorts: () => api.get('/growth-brain/cohorts'),
+  ahaMoments: () => api.get('/growth-brain/aha-moments'),
+  creators: () => api.get('/growth-brain/creators'),
+};
+
 // Leagues
 export const leaguesAPI = {
   list: () => api.get('/leagues'),

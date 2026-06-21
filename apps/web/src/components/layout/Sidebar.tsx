@@ -22,8 +22,11 @@ import {
   PenLine,
   TrendingUp,
   Sparkles,
+  Brain,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
+
+const FOUNDER_EMAIL = 'l.doeden1018@gmail.com';
 
 const navItems = [
   { href: '/dashboard/feed', label: 'Community', icon: Activity },
@@ -96,7 +99,22 @@ export default function Sidebar() {
       </div>
 
       {/* Main Nav */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {user?.email === FOUNDER_EMAIL && (
+          <Link
+            href="/dashboard/growth"
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              pathname.startsWith('/dashboard/growth')
+                ? 'bg-gold/20 text-gold'
+                : 'text-gold/70 hover:bg-card hover:text-gold'
+            }`}
+          >
+            <Brain size={20} />
+            <span className="uppercase tracking-wide" style={{ fontFamily: 'var(--font-display)' }}>
+              Growth Brain
+            </span>
+          </Link>
+        )}
         {navItems.map((item) => {
           const isActive = item.href === '/dashboard'
             ? pathname === '/dashboard'
