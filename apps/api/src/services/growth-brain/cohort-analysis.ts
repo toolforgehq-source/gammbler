@@ -23,7 +23,7 @@ export async function getWeeklyCohorts(weeksBack: number = 12): Promise<CohortDa
         u.id AS user_id,
         EXTRACT(WEEK FROM AGE(NOW(), u.created_at))::int AS weeks_since_signup
       FROM users u
-      WHERE u.created_at >= NOW() - (${weeksBack} || ' weeks')::interval
+      WHERE u.created_at >= NOW() - (${weeksBack * 7} || ' days')::interval
     ),
     cohort_metrics AS (
       SELECT
