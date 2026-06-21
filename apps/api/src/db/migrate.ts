@@ -704,6 +704,207 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
     `);
 
+    // ══════════════════════════════════════════════════════════
+    // GROWTH BRAIN — AI Chief Growth Officer
+    // ══════════════════════════════════════════════════════════
+
+    // User acquisition & activity tracking columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_source VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_medium VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_campaign VARCHAR(200);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_context JSONB;
+    `);
+
+    // Creator acquisition source
+    await client.query(`
+      ALTER TABLE capper_profiles ADD COLUMN IF NOT EXISTS acquisition_source VARCHAR(100);
+    `);
+
+    // Growth Brain enums
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE growth_action_type AS ENUM (
+        'creator_outreach', 'onboarding_nudge', 'referral_campaign',
+        'retention_campaign', 'seo_article', 'social_content',
+        'community_reply', 'ai_discoverability_page'
+      ); EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      DO $$ BEGIN CREATE TYPE growth_opportunity_status AS ENUM (
+        'proposed', 'approved', 'rejected', 'executed', 'measuring', 'expired', 'completed'
+      ); EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+      DO $$ BEGIN CREATE TYPE outreach_target_status AS ENUM (
+        'discovered', 'queued', 'contacted', 'replied', 'converted', 'declined', 'no_response'
+      ); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    `);
+
+    // Growth Beliefs — the Brain's memory
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS growth_beliefs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        belief_key VARCHAR(200) NOT NULL UNIQUE,
+        belief_value NUMERIC(12,6) NOT NULL,
+        sample_size INTEGER NOT NULL DEFAULT 0,
+        confidence NUMERIC(5,4) NOT NULL DEFAULT 0,
+        previous_value NUMERIC(12,6),
+        previous_sample_size INTEGER,
+        updated_reason TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS growth_beliefs_key_idx ON growth_beliefs(belief_key);
+    `);
+
+    // Growth Opportunities — candidate actions
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS growth_opportunities (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        action_type growth_action_type NOT NULL,
+        channel VARCHAR(50) NOT NULL,
+        why_this TEXT NOT NULL,
+        why_now TEXT NOT NULL,
+        evidence JSONB NOT NULL DEFAULT '{}',
+        expected_asbs NUMERIC(10,4) NOT NULL,
+        p_success NUMERIC(7,6) NOT NULL,
+        confidence NUMERIC(5,4) NOT NULL,
+        urgency NUMERIC(5,2) NOT NULL DEFAULT 1.00,
+        ev_score NUMERIC(12,6) NOT NULL,
+        cost_dollars NUMERIC(10,2) DEFAULT 0,
+        founder_time_minutes INTEGER DEFAULT 0,
+        asbs_per_dollar NUMERIC(10,4),
+        asbs_per_minute NUMERIC(10,6),
+        success_criteria TEXT NOT NULL,
+        learning_objective TEXT NOT NULL,
+        content JSONB,
+        target_type VARCHAR(50),
+        target_id VARCHAR(255),
+        target_metadata JSONB,
+        status growth_opportunity_status NOT NULL DEFAULT 'proposed',
+        rejection_reason TEXT,
+        is_exploratory BOOLEAN NOT NULL DEFAULT false,
+        measurement_window_days INTEGER NOT NULL DEFAULT 30,
+        proposed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        approved_at TIMESTAMPTZ,
+        executed_at TIMESTAMPTZ,
+        expires_at TIMESTAMPTZ,
+        completed_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS growth_opportunities_status_idx ON growth_opportunities(status);
+      CREATE INDEX IF NOT EXISTS growth_opportunities_action_type_idx ON growth_opportunities(action_type);
+      CREATE INDEX IF NOT EXISTS growth_opportunities_ev_score_idx ON growth_opportunities(ev_score);
+      CREATE INDEX IF NOT EXISTS growth_opportunities_proposed_at_idx ON growth_opportunities(proposed_at);
+    `);
+
+    // Growth Outcomes — what actually happened
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS growth_outcomes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        opportunity_id UUID NOT NULL REFERENCES growth_opportunities(id) ON DELETE CASCADE,
+        email_delivered BOOLEAN,
+        email_opened BOOLEAN,
+        email_opened_at TIMESTAMPTZ,
+        email_clicked BOOLEAN,
+        email_replied BOOLEAN,
+        reply_sentiment VARCHAR(30),
+        impressions INTEGER,
+        engagements INTEGER,
+        link_clicks INTEGER,
+        indexed BOOLEAN,
+        indexed_at TIMESTAMPTZ,
+        campaign_sent_count INTEGER,
+        campaign_open_rate NUMERIC(7,4),
+        campaign_click_rate NUMERIC(7,4),
+        target_signed_up BOOLEAN DEFAULT false,
+        target_user_id UUID,
+        target_signup_at TIMESTAMPTZ,
+        creator_profile_created BOOLEAN DEFAULT false,
+        creator_first_post_at TIMESTAMPTZ,
+        creator_active BOOLEAN DEFAULT false,
+        direct_asbs_created INTEGER NOT NULL DEFAULT 0,
+        users_brought INTEGER DEFAULT 0,
+        users_reached_first_bet INTEGER DEFAULT 0,
+        users_reached_score INTEGER DEFAULT 0,
+        users_active_14d INTEGER DEFAULT 0,
+        pro_conversions INTEGER DEFAULT 0,
+        revenue_cents INTEGER DEFAULT 0,
+        ranking_position_30d INTEGER,
+        ranking_position_60d INTEGER,
+        ranking_position_90d INTEGER,
+        monthly_organic_traffic INTEGER,
+        measurement_complete BOOLEAN NOT NULL DEFAULT false,
+        measurement_complete_at TIMESTAMPTZ,
+        first_measured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_measured_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS growth_outcomes_opportunity_idx ON growth_outcomes(opportunity_id);
+      CREATE INDEX IF NOT EXISTS growth_outcomes_measurement_idx ON growth_outcomes(measurement_complete);
+    `);
+
+    // Outreach Targets — external creators/entities
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS outreach_targets (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        platform VARCHAR(50) NOT NULL,
+        platform_id VARCHAR(255),
+        display_name VARCHAR(200),
+        email VARCHAR(255),
+        follower_count INTEGER,
+        engagement_rate NUMERIC(7,4),
+        sport_focus VARCHAR(50),
+        posts_last_7d INTEGER,
+        posts_last_30d INTEGER,
+        has_existing_platform BOOLEAN DEFAULT false,
+        segment VARCHAR(100),
+        brain_score NUMERIC(5,1),
+        status outreach_target_status NOT NULL DEFAULT 'discovered',
+        gammbler_user_id UUID REFERENCES users(id),
+        discovered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        first_contacted_at TIMESTAMPTZ,
+        last_contacted_at TIMESTAMPTZ,
+        contact_count INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(platform, platform_id)
+      );
+      CREATE INDEX IF NOT EXISTS outreach_targets_status_idx ON outreach_targets(status);
+      CREATE INDEX IF NOT EXISTS outreach_targets_segment_idx ON outreach_targets(segment);
+    `);
+
+    // Funnel Snapshots — daily health metrics
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS funnel_snapshots (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        snapshot_date TIMESTAMPTZ NOT NULL,
+        total_users INTEGER NOT NULL DEFAULT 0,
+        total_with_first_bet INTEGER NOT NULL DEFAULT 0,
+        total_with_sportsbook INTEGER NOT NULL DEFAULT 0,
+        total_score_unlocked INTEGER NOT NULL DEFAULT 0,
+        total_active_14d INTEGER NOT NULL DEFAULT 0,
+        total_active_7d INTEGER NOT NULL DEFAULT 0,
+        total_pro_subscribers INTEGER NOT NULL DEFAULT 0,
+        total_creators INTEGER NOT NULL DEFAULT 0,
+        total_active_creators INTEGER NOT NULL DEFAULT 0,
+        signup_to_first_bet_rate NUMERIC(7,4),
+        first_bet_to_score_rate NUMERIC(7,4),
+        score_to_active_14d_rate NUMERIC(7,4),
+        active_to_pro_rate NUMERIC(7,4),
+        new_signups_7d INTEGER DEFAULT 0,
+        new_asbs_7d INTEGER DEFAULT 0,
+        new_creators_7d INTEGER DEFAULT 0,
+        new_pro_7d INTEGER DEFAULT 0,
+        churned_asbs_7d INTEGER DEFAULT 0,
+        net_asb_growth_7d INTEGER DEFAULT 0,
+        asbs_from_creator_referral_7d INTEGER DEFAULT 0,
+        asbs_from_organic_7d INTEGER DEFAULT 0,
+        asbs_from_referral_7d INTEGER DEFAULT 0,
+        mrr_cents INTEGER DEFAULT 0,
+        mrr_change_cents INTEGER DEFAULT 0,
+        biggest_dropoff_stage VARCHAR(100),
+        biggest_dropoff_rate NUMERIC(7,4),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS funnel_snapshots_date_unique ON funnel_snapshots(snapshot_date);
+    `);
+
     await client.query('COMMIT');
     console.log('Migration completed successfully');
   } catch (err) {
