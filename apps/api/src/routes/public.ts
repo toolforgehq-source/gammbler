@@ -142,8 +142,8 @@ router.get('/profile/:username', async (req: Request, res: Response): Promise<vo
     // record
     const [record] = await db
       .select({
-        wins: sql<number>`count(*) filter (where ${bets.result} = 'won')`,
-        losses: sql<number>`count(*) filter (where ${bets.result} = 'lost')`,
+        wins: sql<number>`count(*) filter (where ${bets.result} = 'win')`,
+        losses: sql<number>`count(*) filter (where ${bets.result} = 'loss')`,
         pushes: sql<number>`count(*) filter (where ${bets.result} = 'push')`,
       })
       .from(bets)
@@ -302,8 +302,8 @@ router.get('/creator/:username', async (req: Request, res: Response): Promise<vo
 
     const [record] = await db
       .select({
-        wins: sql<number>`count(*) filter (where ${bets.result} = 'won')`,
-        losses: sql<number>`count(*) filter (where ${bets.result} = 'lost')`,
+        wins: sql<number>`count(*) filter (where ${bets.result} = 'win')`,
+        losses: sql<number>`count(*) filter (where ${bets.result} = 'loss')`,
         pushes: sql<number>`count(*) filter (where ${bets.result} = 'push')`,
       })
       .from(bets)
