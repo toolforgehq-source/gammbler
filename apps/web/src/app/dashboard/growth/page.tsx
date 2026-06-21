@@ -636,7 +636,7 @@ export default function GrowthBrainPage() {
                     {opp.content && (
                       <div className="p-3 bg-background/50 rounded-lg">
                         <p className="text-[10px] uppercase tracking-wider text-muted-dark font-bold mb-1">Generated Content</p>
-                        <p className="text-xs text-muted whitespace-pre-wrap">{opp.content}</p>
+                        <p className="text-xs text-muted whitespace-pre-wrap">{typeof opp.content === 'object' ? JSON.stringify(opp.content, null, 2) : opp.content}</p>
                       </div>
                     )}
 
@@ -894,11 +894,14 @@ function MetricCard({ label, value, icon, subtitle, highlight, valueColor }: {
   );
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({ label, value }: { label: string; value: string | Record<string, unknown> }) {
+  const display = typeof value === 'object' && value !== null
+    ? Object.entries(value).map(([k, v]) => `${k}: ${v}`).join(', ')
+    : String(value ?? '');
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wider text-muted-dark font-bold mb-0.5">{label}</p>
-      <p className="text-xs text-muted leading-relaxed">{value}</p>
+      <p className="text-xs text-muted leading-relaxed">{display}</p>
     </div>
   );
 }
