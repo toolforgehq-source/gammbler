@@ -39,6 +39,7 @@ import creatorBadgeRoutes from './routes/creator-badges';
 import creatorDiscoveryRoutes from './routes/creator-discovery';
 import statsRoutes from './routes/stats';
 import growthBrainRoutes from './routes/growth-brain';
+import publicRoutes from './routes/public';
 
 const app = express();
 const server = createServer(app);
@@ -95,6 +96,7 @@ app.use('/api/creator-badges', creatorBadgeRoutes);
 app.use('/api/creator-discovery', creatorDiscoveryRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/growth-brain', growthBrainRoutes);
+app.use('/api/public', publicRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
