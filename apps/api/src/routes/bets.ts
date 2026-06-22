@@ -4,7 +4,7 @@ import { db } from '../db';
 import { bets, users } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
-import { attachTier, requirePro } from '../middleware/subscription';
+import { attachTier } from '../middleware/subscription';
 import { updateAllScores } from '../services/gammbler-score';
 import { checkAndAwardBadges } from '../services/badges';
 import { findMatchingEvent, hasGameStarted } from '../services/game-times';
@@ -267,8 +267,8 @@ router.get('/games-with-odds', authMiddleware, async (req: Request, res: Respons
   }
 });
 
-// POST /bets/csv-import — import bets from CSV
-router.post('/csv-import', authMiddleware, requirePro, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+// POST /bets/csv-import — import bets from CSV (available to all users)
+router.post('/csv-import', authMiddleware, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });

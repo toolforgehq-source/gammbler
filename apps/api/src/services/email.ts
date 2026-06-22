@@ -111,7 +111,7 @@ export async function sendWelcomeEmail(to: string, username: string, referralCod
     <p>You just took the first step toward knowing exactly how good you are at betting. No more guessing, no more lying to your friends.</p>
     <div class="card">
       <h2>What happens next:</h2>
-      <p><strong>1. Add your first bet</strong> &mdash; Manual entry, CSV upload, or screenshot a bet slip</p>
+      <p><strong>1. Pick a game</strong> &mdash; Choose from real upcoming games with live odds</p>
       <p><strong>2. Get your Gammbler Score</strong> &mdash; A 0-100 rating across every sport</p>
       <p><strong>3. Compete</strong> &mdash; See where you rank nationally and against friends</p>
     </div>
@@ -120,47 +120,21 @@ export async function sendWelcomeEmail(to: string, username: string, referralCod
     </p>
     <div class="card">
       <p class="muted" style="margin:0">Your referral code: <span class="highlight">${referralCode}</span></p>
-      <p class="muted" style="margin:4px 0 0">Share it with friends &mdash; you both get 3 extra days of Pro.</p>
+      <p class="muted" style="margin:4px 0 0">Share it with friends to grow the community.</p>
     </div>
   `, `Welcome to Gammbler! Your betting identity starts now.`);
 
   return send(to, `Welcome to Gammbler, ${username}!`, html);
 }
 
-export async function sendTrialEndingEmail(to: string, username: string, daysLeft: number): Promise<boolean> {
-  const html = wrapHtml(`
-    <h1>Your Pro trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}</h1>
-    <p>Hey ${username}, your free Pro access is almost up. Here's what you'll lose if you don't upgrade:</p>
-    <div class="card">
-      <p>&#10060; Sport-specific scores (NFL, NBA, MLB, etc.)</p>
-      <p>&#10060; Full analytics &amp; ROI breakdown</p>
-      <p>&#10060; Friend leaderboards (per-sport)</p>
-      <p>&#10060; Personalized AI insights &amp; weekly reports</p>
-      <p>&#10060; Unlimited shareable score cards</p>
-      <p style="margin:0">&#10060; CSV bet import</p>
-    </div>
-    <p>Keep everything for <span class="highlight">$8.99/month</span>. Cancel anytime.</p>
-    <p style="text-align:center">
-      <a href="${BRAND.url}/dashboard?upgrade=true" class="btn">Upgrade to Pro &rarr;</a>
-    </p>
-    <p class="muted">You'll keep your free tier features either way &mdash; your overall score, national leaderboard access, and badges aren't going anywhere.</p>
-  `, `Your Gammbler Pro trial ends in ${daysLeft} days.`);
-
-  return send(to, `Your Pro trial ends in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`, html);
+// Trial emails are deprecated — no longer sent (trial system removed).
+// Kept for backward compatibility in case they're referenced elsewhere.
+export async function sendTrialEndingEmail(_to: string, _username: string, _daysLeft: number): Promise<boolean> {
+  return false;
 }
 
-export async function sendTrialEndedEmail(to: string, username: string): Promise<boolean> {
-  const html = wrapHtml(`
-    <h1>Your Pro trial has ended</h1>
-    <p>Hey ${username}, your free Pro access has expired. You're now on the Free plan.</p>
-    <p>You still have access to your overall Gammbler Score, national leaderboards, badges, and basic bet tracking.</p>
-    <p>Want the full picture back? Upgrade anytime.</p>
-    <p style="text-align:center">
-      <a href="${BRAND.url}/dashboard?upgrade=true" class="btn">Get Pro for $8.99/mo &rarr;</a>
-    </p>
-  `, `Your Gammbler Pro trial has ended.`);
-
-  return send(to, 'Your Pro trial has ended', html);
+export async function sendTrialEndedEmail(_to: string, _username: string): Promise<boolean> {
+  return false;
 }
 
 export async function sendSubscriptionConfirmedEmail(to: string, username: string): Promise<boolean> {

@@ -5,13 +5,11 @@ import { eq } from 'drizzle-orm';
 
 export type UserTier = 'free' | 'pro';
 
-export function getUserTier(subscriptionStatus: string, trialEndsAt: string | Date): UserTier {
-  const now = new Date();
-  const isTrialing = subscriptionStatus === 'trialing' && new Date(trialEndsAt) > now;
+export function getUserTier(subscriptionStatus: string, _trialEndsAt?: string | Date): UserTier {
   const isActive = subscriptionStatus === 'active';
   const isPastDue = subscriptionStatus === 'past_due';
 
-  return (isTrialing || isActive || isPastDue) ? 'pro' : 'free';
+  return (isActive || isPastDue) ? 'pro' : 'free';
 }
 
 async function loadUserTier(req: Request, res: Response): Promise<UserTier | null> {

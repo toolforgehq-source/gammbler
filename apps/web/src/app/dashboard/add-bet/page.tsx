@@ -83,7 +83,7 @@ function calculatePayout(odds: number, stake: number): number {
 
 export default function AddBetPage() {
   const { user } = useAuthStore();
-  const isPro = user?.tier === 'pro' || user?.subscription_status === 'active';
+  // CSV import is available to all users (no trial/pro gate)
   const [sport, setSport] = useState('nfl');
   const [betType, setBetType] = useState('spread');
   const [platform, setPlatform] = useState('draftkings');
@@ -458,52 +458,50 @@ export default function AddBetPage() {
         </div>
       )}
 
-      {/* Pro CSV Import Section */}
-      {isPro && (
-        <div className="border-t border-accent/10 pt-6 mt-6">
-          <button
-            onClick={() => setShowCsvUpload(!showCsvUpload)}
-            className="flex items-center gap-2 text-sm text-muted-dark hover:text-accent transition-colors"
-          >
-            <Upload size={16} />
-            <span>Import bets from CSV (Pro)</span>
-          </button>
+      {/* CSV Import Section — available to all users */}
+      <div className="border-t border-accent/10 pt-6 mt-6">
+        <button
+          onClick={() => setShowCsvUpload(!showCsvUpload)}
+          className="flex items-center gap-2 text-sm text-muted-dark hover:text-accent transition-colors"
+        >
+          <Upload size={16} />
+          <span>Import bets from CSV</span>
+        </button>
 
-          {showCsvUpload && (
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                  Platform
-                </label>
-                <select
-                  value={platform}
-                  onChange={(e) => setPlatform(e.target.value)}
-                  className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent"
-                >
-                  {PLATFORMS.map((p) => (
-                    <option key={p} value={p}>{p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-                  ))}
-                </select>
-              </div>
-              <div
-                className="bg-card border-2 border-dashed border-accent/30 rounded-lg p-8 text-center cursor-pointer hover:border-accent/60 transition-colors"
-                onClick={() => fileRef.current?.click()}
+        {showCsvUpload && (
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+                Platform
+              </label>
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value)}
+                className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent"
               >
-                <Upload size={32} className="text-accent mx-auto mb-3" />
-                <p className="text-sm text-white mb-1">Click to upload CSV from your sportsbook</p>
-                <p className="text-xs text-muted-dark">Supports DraftKings, FanDuel, BetMGM exports</p>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleCSVUpload}
-                  className="hidden"
-                />
-              </div>
+                {PLATFORMS.map((p) => (
+                  <option key={p} value={p}>{p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+                ))}
+              </select>
             </div>
-          )}
-        </div>
-      )}
+            <div
+              className="bg-card border-2 border-dashed border-accent/30 rounded-lg p-8 text-center cursor-pointer hover:border-accent/60 transition-colors"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload size={32} className="text-accent mx-auto mb-3" />
+              <p className="text-sm text-white mb-1">Click to upload CSV from your sportsbook</p>
+              <p className="text-xs text-muted-dark">Supports DraftKings, FanDuel, BetMGM exports</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCSVUpload}
+                className="hidden"
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ═══ CONFIRMATION MODAL ═══ */}
       {showConfirmation && selectedGame && selectedOutcome && (

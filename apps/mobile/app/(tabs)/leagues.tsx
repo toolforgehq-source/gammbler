@@ -49,7 +49,7 @@ export default function LeaguesScreen() {
   const [joinCode, setJoinCode] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
 
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active');
 
   const fetchLeagues = useCallback(async () => {
     setLoading(true);

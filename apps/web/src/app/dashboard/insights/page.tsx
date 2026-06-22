@@ -46,7 +46,7 @@ export default function InsightsPage() {
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [bySport, setBySport] = useState<Record<string, SportRecord>>({});
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active');
 
   useEffect(() => {
     const fetches: Promise<unknown>[] = [

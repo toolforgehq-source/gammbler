@@ -46,7 +46,7 @@ export default function LeaderboardsPage() {
   const [userPosition, setUserPosition] = useState<LeaderboardEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active');
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);

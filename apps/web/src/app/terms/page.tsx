@@ -103,7 +103,7 @@ export default function TermsPage() {
               <li>Price changes with 30 days notice</li>
             </ul>
             <p className="mt-3">
-              Your free 14-day Pro trial begins at signup. No payment is required during the trial. After the trial, you may continue using the free tier or upgrade to Pro.
+              All users start on the free tier at signup. You may upgrade to Pro at any time to unlock additional features including sportsbook auto-sync.
             </p>
           </section>
 
