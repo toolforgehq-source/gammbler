@@ -6,7 +6,7 @@ import { useAuthStore } from '@/lib/store';
 import {
   Share2, Flame, Skull, DollarSign, Frown, Trophy,
   Plus, Clock, CheckCircle, XCircle, Download, Link2,
-  TrendingUp, TrendingDown, Filter, BarChart3,
+  TrendingUp, TrendingDown, Filter, BarChart3, Timer,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -144,15 +144,7 @@ export default function SlipsPage() {
     }
   }
 
-  async function handleSettle(betId: string, result: string) {
-    try {
-      await betsAPI.settle(betId, result);
-      fetchBets();
-      fetchStats();
-    } catch {
-      // handled
-    }
-  }
+  // Bets are now auto-settled — no manual settlement needed
 
   async function handleShareSlip(betId: string, bet: BetRecord) {
     try {
@@ -339,26 +331,9 @@ export default function SlipsPage() {
                     <span className="text-[10px] text-muted-dark">{timeAgo(bet.created_at)}</span>
                     <div className="flex items-center gap-2">
                       {isPending && (
-                        <>
-                          <button
-                            onClick={() => handleSettle(bet.id, 'win')}
-                            className="px-2 py-1 text-[10px] font-bold text-win bg-win/10 rounded hover:bg-win/20 transition-colors"
-                          >
-                            WON
-                          </button>
-                          <button
-                            onClick={() => handleSettle(bet.id, 'loss')}
-                            className="px-2 py-1 text-[10px] font-bold text-loss bg-loss/10 rounded hover:bg-loss/20 transition-colors"
-                          >
-                            LOST
-                          </button>
-                          <button
-                            onClick={() => handleSettle(bet.id, 'push')}
-                            className="px-2 py-1 text-[10px] font-bold text-gold bg-gold/10 rounded hover:bg-gold/20 transition-colors"
-                          >
-                            PUSH
-                          </button>
-                        </>
+                        <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-accent bg-accent/10 rounded">
+                          <Timer size={10} /> AUTO-SETTLING
+                        </span>
                       )}
                       <button
                         onClick={() => handleShareSlip(bet.id, bet)}
