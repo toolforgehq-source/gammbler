@@ -704,6 +704,13 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
     `);
 
+    // Payment & referral tracking columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS past_due_since TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_flags JSONB DEFAULT '{}';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER NOT NULL DEFAULT 0;
+    `);
+
     // ══════════════════════════════════════════════════════════
     // GROWTH BRAIN — AI Chief Growth Officer
     // ══════════════════════════════════════════════════════════
