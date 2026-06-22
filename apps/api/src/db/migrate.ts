@@ -496,6 +496,8 @@ async function migrate() {
       DO $$ BEGIN
         ALTER TYPE feed_event_type ADD VALUE IF NOT EXISTS 'h2h_challenge';
         ALTER TYPE feed_event_type ADD VALUE IF NOT EXISTS 'h2h_result';
+        ALTER TYPE feed_event_type ADD VALUE IF NOT EXISTS 'user_post';
+        ALTER TYPE feed_event_type ADD VALUE IF NOT EXISTS 'repost';
       EXCEPTION WHEN duplicate_object THEN null;
       END $$;
     `);
@@ -621,6 +623,38 @@ async function migrate() {
         imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS dfs_csv_imports_user_idx ON dfs_csv_imports(user_id);
+    `);
+
+    // ── DFS verification enum + missing dfs_contests columns ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE dfs_verification_status AS ENUM ('unverified','pending_review','verified','rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    `);
+    await client.query(`
+      ALTER TABLE dfs_contests ADD COLUMN IF NOT EXISTS verification_status dfs_verification_status NOT NULL DEFAULT 'unverified';
+      ALTER TABLE dfs_contests ADD COLUMN IF NOT EXISTS screenshot_url TEXT;
+      ALTER TABLE dfs_contests ADD COLUMN IF NOT EXISTS contest_url TEXT;
+    `);
+
+    // ── Content Reports (moderation) ──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS content_reports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        reporter_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        post_id UUID REFERENCES creator_posts(id) ON DELETE CASCADE,
+        reported_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        reason VARCHAR(100) NOT NULL,
+        details TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        reviewed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS content_reports_status_idx ON content_reports(status);
+      CREATE INDEX IF NOT EXISTS content_reports_post_idx ON content_reports(post_id);
+    `);
+
+    // ── Cash league payout status enum ──
+    await client.query(`
+      DO $$ BEGIN CREATE TYPE cash_league_payout_status AS ENUM ('pending','processing','completed','failed'); EXCEPTION WHEN duplicate_object THEN null; END $$;
     `);
 
     // Add date_of_birth column to users
