@@ -13,6 +13,7 @@ import { snapshotAllScores } from './services/score-snapshots';
 import { snapshotAllDfsScores } from './services/dfs-score-snapshots';
 import { runDailyBrainCycle, initializeGrowthBrain } from './services/growth-brain';
 import { captureFunnelSnapshot } from './services/funnel-snapshot';
+import { settlePendingBets } from './services/auto-settle';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -153,6 +154,11 @@ server.listen(env.PORT, () => {
   // Growth Brain: daily brain cycle at 6:30am UTC (generate opportunities)
   cron.schedule('30 6 * * *', () => {
     runDailyBrainCycle().catch((err) => console.error('[Cron] Growth Brain cycle error:', err));
+  });
+
+  // Auto-settle bets every 15 minutes
+  cron.schedule('*/15 * * * *', () => {
+    settlePendingBets().catch((err) => console.error('[Cron] Auto-settle error:', err));
   });
 
   // Initialize Growth Brain beliefs on first startup

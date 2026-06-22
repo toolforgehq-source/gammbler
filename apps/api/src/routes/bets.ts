@@ -2,14 +2,13 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
 import { bets, users } from '../db/schema';
-import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { authMiddleware } from '../middleware/auth';
 import { attachTier, requirePro } from '../middleware/subscription';
 import { updateAllScores } from '../services/gammbler-score';
 import { checkAndAwardBadges } from '../services/badges';
-import { createFeedEvent } from '../services/feed';
 import { findMatchingEvent, hasGameStarted } from '../services/game-times';
-import { sendBetSettledEmail } from '../services/email';
+import { settlePendingBets } from '../services/auto-settle';
 import multer from 'multer';
 import { parse } from 'csv-parse/sync';
 
@@ -30,10 +29,8 @@ const createBetSchema = z.object({
   result: z.enum(['win', 'loss', 'push', 'pending']).optional().default('pending'),
   event_name: z.string().optional(),
   parlay_legs: z.number().int().positive().optional(),
-});
-
-const settleBetSchema = z.object({
-  result: z.enum(['win', 'loss', 'push', 'void']),
+  odds_api_event_id: z.string().optional(),
+  event_start_time: z.string().optional(),
 });
 
 // GET /bets — list user's bets
@@ -68,62 +65,69 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
   }
 });
 
-// POST /bets — create a manual bet with pre-game lock enforcement
+// POST /bets — create a bet from the game picker (or Pro CSV/SharpSports)
 router.post('/', authMiddleware, attachTier, async (req: Request, res: Response): Promise<void> => {
   try {
     const body = createBetSchema.parse(req.body);
     const userId = req.user!.userId;
     const isPro = req.userTier === 'pro';
 
-    // ── Pre-Game Lock Enforcement (free users only) ──
-    // Free users cannot enter bets after the game has started.
-    // Free users cannot submit already-settled results (win/loss/push) — bets must be 'pending'.
-    // Pro users with SharpSports bypass this (their bets come from the sportsbook directly).
-
     let eventStartTime: Date | null = null;
-    let oddsApiEventId: string | null = null;
+    let oddsApiEventId: string | null = body.odds_api_event_id || null;
     let isPregameVerified = false;
 
+    // Use directly-provided event data from the game picker
+    if (body.event_start_time) {
+      eventStartTime = new Date(body.event_start_time);
+    }
+
     if (!isPro) {
-      // Free users MUST submit bets as 'pending' — no pre-settled results allowed
+      // Free users MUST submit bets as 'pending'
       if (body.result !== 'pending') {
         res.status(403).json({
-          error: 'Free users must submit bets before the game starts. Bets cannot be entered with a result. Upgrade to Pro for automatic bet syncing.',
+          error: 'Bets must be submitted before the game starts and will be settled automatically when it ends.',
           code: 'RESULT_NOT_ALLOWED',
         });
         return;
       }
 
-      // Try to find the matching game and check if it has started
-      const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
-
-      if (matchedEvent) {
-        eventStartTime = matchedEvent.commenceTime;
-        oddsApiEventId = matchedEvent.eventId;
-
-        if (hasGameStarted(matchedEvent.commenceTime)) {
-          res.status(403).json({
-            error: `This game has already started (${matchedEvent.matchedEvent}). Free users can only enter bets before the game begins. Upgrade to Pro for automatic bet syncing via SharpSports.`,
-            code: 'GAME_STARTED',
-            event: matchedEvent.matchedEvent,
-            commence_time: matchedEvent.commenceTime.toISOString(),
+      // Free users MUST pick from real games — odds_api_event_id is required
+      if (!oddsApiEventId) {
+        // Fallback: try to match event from selection text
+        const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
+        if (matchedEvent) {
+          eventStartTime = matchedEvent.commenceTime;
+          oddsApiEventId = matchedEvent.eventId;
+        } else {
+          res.status(400).json({
+            error: 'You must pick a game from the available games list. Free-text bet entry is no longer supported.',
+            code: 'GAME_REQUIRED',
           });
           return;
         }
-
-        // Game hasn't started — bet is pre-game verified
-        isPregameVerified = true;
       }
-      // If no matching event found (e.g. futures, props not tied to a specific game),
-      // allow the bet but mark it as NOT pre-game verified.
-      // These unverified bets carry less weight / can be flagged.
+
+      // Check if game has started
+      if (eventStartTime && hasGameStarted(eventStartTime)) {
+        res.status(403).json({
+          error: 'This game has already started. You can only place bets before the game begins.',
+          code: 'GAME_STARTED',
+        });
+        return;
+      }
+
+      isPregameVerified = true;
     } else {
-      // Pro users: still try to match event for data enrichment, but no blocking
-      const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
-      if (matchedEvent) {
-        eventStartTime = matchedEvent.commenceTime;
-        oddsApiEventId = matchedEvent.eventId;
-        isPregameVerified = !hasGameStarted(matchedEvent.commenceTime);
+      // Pro users: still try to match event for data enrichment if no event ID provided
+      if (!oddsApiEventId) {
+        const matchedEvent = await findMatchingEvent(body.sport, body.selection, body.event_name);
+        if (matchedEvent) {
+          eventStartTime = matchedEvent.commenceTime;
+          oddsApiEventId = matchedEvent.eventId;
+          isPregameVerified = !hasGameStarted(matchedEvent.commenceTime);
+        }
+      } else {
+        isPregameVerified = eventStartTime ? !hasGameStarted(eventStartTime) : false;
       }
     }
 
@@ -177,75 +181,36 @@ router.post('/', authMiddleware, attachTier, async (req: Request, res: Response)
   }
 });
 
-// PATCH /bets/:id/settle — settle a pending bet
+// PATCH /bets/:id/settle — disabled for users; bets are now auto-settled
 router.patch('/:id/settle', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  res.status(403).json({
+    error: 'Bets are now settled automatically when the game ends. You can no longer manually settle bets.',
+    code: 'MANUAL_SETTLE_DISABLED',
+  });
+});
+
+// POST /bets/auto-settle — trigger auto-settlement (founder only)
+router.post('/auto-settle', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
-    const body = settleBetSchema.parse(req.body);
-
-    const [existing] = await db
-      .select()
-      .from(bets)
-      .where(and(eq(bets.id, req.params.id), eq(bets.user_id, req.user!.userId)))
-      .limit(1);
-
-    if (!existing) {
-      res.status(404).json({ error: 'Bet not found' });
-      return;
-    }
-
-    if (existing.result !== 'pending') {
-      res.status(400).json({ error: 'Bet is already settled' });
-      return;
-    }
-
-    const stake = parseFloat(String(existing.stake));
-    const odds = parseFloat(String(existing.odds));
-    const profitLoss = body.result === 'win'
-      ? calculatePayout(odds, stake) - stake
-      : body.result === 'loss'
-        ? -stake
-        : 0;
-
-    const [updated] = await db
-      .update(bets)
-      .set({
-        result: body.result,
-        profit_loss: String(profitLoss),
-        settled_at: new Date(),
-      })
-      .where(eq(bets.id, req.params.id))
-      .returning();
-
-    // Recalculate scores
-    await updateAllScores(req.user!.userId);
-    await checkAndAwardBadges(req.user!.userId);
-
-    // Check for parlay hit feed event
-    if (body.result === 'win' && existing.bet_type === 'parlay' && existing.parlay_legs && existing.parlay_legs >= 3) {
-      await createFeedEvent(req.user!.userId, 'parlay_hit', {
-        legs: existing.parlay_legs,
-        payout: profitLoss + stake,
-      }, existing.sport);
-    }
-
-    // Send bet settled email (fire & forget)
-    const [betUser] = await db
-      .select({ email: users.email, username: users.username })
+    // Only allow the founder to trigger manual settlement
+    const [user] = await db
+      .select({ email: users.email })
       .from(users)
       .where(eq(users.id, req.user!.userId))
       .limit(1);
-    if (betUser) {
-      const plStr = profitLoss >= 0 ? `+$${profitLoss.toFixed(2)}` : `-$${Math.abs(profitLoss).toFixed(2)}`;
-      sendBetSettledEmail(betUser.email, betUser.username, existing.selection, body.result, plStr).catch(() => {});
-    }
 
-    res.json({ bet: updated });
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      res.status(400).json({ error: 'Validation error', details: err.errors });
+    if (!user || user.email !== 'l.doeden1018@gmail.com') {
+      res.status(403).json({ error: 'Only the founder can trigger auto-settlement' });
       return;
     }
-    console.error('Settle bet error:', err);
+
+    const result = await settlePendingBets();
+    res.json({
+      message: 'Auto-settlement complete',
+      ...result,
+    });
+  } catch (err) {
+    console.error('Manual auto-settle error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

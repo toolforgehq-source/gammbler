@@ -4,12 +4,11 @@ import { useState, useRef, useEffect } from 'react';
 import { betsAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import {
-  Upload, Plus, Check, AlertCircle, Shield, Clock, Camera, Loader2,
-  Search, Lock, Zap,
+  Upload, Check, AlertCircle, Shield, Clock,
+  Search, Timer,
 } from 'lucide-react';
 
 const SPORTS = ['nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer'];
-const BET_TYPES = ['spread', 'moneyline', 'over_under', 'parlay', 'prop', 'player_prop', 'teaser', 'futures'];
 const PLATFORMS = ['draftkings', 'fanduel', 'betmgm', 'caesars', 'espn_bet', 'pointsbet', 'prizepicks', 'underdog', 'other'];
 
 interface OddsOutcome {
@@ -59,7 +58,6 @@ function hasGameStarted(commenceTime: string): boolean {
 }
 
 function getConsensusOdds(game: GameEvent, marketKey: string): Market | null {
-  // Get odds from first available bookmaker (prefer DraftKings, FanDuel)
   const preferred = ['draftkings', 'fanduel', 'betmgm', 'caesars'];
   for (const pref of preferred) {
     const book = game.bookmakers.find(b => b.key === pref);
@@ -68,7 +66,6 @@ function getConsensusOdds(game: GameEvent, marketKey: string): Market | null {
       if (market) return market;
     }
   }
-  // Fallback to any bookmaker
   for (const book of game.bookmakers) {
     const market = book.markets.find(m => m.key === marketKey);
     if (market) return market;
@@ -76,10 +73,17 @@ function getConsensusOdds(game: GameEvent, marketKey: string): Market | null {
   return null;
 }
 
+function calculatePayout(odds: number, stake: number): number {
+  if (odds > 0) {
+    return stake + (stake * odds / 100);
+  } else {
+    return stake + (stake * 100 / Math.abs(odds));
+  }
+}
+
 export default function AddBetPage() {
   const { user } = useAuthStore();
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
-  const [tab, setTab] = useState<'games' | 'manual' | 'screenshot' | 'csv'>('games');
+  const isPro = user?.tier === 'pro' || user?.subscription_status === 'active';
   const [sport, setSport] = useState('nfl');
   const [betType, setBetType] = useState('spread');
   const [platform, setPlatform] = useState('draftkings');
@@ -97,28 +101,24 @@ export default function AddBetPage() {
   const [selectedOutcome, setSelectedOutcome] = useState<{ name: string; price: number; point?: number } | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCsvUpload, setShowCsvUpload] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const screenshotRef = useRef<HTMLInputElement>(null);
-  const [parsing, setParsing] = useState(false);
-  const [parseMessage, setParseMessage] = useState('');
 
   // Fetch games with odds when sport changes
   useEffect(() => {
-    if (tab === 'games') {
-      const loadGames = async () => {
-        setGamesLoading(true);
-        try {
-          const res = await betsAPI.gamesWithOdds(sport);
-          setGames(res.data.games || []);
-        } catch {
-          setGames([]);
-        } finally {
-          setGamesLoading(false);
-        }
-      };
-      loadGames();
-    }
-  }, [sport, tab]);
+    const loadGames = async () => {
+      setGamesLoading(true);
+      try {
+        const res = await betsAPI.gamesWithOdds(sport);
+        setGames(res.data.games || []);
+      } catch {
+        setGames([]);
+      } finally {
+        setGamesLoading(false);
+      }
+    };
+    loadGames();
+  }, [sport]);
 
   function selectOutcome(game: GameEvent, outcome: OddsOutcome, marketKey: string) {
     if (hasGameStarted(game.commence_time)) return;
@@ -127,12 +127,10 @@ export default function AddBetPage() {
     setEventName(`${game.away_team} @ ${game.home_team}`);
     setOdds(String(outcome.price));
 
-    // Determine bet type from market
     if (marketKey === 'h2h') setBetType('moneyline');
     else if (marketKey === 'spreads') setBetType('spread');
     else if (marketKey === 'totals') setBetType('over_under');
 
-    // Build selection string
     let selStr = outcome.name;
     if (outcome.point !== undefined) {
       if (marketKey === 'spreads') {
@@ -144,11 +142,8 @@ export default function AddBetPage() {
     setSelection(selStr);
   }
 
-  function handleConfirmBet() {
-    setShowConfirmation(true);
-  }
-
   async function submitBet() {
+    if (!selectedGame || !selectedOutcome || !stake) return;
     setLoading(true);
     setError('');
     setSuccess('');
@@ -163,12 +158,10 @@ export default function AddBetPage() {
         stake: parseFloat(stake),
         event_name: eventName || undefined,
         result: 'pending',
+        odds_api_event_id: selectedGame.id,
+        event_start_time: selectedGame.commence_time,
       });
-      const verified = res.data.pregame_verified;
-      setSuccess(verified
-        ? 'Bet locked in — Pre-Game Verified ✓'
-        : 'Bet added successfully');
-      // Reset
+      setSuccess('Bet locked in — will auto-settle when the game ends');
       setSelection('');
       setOdds('');
       setStake('');
@@ -178,18 +171,12 @@ export default function AddBetPage() {
       setShowConfirmation(false);
     } catch (err: unknown) {
       const errData = (err as { response?: { data?: { error?: string; code?: string } } })?.response?.data;
-      setError(errData?.error || 'Failed to add bet');
+      setError(errData?.error || 'Failed to place bet');
       setShowConfirmation(false);
     } finally {
       setLoading(false);
     }
   }
-
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stake || !odds || !selection) return;
-    handleConfirmBet();
-  };
 
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,40 +197,9 @@ export default function AddBetPage() {
     }
   };
 
-  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setParsing(true);
-    setError('');
-    setSuccess('');
-    setParseMessage('');
-
-    try {
-      const res = await betsAPI.parseScreenshot(file);
-      const parsed = res.data.parsed;
-      setParseMessage(res.data.message);
-
-      if (parsed.sport && SPORTS.includes(parsed.sport)) setSport(parsed.sport);
-      if (parsed.bet_type && BET_TYPES.includes(parsed.bet_type)) setBetType(parsed.bet_type);
-      if (parsed.platform && PLATFORMS.includes(parsed.platform)) setPlatform(parsed.platform);
-      if (parsed.selection) setSelection(parsed.selection);
-      if (parsed.odds) setOdds(parsed.odds);
-      if (parsed.stake) setStake(parsed.stake);
-      if (parsed.event_name) setEventName(parsed.event_name);
-
-      setTab('manual');
-      setSuccess('Screenshot parsed — review the fields below and submit');
-    } catch (err: unknown) {
-      const errData = (err as { response?: { data?: { error?: string } } })?.response?.data;
-      setError(errData?.error || 'Failed to parse screenshot');
-    } finally {
-      setParsing(false);
-      if (screenshotRef.current) screenshotRef.current.value = '';
-    }
-  };
-
-  // Filter games by search
-  const filteredGames = games.filter(g => {
+  // Filter games by search + only show upcoming (not started)
+  const upcomingGames = games.filter(g => !hasGameStarted(g.commence_time));
+  const filteredGames = upcomingGames.filter(g => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return g.home_team.toLowerCase().includes(q) || g.away_team.toLowerCase().includes(q);
@@ -254,49 +210,20 @@ export default function AddBetPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-          ADD BET
+          PICK A GAME
         </h1>
-        <p className="text-muted-dark text-sm mt-1">Pick from live games or enter manually</p>
+        <p className="text-muted-dark text-sm mt-1">Select a game, pick your side, and your bet will auto-settle when it ends</p>
       </div>
 
-      {/* Tab Toggle */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => setTab('games')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            tab === 'games' ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20'
-          }`}
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          <Zap size={16} /> PICK A GAME
-        </button>
-        <button
-          onClick={() => setTab('manual')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            tab === 'manual' ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20'
-          }`}
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          <Plus size={16} /> MANUAL
-        </button>
-        <button
-          onClick={() => setTab('screenshot')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            tab === 'screenshot' ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20'
-          }`}
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          <Camera size={16} /> SCREENSHOT
-        </button>
-        <button
-          onClick={() => setTab('csv')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            tab === 'csv' ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20'
-          }`}
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          <Upload size={16} /> CSV
-        </button>
+      {/* Auto-settle info banner */}
+      <div className="bg-accent/5 border border-accent/30 rounded-lg p-4 flex items-start gap-3">
+        <Timer size={20} className="text-accent mt-0.5 shrink-0" />
+        <div className="text-sm">
+          <p className="text-accent font-semibold">Auto-Settle Enabled</p>
+          <p className="text-muted-dark mt-1">
+            All bets are tied to real games and <span className="text-white font-medium">settled automatically</span> when the game ends. No manual entry — no lying.
+          </p>
+        </div>
       </div>
 
       {/* Feedback */}
@@ -311,459 +238,275 @@ export default function AddBetPage() {
         </div>
       )}
 
-      {/* ═══ GAMES TAB — Pick from real games ═══ */}
-      {tab === 'games' && (
-        <div className="space-y-4">
-          {/* Sport selector */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {SPORTS.map(s => (
-              <button
-                key={s}
-                onClick={() => { setSport(s); setSelectedGame(null); setSelectedOutcome(null); }}
-                className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
-                  sport === s ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20 hover:border-accent/40'
+      {/* Sport selector */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {SPORTS.map(s => (
+          <button
+            key={s}
+            onClick={() => { setSport(s); setSelectedGame(null); setSelectedOutcome(null); }}
+            className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
+              sport === s ? 'bg-accent text-background' : 'bg-card text-muted border border-accent/20 hover:border-accent/40'
+            }`}
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {s.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      {/* Search games */}
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-dark" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search teams..."
+          className="w-full bg-card border border-accent/20 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-muted-dark focus:outline-none focus:border-accent"
+        />
+      </div>
+
+      {/* Market selector */}
+      <div className="flex gap-2">
+        {(['h2h', 'spreads', 'totals'] as const).map(m => (
+          <button
+            key={m}
+            onClick={() => setSelectedMarket(m)}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
+              selectedMarket === m ? 'bg-accent/20 text-accent border border-accent/40' : 'bg-card text-muted-dark border border-accent/10'
+            }`}
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {m === 'h2h' ? 'MONEYLINE' : m === 'spreads' ? 'SPREAD' : 'TOTALS'}
+          </button>
+        ))}
+      </div>
+
+      {/* Games list */}
+      {gamesLoading ? (
+        <div className="flex items-center justify-center h-32">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : filteredGames.length === 0 ? (
+        <div className="bg-card border border-accent/20 rounded-lg p-8 text-center">
+          <Clock size={32} className="mx-auto text-muted-dark mb-3" />
+          <p className="text-muted-dark">No upcoming games for {sport.toUpperCase()}</p>
+          <p className="text-xs text-muted-dark mt-1">Try a different sport or check back later</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredGames.map(game => {
+            const market = getConsensusOdds(game, selectedMarket);
+            const isSelected = selectedGame?.id === game.id;
+
+            return (
+              <div
+                key={game.id}
+                className={`bg-card border rounded-lg p-4 transition-all ${
+                  isSelected ? 'border-accent' : 'border-accent/20 hover:border-accent/40'
                 }`}
-                style={{ fontFamily: 'var(--font-display)' }}
               >
-                {s.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* Search games */}
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-dark" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search teams..."
-              className="w-full bg-card border border-accent/20 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-muted-dark focus:outline-none focus:border-accent"
-            />
-          </div>
-
-          {/* Market selector */}
-          <div className="flex gap-2">
-            {(['h2h', 'spreads', 'totals'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => setSelectedMarket(m)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
-                  selectedMarket === m ? 'bg-accent/20 text-accent border border-accent/40' : 'bg-card text-muted-dark border border-accent/10'
-                }`}
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                {m === 'h2h' ? 'MONEYLINE' : m === 'spreads' ? 'SPREAD' : 'TOTALS'}
-              </button>
-            ))}
-          </div>
-
-          {/* Games list */}
-          {gamesLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : filteredGames.length === 0 ? (
-            <div className="bg-card border border-accent/20 rounded-lg p-8 text-center">
-              <Clock size={32} className="mx-auto text-muted-dark mb-3" />
-              <p className="text-muted-dark">No upcoming games for {sport.toUpperCase()}</p>
-              <p className="text-xs text-muted-dark mt-1">Try a different sport or check back later</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredGames.map(game => {
-                const started = hasGameStarted(game.commence_time);
-                const market = getConsensusOdds(game, selectedMarket);
-                const isSelected = selectedGame?.id === game.id;
-
-                return (
-                  <div
-                    key={game.id}
-                    className={`bg-card border rounded-lg p-4 transition-all ${
-                      started ? 'border-loss/20 opacity-60' : isSelected ? 'border-accent' : 'border-accent/20 hover:border-accent/40'
-                    }`}
-                  >
-                    {/* Game header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-semibold ${started ? 'text-loss' : 'text-accent'}`}>
-                          {started ? (
-                            <span className="flex items-center gap-1"><Lock size={10} /> STARTED</span>
-                          ) : (
-                            formatGameTime(game.commence_time)
-                          )}
-                        </span>
-                      </div>
-                      {started && (
-                        <span className="text-[10px] text-loss/60 uppercase tracking-wider">Locked</span>
-                      )}
-                    </div>
-
-                    {/* Teams & Odds */}
-                    <div className="space-y-2">
-                      {market ? (
-                        <>
-                          {selectedMarket === 'totals' ? (
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 text-sm text-white font-medium">
-                                {game.away_team} @ {game.home_team}
-                              </div>
-                              <div className="flex gap-2">
-                                {market.outcomes.map((outcome, idx) => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => !started && selectOutcome(game, outcome, selectedMarket)}
-                                    disabled={started}
-                                    className={`px-3 py-2 rounded-lg text-center min-w-[80px] transition-all ${
-                                      selectedOutcome?.name === outcome.name && selectedGame?.id === game.id
-                                        ? 'bg-accent text-background ring-2 ring-accent'
-                                        : started
-                                          ? 'bg-background/50 text-muted-dark cursor-not-allowed'
-                                          : 'bg-background border border-accent/20 hover:border-accent/60 cursor-pointer'
-                                    }`}
-                                  >
-                                    <div className="text-[10px] text-muted-dark uppercase">{outcome.name}</div>
-                                    <div className="text-xs font-bold" style={{ fontFamily: 'var(--font-number)' }}>
-                                      {outcome.point}
-                                    </div>
-                                    <div className={`text-xs font-bold mt-0.5 ${
-                                      selectedOutcome?.name === outcome.name && selectedGame?.id === game.id ? 'text-background' : 'text-accent'
-                                    }`} style={{ fontFamily: 'var(--font-number)' }}>
-                                      {formatOddsDisplay(outcome.price)}
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            market.outcomes.map((outcome, idx) => (
-                              <div key={idx} className="flex items-center gap-2">
-                                <div className="flex-1 text-sm text-white font-medium">
-                                  {outcome.name}
-                                  {outcome.point !== undefined && selectedMarket === 'spreads' && (
-                                    <span className="ml-2 text-muted-dark text-xs">
-                                      ({outcome.point > 0 ? '+' : ''}{outcome.point})
-                                    </span>
-                                  )}
-                                </div>
-                                <button
-                                  onClick={() => !started && selectOutcome(game, outcome, selectedMarket)}
-                                  disabled={started}
-                                  className={`px-4 py-2 rounded-lg font-bold text-sm min-w-[72px] transition-all ${
-                                    selectedOutcome?.name === outcome.name && selectedGame?.id === game.id
-                                      ? 'bg-accent text-background ring-2 ring-accent'
-                                      : started
-                                        ? 'bg-background/50 text-muted-dark cursor-not-allowed'
-                                        : 'bg-background border border-accent/20 hover:border-accent/60 cursor-pointer'
-                                  }`}
-                                  style={{ fontFamily: 'var(--font-number)' }}
-                                >
-                                  {formatOddsDisplay(outcome.price)}
-                                </button>
-                              </div>
-                            ))
-                          )}
-                        </>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-white">{game.away_team} @ {game.home_team}</span>
-                          <span className="text-xs text-muted-dark">No odds available</span>
-                        </div>
-                      )}
-                    </div>
+                {/* Game header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-accent">
+                      {formatGameTime(game.commence_time)}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Bet slip / stake entry when selection made */}
-          {selectedOutcome && selectedGame && (
-            <div className="sticky bottom-4 bg-card border-2 border-accent rounded-xl p-5 shadow-xl shadow-accent/10">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-xs text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>YOUR PICK</p>
-                  <p className="text-white font-bold text-lg">{selection}</p>
-                  <p className="text-sm text-muted-dark">{eventName}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-accent font-bold text-xl" style={{ fontFamily: 'var(--font-number)' }}>
-                    {formatOddsDisplay(selectedOutcome.price)}
-                  </p>
-                  <p className="text-xs text-muted-dark">{selectedMarket === 'h2h' ? 'Moneyline' : selectedMarket === 'spreads' ? 'Spread' : 'Total'}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="block text-xs text-muted-dark mb-1">Platform</label>
-                  <select
-                    value={platform}
-                    onChange={(e) => setPlatform(e.target.value)}
-                    className="w-full bg-background border border-accent/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
-                  >
-                    {PLATFORMS.map((p) => (
-                      <option key={p} value={p}>{p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-muted-dark mb-1">Stake ($)</label>
-                  <input
-                    type="number"
-                    value={stake}
-                    onChange={(e) => setStake(e.target.value)}
-                    className="w-full bg-background border border-accent/20 rounded-lg px-3 py-2 text-sm text-white placeholder-muted-dark focus:outline-none focus:border-accent"
-                    placeholder="100"
-                    min="0.01"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-
-              {stake && (
-                <div className="flex items-center justify-between mb-3 px-3 py-2 bg-background rounded-lg">
-                  <span className="text-xs text-muted-dark">Potential Payout</span>
-                  <span className="text-win font-bold" style={{ fontFamily: 'var(--font-number)' }}>
-                    ${calculatePayout(selectedOutcome.price, parseFloat(stake) || 0).toFixed(2)}
+                  <span className="text-[10px] text-accent/60 uppercase tracking-wider flex items-center gap-1">
+                    <Timer size={10} /> Auto-Settle
                   </span>
                 </div>
-              )}
 
-              <button
-                onClick={handleConfirmBet}
-                disabled={!stake || parseFloat(stake) <= 0 || loading}
-                className="w-full bg-accent text-background font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-accent-light transition-colors disabled:opacity-50"
-                style={{ fontFamily: 'var(--font-display)' }}
-              >
-                {loading ? 'Placing...' : 'CONFIRM BET'}
-              </button>
-
-              {isFree && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-accent">
-                  <Shield size={12} /> Pre-Game Verified — entered before kickoff
+                {/* Teams & Odds */}
+                <div className="space-y-2">
+                  {market ? (
+                    <>
+                      {selectedMarket === 'totals' ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 text-sm text-white font-medium">
+                            {game.away_team} @ {game.home_team}
+                          </div>
+                          <div className="flex gap-2">
+                            {market.outcomes.map((outcome, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => selectOutcome(game, outcome, selectedMarket)}
+                                className={`px-3 py-2 rounded-lg text-center min-w-[80px] transition-all ${
+                                  selectedOutcome?.name === outcome.name && selectedGame?.id === game.id
+                                    ? 'bg-accent text-background ring-2 ring-accent'
+                                    : 'bg-background border border-accent/20 hover:border-accent/60 cursor-pointer'
+                                }`}
+                              >
+                                <div className="text-[10px] text-muted-dark uppercase">{outcome.name}</div>
+                                <div className="text-xs font-bold" style={{ fontFamily: 'var(--font-number)' }}>
+                                  {outcome.point}
+                                </div>
+                                <div className={`text-xs font-bold mt-0.5 ${
+                                  selectedOutcome?.name === outcome.name && selectedGame?.id === game.id ? 'text-background' : 'text-accent'
+                                }`} style={{ fontFamily: 'var(--font-number)' }}>
+                                  {formatOddsDisplay(outcome.price)}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        market.outcomes.map((outcome, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="flex-1 text-sm text-white font-medium">
+                              {outcome.name}
+                              {outcome.point !== undefined && selectedMarket === 'spreads' && (
+                                <span className="ml-2 text-muted-dark text-xs">
+                                  ({outcome.point > 0 ? '+' : ''}{outcome.point})
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => selectOutcome(game, outcome, selectedMarket)}
+                              className={`px-4 py-2 rounded-lg font-bold text-sm min-w-[72px] transition-all ${
+                                selectedOutcome?.name === outcome.name && selectedGame?.id === game.id
+                                  ? 'bg-accent text-background ring-2 ring-accent'
+                                  : 'bg-background border border-accent/20 hover:border-accent/60 cursor-pointer'
+                              }`}
+                              style={{ fontFamily: 'var(--font-number)' }}
+                            >
+                              {formatOddsDisplay(outcome.price)}
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-white">{game.away_team} @ {game.home_team}</span>
+                      <span className="text-xs text-muted-dark">No odds available</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* ═══ MANUAL TAB ═══ */}
-      {tab === 'manual' && (
-        <div className="space-y-4">
-          {/* Platform select */}
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-              Platform
-            </label>
-            <select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-              className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent"
-            >
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p}>{p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-              ))}
-            </select>
+      {/* Bet slip / stake entry when selection made */}
+      {selectedOutcome && selectedGame && (
+        <div className="sticky bottom-4 bg-card border-2 border-accent rounded-xl p-5 shadow-xl shadow-accent/10">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-xs text-muted-dark uppercase tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>YOUR PICK</p>
+              <p className="text-white font-bold text-lg">{selection}</p>
+              <p className="text-sm text-muted-dark">{eventName}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-accent font-bold text-xl" style={{ fontFamily: 'var(--font-number)' }}>
+                {formatOddsDisplay(selectedOutcome.price)}
+              </p>
+              <p className="text-xs text-muted-dark">{selectedMarket === 'h2h' ? 'Moneyline' : selectedMarket === 'spreads' ? 'Spread' : 'Total'}</p>
+            </div>
           </div>
 
-          {/* Pre-Game Verified Banner (free users only) */}
-          {isFree && (
-            <div className="bg-accent/5 border border-accent/30 rounded-lg p-4 flex items-start gap-3">
-              <Shield size={20} className="text-accent mt-0.5 shrink-0" />
-              <div className="text-sm">
-                <p className="text-accent font-semibold">Pre-Game Verified</p>
-                <p className="text-muted-dark mt-1">
-                  Your bets are entered <span className="text-white font-medium">before kickoff</span> for maximum score accuracy.
-                </p>
-              </div>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="block text-xs text-muted-dark mb-1">Platform</label>
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value)}
+                className="w-full bg-background border border-accent/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent"
+              >
+                {PLATFORMS.map((p) => (
+                  <option key={p} value={p}>{p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-dark mb-1">Stake ($)</label>
+              <input
+                type="number"
+                value={stake}
+                onChange={(e) => setStake(e.target.value)}
+                className="w-full bg-background border border-accent/20 rounded-lg px-3 py-2 text-sm text-white placeholder-muted-dark focus:outline-none focus:border-accent"
+                placeholder="100"
+                min="0.01"
+                step="0.01"
+              />
+            </div>
+          </div>
+
+          {stake && (
+            <div className="flex items-center justify-between mb-3 px-3 py-2 bg-background rounded-lg">
+              <span className="text-xs text-muted-dark">Potential Payout</span>
+              <span className="text-win font-bold" style={{ fontFamily: 'var(--font-number)' }}>
+                ${calculatePayout(selectedOutcome.price, parseFloat(stake) || 0).toFixed(2)}
+              </span>
             </div>
           )}
 
-          <form onSubmit={handleManualSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => setShowConfirmation(true)}
+            disabled={!stake || parseFloat(stake) <= 0 || loading}
+            className="w-full bg-accent text-background font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-accent-light transition-colors disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {loading ? 'Placing...' : 'CONFIRM BET'}
+          </button>
+
+          <div className="flex items-center gap-2 mt-2 text-xs text-accent">
+            <Shield size={12} /> Pre-Game Verified — Auto-settles when game ends
+          </div>
+        </div>
+      )}
+
+      {/* Pro CSV Import Section */}
+      {isPro && (
+        <div className="border-t border-accent/10 pt-6 mt-6">
+          <button
+            onClick={() => setShowCsvUpload(!showCsvUpload)}
+            className="flex items-center gap-2 text-sm text-muted-dark hover:text-accent transition-colors"
+          >
+            <Upload size={16} />
+            <span>Import bets from CSV (Pro)</span>
+          </button>
+
+          {showCsvUpload && (
+            <div className="mt-4 space-y-3">
               <div>
                 <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                  Sport
+                  Platform
                 </label>
                 <select
-                  value={sport}
-                  onChange={(e) => setSport(e.target.value)}
+                  value={platform}
+                  onChange={(e) => setPlatform(e.target.value)}
                   className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent"
                 >
-                  {SPORTS.map((s) => (
-                    <option key={s} value={s}>{s.toUpperCase()}</option>
+                  {PLATFORMS.map((p) => (
+                    <option key={p} value={p}>{p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                  Bet Type
-                </label>
-                <select
-                  value={betType}
-                  onChange={(e) => setBetType(e.target.value)}
-                  className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent"
-                >
-                  {BET_TYPES.map((t) => (
-                    <option key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                Selection / Pick
-              </label>
-              <input
-                type="text"
-                value={selection}
-                onChange={(e) => setSelection(e.target.value)}
-                className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white placeholder-muted-dark focus:outline-none focus:border-accent"
-                placeholder="e.g., Patriots -3.5"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                Event (Optional)
-              </label>
-              <input
-                type="text"
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-                className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white placeholder-muted-dark focus:outline-none focus:border-accent"
-                placeholder="e.g., Patriots vs Bills"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                  Odds (American)
-                </label>
+              <div
+                className="bg-card border-2 border-dashed border-accent/30 rounded-lg p-8 text-center cursor-pointer hover:border-accent/60 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload size={32} className="text-accent mx-auto mb-3" />
+                <p className="text-sm text-white mb-1">Click to upload CSV from your sportsbook</p>
+                <p className="text-xs text-muted-dark">Supports DraftKings, FanDuel, BetMGM exports</p>
                 <input
-                  type="text"
-                  value={odds}
-                  onChange={(e) => setOdds(e.target.value)}
-                  className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white placeholder-muted-dark focus:outline-none focus:border-accent"
-                  placeholder="-110"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-                  Stake ($)
-                </label>
-                <input
-                  type="number"
-                  value={stake}
-                  onChange={(e) => setStake(e.target.value)}
-                  className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white placeholder-muted-dark focus:outline-none focus:border-accent"
-                  placeholder="100"
-                  min="0.01"
-                  step="0.01"
-                  required
+                  ref={fileRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  className="hidden"
                 />
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-accent text-background font-bold py-3 rounded-lg uppercase tracking-wider hover:bg-accent-light transition-colors disabled:opacity-50"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {loading ? 'Adding...' : 'REVIEW BET'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* ═══ SCREENSHOT TAB ═══ */}
-      {tab === 'screenshot' && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-dark">
-            Upload a screenshot of your sportsbook bet slip. We&apos;ll use AI to read it and pre-fill the form for you.
-          </p>
-          <div
-            className={`bg-card border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-              parsing ? 'border-accent/60' : 'border-accent/30 cursor-pointer hover:border-accent/60'
-            }`}
-            onClick={() => !parsing && screenshotRef.current?.click()}
-          >
-            {parsing ? (
-              <>
-                <Loader2 size={32} className="text-accent mx-auto mb-3 animate-spin" />
-                <p className="text-sm text-white mb-1">Analyzing your bet slip...</p>
-                <p className="text-xs text-muted-dark">This usually takes a few seconds</p>
-              </>
-            ) : (
-              <>
-                <Camera size={32} className="text-accent mx-auto mb-3" />
-                <p className="text-sm text-white mb-1">Click to upload a bet slip screenshot</p>
-                <p className="text-xs text-muted-dark">Works with DraftKings, FanDuel, BetMGM, and any sportsbook</p>
-              </>
-            )}
-            <input
-              ref={screenshotRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleScreenshotUpload}
-              className="hidden"
-            />
-          </div>
-          {parseMessage && (
-            <p className="text-xs text-accent">{parseMessage}</p>
           )}
-        </div>
-      )}
-
-      {/* ═══ CSV TAB ═══ */}
-      {tab === 'csv' && (
-        <div className="space-y-4">
-          {/* Platform select */}
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-muted-dark mb-2" style={{ fontFamily: 'var(--font-display)' }}>
-              Platform
-            </label>
-            <select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-              className="w-full bg-card border border-accent/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent"
-            >
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p}>{p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
-              ))}
-            </select>
-          </div>
-          <p className="text-sm text-muted-dark">
-            Upload a CSV file exported from your sportsbook. We&apos;ll automatically map the columns and import your bets.
-          </p>
-          <div
-            className="bg-card border-2 border-dashed border-accent/30 rounded-lg p-12 text-center cursor-pointer hover:border-accent/60 transition-colors"
-            onClick={() => fileRef.current?.click()}
-          >
-            <Upload size={32} className="text-accent mx-auto mb-3" />
-            <p className="text-sm text-white mb-1">Click to upload CSV</p>
-            <p className="text-xs text-muted-dark">Supports DraftKings, FanDuel, BetMGM, and more</p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv"
-              onChange={handleCSVUpload}
-              className="hidden"
-            />
-          </div>
         </div>
       )}
 
       {/* ═══ CONFIRMATION MODAL ═══ */}
-      {showConfirmation && (
+      {showConfirmation && selectedGame && selectedOutcome && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowConfirmation(false)}>
           <div className="bg-card border border-accent/30 rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: 'var(--font-display)' }}>
@@ -775,12 +518,14 @@ export default function AddBetPage() {
                 <span className="text-muted-dark text-sm">Selection</span>
                 <span className="text-white font-medium text-sm">{selection}</span>
               </div>
-              {eventName && (
-                <div className="flex justify-between">
-                  <span className="text-muted-dark text-sm">Event</span>
-                  <span className="text-white text-sm">{eventName}</span>
-                </div>
-              )}
+              <div className="flex justify-between">
+                <span className="text-muted-dark text-sm">Game</span>
+                <span className="text-white text-sm">{eventName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-dark text-sm">Kickoff</span>
+                <span className="text-white text-sm">{formatGameTime(selectedGame.commence_time)}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-muted-dark text-sm">Odds</span>
                 <span className="text-accent font-bold text-sm" style={{ fontFamily: 'var(--font-number)' }}>
@@ -804,12 +549,10 @@ export default function AddBetPage() {
               </div>
             </div>
 
-            {isFree && (
-              <div className="flex items-center gap-2 mb-4 p-2 bg-accent/10 rounded-lg">
-                <Shield size={14} className="text-accent" />
-                <span className="text-xs text-accent">This bet will be Pre-Game Verified</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 mb-4 p-2 bg-accent/10 rounded-lg">
+              <Timer size={14} className="text-accent" />
+              <span className="text-xs text-accent">Result will be settled automatically when the game ends</span>
+            </div>
 
             <div className="flex gap-3">
               <button
@@ -832,12 +575,4 @@ export default function AddBetPage() {
       )}
     </div>
   );
-}
-
-function calculatePayout(odds: number, stake: number): number {
-  if (odds > 0) {
-    return stake + (stake * odds / 100);
-  } else {
-    return stake + (stake * 100 / Math.abs(odds));
-  }
 }
