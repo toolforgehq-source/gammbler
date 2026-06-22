@@ -19,7 +19,7 @@ const SPORTS = ['overall', 'nfl', 'nba', 'mlb', 'nhl', 'cfb', 'cbb', 'soccer'];
 
 export default function LeaderboardsScreen() {
   const { user } = useAuth();
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active');
   const [sport, setSport] = useState('overall');
   const [tab, setTab] = useState<'friends' | 'national'>('friends');
   const [data, setData] = useState<Entry[]>([]);

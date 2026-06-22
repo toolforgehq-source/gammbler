@@ -33,7 +33,7 @@ function getScoreColor(score: number): string {
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<BadgeInfo[]>([]);
   const [loading, setLoading] = useState(true);

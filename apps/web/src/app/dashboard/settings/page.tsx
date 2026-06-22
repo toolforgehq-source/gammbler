@@ -37,7 +37,7 @@ export default function SettingsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isPro = user?.tier === 'pro' || user?.subscription_status === 'active' || user?.subscription_status === 'trialing';
+  const isPro = user?.tier === 'pro' || user?.subscription_status === 'active';
   const hasVerifiedPass = user?.verified_score_pass || false;
   const canConnectSportsbook = isPro || hasVerifiedPass;
 
@@ -231,13 +231,12 @@ export default function SettingsPage() {
             <span className="text-white">@{user?.username}</span>
           </div>
           <div className="flex justify-between items-center py-2">
-            <span className="text-muted-dark">Subscription</span>
+            <span className="text-muted-dark">Plan</span>
             <span className={`capitalize ${
               user?.subscription_status === 'active' ? 'text-win' :
-              user?.subscription_status === 'trialing' ? 'text-accent' :
-              'text-loss'
+              'text-accent'
             }`}>
-              {user?.subscription_status || 'trialing'}
+              {user?.subscription_status === 'active' ? 'Pro' : 'Free'}
             </span>
           </div>
           <div className="flex justify-between items-center py-2">

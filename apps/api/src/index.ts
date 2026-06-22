@@ -8,7 +8,7 @@ import { Server as SocketServer } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import cron from 'node-cron';
-import { checkTrialReminders, sendWeeklyReports } from './services/scheduled-emails';
+import { sendWeeklyReports } from './services/scheduled-emails';
 import { snapshotAllScores } from './services/score-snapshots';
 import { snapshotAllDfsScores } from './services/dfs-score-snapshots';
 import { runDailyBrainCycle, initializeGrowthBrain } from './services/growth-brain';
@@ -129,11 +129,6 @@ server.listen(env.PORT, () => {
   console.log(`Environment: ${env.NODE_ENV}`);
 
   // ── Scheduled email jobs ──────────────────────────────────
-
-  // Check trial reminders every hour
-  cron.schedule('0 * * * *', () => {
-    checkTrialReminders().catch((err) => console.error('[Cron] Trial reminder error:', err));
-  });
 
   // Send weekly reports every Monday at 9am UTC
   cron.schedule('0 9 * * 1', () => {

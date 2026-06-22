@@ -1,77 +1,9 @@
 import { db } from '../db';
 import { users, bets, gammblerScores, notifications } from '../db/schema';
-import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { eq, and, gte, sql } from 'drizzle-orm';
 import {
-  sendTrialEndingEmail,
-  sendTrialEndedEmail,
   sendWeeklyReportEmail,
 } from './email';
-
-// ── Trial reminder emails ────────────────────────────────────
-
-export async function checkTrialReminders(): Promise<void> {
-  const now = new Date();
-
-  // Find users whose trial ends in exactly 1 day (within a 1-hour window)
-  const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const oneDayWindowEnd = new Date(oneDayFromNow.getTime() + 60 * 60 * 1000);
-
-  const trialEnding1Day = await db
-    .select({ email: users.email, username: users.username })
-    .from(users)
-    .where(
-      and(
-        eq(users.subscription_status, 'trialing'),
-        gte(users.trial_ends_at, oneDayFromNow),
-        lte(users.trial_ends_at, oneDayWindowEnd)
-      )
-    );
-
-  for (const user of trialEnding1Day) {
-    await sendTrialEndingEmail(user.email, user.username, 1);
-  }
-
-  // Find users whose trial ends in exactly 3 days (within a 1-hour window)
-  const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-  const threeDaysWindowEnd = new Date(threeDaysFromNow.getTime() + 60 * 60 * 1000);
-
-  const trialEnding3Days = await db
-    .select({ email: users.email, username: users.username })
-    .from(users)
-    .where(
-      and(
-        eq(users.subscription_status, 'trialing'),
-        gte(users.trial_ends_at, threeDaysFromNow),
-        lte(users.trial_ends_at, threeDaysWindowEnd)
-      )
-    );
-
-  for (const user of trialEnding3Days) {
-    await sendTrialEndingEmail(user.email, user.username, 3);
-  }
-
-  // Find users whose trial just ended (within the last hour)
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-
-  const trialJustEnded = await db
-    .select({ email: users.email, username: users.username })
-    .from(users)
-    .where(
-      and(
-        eq(users.subscription_status, 'trialing'),
-        gte(users.trial_ends_at, oneHourAgo),
-        lte(users.trial_ends_at, now)
-      )
-    );
-
-  for (const user of trialJustEnded) {
-    await sendTrialEndedEmail(user.email, user.username);
-  }
-
-  if (trialEnding1Day.length + trialEnding3Days.length + trialJustEnded.length > 0) {
-    console.log(`[Cron] Trial reminders: ${trialEnding3Days.length} at 3 days, ${trialEnding1Day.length} at 1 day, ${trialJustEnded.length} ended`);
-  }
-}
 
 // ── Weekly report emails ─────────────────────────────────────
 
@@ -79,7 +11,7 @@ export async function sendWeeklyReports(): Promise<void> {
   const now = new Date();
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  // Get all active/trialing users who have at least 1 bet
+  // Get all users who haven't cancelled (free + pro both get weekly reports)
   const activeUsers = await db
     .select({
       id: users.id,
@@ -89,7 +21,7 @@ export async function sendWeeklyReports(): Promise<void> {
     })
     .from(users)
     .where(
-      sql`${users.subscription_status} IN ('active', 'trialing')`
+      sql`${users.subscription_status} NOT IN ('cancelled')`
     );
 
   let sent = 0;

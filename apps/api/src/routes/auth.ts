@@ -6,7 +6,7 @@ import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { generateToken, authMiddleware } from '../middleware/auth';
 import { getUserTier } from '../middleware/subscription';
-import { TRIAL_DAYS } from '@gammbler/shared';
+// TRIAL_DAYS no longer used — new users start on free tier immediately
 import { v4 as uuidv4 } from 'uuid';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail } from '../services/email';
 import crypto from 'crypto';
@@ -66,20 +66,15 @@ router.post('/signup', async (req: Request, res: Response): Promise<void> => {
     }
 
     const passwordHash = await bcrypt.hash(body.password, 12);
+    // No trial — new users start on free tier immediately
     const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
 
-    // Handle referral bonus
+    // Handle referral tracking
     let referredBy: string | undefined;
     if (body.referral_code) {
       const referrer = await db.select().from(users).where(eq(users.referral_code, body.referral_code)).limit(1);
       if (referrer.length > 0) {
         referredBy = referrer[0].id;
-        // Add bonus days to both
-        trialEndsAt.setDate(trialEndsAt.getDate() + 3);
-        const referrerTrialEnd = new Date(referrer[0].trial_ends_at);
-        referrerTrialEnd.setDate(referrerTrialEnd.getDate() + 3);
-        await db.update(users).set({ trial_ends_at: referrerTrialEnd }).where(eq(users.id, referrer[0].id));
       }
     }
 

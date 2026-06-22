@@ -56,7 +56,7 @@ export default function DashboardScreen() {
     }).finally(() => setLoading(false));
   }, []);
 
-  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active' && user?.subscription_status !== 'trialing');
+  const isFree = user?.tier === 'free' || (!user?.tier && user?.subscription_status !== 'active');
   const overallScore = scores.find((s) => s.sport === 'overall');
   const sportScores = scores.filter((s) => s.sport !== 'overall');
   const scoreVal = overallScore?.score ? parseFloat(overallScore.score) : 0;
